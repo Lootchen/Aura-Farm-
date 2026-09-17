@@ -13,10 +13,11 @@ const BPM = 120;
 const LOOP_BEATS = 16;
 const COUNT_IN_BEATS = 4;
 
-const NOTE_SPEED = 315;
+const NOTE_SPEED = 285;
 const NOTE_RADIUS = 20;
-const PATH_SAMPLES = 140;
-const POST_HIT_SPEED = 430;
+const PATH_SAMPLES = 160;
+const POST_HIT_SPEED = 420;
+const PROJECTILE_LIFE = 0.68;
 
 const WINDOWS = {
   perfect: 0.045,
@@ -31,11 +32,11 @@ const JUDGEMENTS = {
 };
 
 const FLIPPER = {
-  length: 82,
-  width: 18,
-  attack: 0.075,
-  hold: 0.015,
-  return: 0.090
+  length: 76,
+  width: 16,
+  attack: 0.072,
+  hold: 0.012,
+  return: 0.092
 };
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
@@ -116,13 +117,13 @@ class RhythmClock {
 
     oscillator.frequency.value = downbeat ? 880 : 620;
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(downbeat ? 0.095 : 0.045, time + 0.002);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.040);
+    gain.gain.exponentialRampToValueAtTime(downbeat ? 0.085 : 0.04, time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.038);
 
     oscillator.connect(gain);
     gain.connect(this.context.destination);
     oscillator.start(time);
-    oscillator.stop(time + 0.050);
+    oscillator.stop(time + 0.048);
   }
 }
 
@@ -141,11 +142,13 @@ let routes = null;
 let running = false;
 let active = new Map();
 let resolved = new Set();
+let explosions = [];
 let score = 0;
 let combo = 0;
 let hitCount = 0;
 let missCount = 0;
 let whiffCount = 0;
+let collisionCount = 0;
 let lastDeltaMs = null;
 let lastJudgement = "—";
 let lastFrame = performance.now();
@@ -177,20 +180,18 @@ function comboMultiplier(value = combo) {
 }
 
 function view() {
-  const leftPivot = { x: 178, y: 824 };
-  const rightPivot = { x: 362, y: 824 };
+  const leftPivot = { x: 186, y: 828 };
+  const rightPivot = { x: 354, y: 828 };
 
-  const leftRest = -0.53;
+  const leftRest = -0.50;
   const leftStrike = -1.08;
-  const rightRest = Math.PI + 0.53;
+  const rightRest = Math.PI + 0.50;
   const rightStrike = Math.PI + 1.08;
 
   const leftImpactAngle = (leftRest + leftStrike) / 2;
   const rightImpactAngle = (rightRest + rightStrike) / 2;
 
   return {
-    width: DESIGN.width,
-    height: DESIGN.height,
     pivot: { left: leftPivot, right: rightPivot },
     restAngle: { left: leftRest, right: rightRest },
     strikeAngle: { left: leftStrike, right: rightStrike },
@@ -277,12 +278,7 @@ function makePath(start, c1, c2, end) {
       length += Math.hypot(point.x - previous.x, point.y - previous.y);
     }
 
-    points.push({
-      x: point.x,
-      y: point.y,
-      distance: length
-    });
-
+    points.push({ x: point.x, y: point.y, distance: length });
     previous = point;
   }
 
@@ -303,34 +299,30 @@ function makePath(start, c1, c2, end) {
 
 function buildRoutes() {
   const m = view();
-  const mirror = (point) => ({
-    x: DESIGN.width - point.x,
-    y: point.y
-  });
+  const mirror = (point) => ({ x: DESIGN.width - point.x, y: point.y });
 
   const leftDefs = [
     [
-      { x: 82, y: 86 },
-      { x: 74, y: 300 },
-      { x: 132, y: 560 },
+      { x: 72, y: 88 },
+      { x: 60, y: 300 },
+      { x: 118, y: 570 },
       m.impact.left
     ],
     [
-      { x: 246, y: 70 },
-      { x: 226, y: 270 },
-      { x: 190, y: 560 },
+      { x: 245, y: 70 },
+      { x: 232, y: 280 },
+      { x: 196, y: 560 },
       m.impact.left
     ],
     [
-      { x: 392, y: 118 },
-      { x: 326, y: 300 },
-      { x: 270, y: 560 },
+      { x: 410, y: 120 },
+      { x: 346, y: 300 },
+      { x: 276, y: 570 },
       m.impact.left
     ]
   ];
 
   const left = leftDefs.map((definition) => makePath(...definition));
-
   const right = leftDefs.map((definition) => {
     const mirrored = definition.map(mirror);
     mirrored[3] = m.impact.right;
@@ -350,7 +342,6 @@ function pointAtDistance(path, distance) {
   if (distance >= path.length) {
     const end = path.points.at(-1);
     const extra = distance - path.length;
-
     return {
       x: end.x + path.tangent.x * extra,
       y: end.y + path.tangent.y * extra
@@ -362,7 +353,6 @@ function pointAtDistance(path, distance) {
 
   while (low < high - 1) {
     const mid = Math.floor((low + high) / 2);
-
     if (path.points[mid].distance < distance) low = mid;
     else high = mid;
   }
@@ -384,11 +374,7 @@ function eventSongTime(eventTimestamp) {
     ? clamp(performance.now() - timestamp, 0, 100)
     : 0;
 
-  return (
-    clock.songTime -
-    processingDelayMs / 1000 +
-    calibrationOffsetMs / 1000
-  );
+  return clock.songTime - processingDelayMs / 1000 + calibrationOffsetMs / 1000;
 }
 
 function judgementFor(deltaSeconds) {
@@ -403,23 +389,16 @@ function judgementFor(deltaSeconds) {
 
 function spawnReady(songTime) {
   const duration = loopDuration();
-  const currentLoop =
-    songTime < 0 ? 0 : Math.floor(songTime / duration);
-
-  const loops =
-    currentLoop === 0
-      ? [0, 1]
-      : [currentLoop, currentLoop + 1];
+  const currentLoop = songTime < 0 ? 0 : Math.floor(songTime / duration);
+  const loops = currentLoop === 0 ? [0, 1] : [currentLoop, currentLoop + 1];
 
   for (const loop of loops) {
     CHART.forEach((event, index) => {
       const key = `${loop}:${index}`;
-
       if (active.has(key) || resolved.has(key)) return;
 
       const path = routeFor(event.side, event.route);
-      const targetTime =
-        loop * duration + beatToSeconds(event.beat);
+      const targetTime = loop * duration + beatToSeconds(event.beat);
       const spawnLead = path.length / NOTE_SPEED;
       const timeUntil = targetTime - songTime;
 
@@ -432,6 +411,7 @@ function spawnReady(songTime) {
           ...event,
           path,
           targetTime,
+          pathDistance: 0,
           launched: false,
           x: path.points[0].x,
           y: path.points[0].y,
@@ -445,26 +425,23 @@ function spawnReady(songTime) {
 
   for (const key of [...resolved]) {
     const loop = Number(key.split(":")[0]);
-
-    if (loop < currentLoop - 1) {
-      resolved.delete(key);
-    }
+    if (loop < currentLoop - 1) resolved.delete(key);
   }
 }
 
 function flipperPhase(side, songTime) {
   const state = flippers[side];
   const elapsed = songTime - state.startTime;
+  const m = view();
 
   if (elapsed < 0 || elapsed >= FLIPPER.cycle) {
     return {
       active: false,
       attack: false,
-      angle: view().restAngle[side]
+      angle: m.restAngle[side]
     };
   }
 
-  const m = view();
   const rest = m.restAngle[side];
   const strike = m.strikeAngle[side];
 
@@ -484,17 +461,12 @@ function flipperPhase(side, songTime) {
     };
   }
 
-  const returnElapsed =
-    elapsed - FLIPPER.attack - FLIPPER.hold;
+  const returnElapsed = elapsed - FLIPPER.attack - FLIPPER.hold;
 
   return {
     active: true,
     attack: false,
-    angle: lerp(
-      strike,
-      rest,
-      returnElapsed / FLIPPER.return
-    )
+    angle: lerp(strike, rest, returnElapsed / FLIPPER.return)
   };
 }
 
@@ -520,31 +492,16 @@ function distancePointToSegment(point, a, b) {
   const apy = point.y - a.y;
   const lengthSq = abx * abx + aby * aby;
 
-  if (lengthSq <= 0.0001) {
-    return Math.hypot(apx, apy);
-  }
+  if (lengthSq <= 0.0001) return Math.hypot(apx, apy);
 
-  const t = clamp(
-    (apx * abx + apy * aby) / lengthSq,
-    0,
-    1
-  );
-
+  const t = clamp((apx * abx + apy * aby) / lengthSq, 0, 1);
   const closestX = a.x + abx * t;
   const closestY = a.y + aby * t;
 
-  return Math.hypot(
-    point.x - closestX,
-    point.y - closestY
-  );
+  return Math.hypot(point.x - closestX, point.y - closestY);
 }
 
-function playTone(
-  frequency,
-  duration = 0.045,
-  volume = 0.05,
-  type = "sine"
-) {
+function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
   if (!clock.context) return;
 
   const oscillator = clock.context.createOscillator();
@@ -553,19 +510,11 @@ function playTone(
 
   oscillator.type = type;
   oscillator.frequency.setValueAtTime(frequency, now);
-
-  gain.gain.setValueAtTime(
-    Math.max(0.0001, volume),
-    now
-  );
-  gain.gain.exponentialRampToValueAtTime(
-    0.0001,
-    now + duration
-  );
+  gain.gain.setValueAtTime(Math.max(0.0001, volume), now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
   oscillator.connect(gain);
   gain.connect(clock.context.destination);
-
   oscillator.start(now);
   oscillator.stop(now + duration + 0.01);
 }
@@ -587,21 +536,18 @@ function hitSound(side, judgement) {
   );
 }
 
-function showMessage(
-  text,
-  color,
-  milliseconds = 420
-) {
+function explosionSound() {
+  playTone(180, 0.05, 0.04, "square");
+  playTone(260, 0.04, 0.025, "triangle");
+}
+
+function showMessage(text, color, milliseconds = 420) {
   message = text;
   messageColor = color;
   messageUntil = performance.now() + milliseconds;
 }
 
-function triggerFlipper(
-  side,
-  eventTimestamp = null,
-  inputType = "unknown"
-) {
+function triggerFlipper(side, eventTimestamp = null, inputType = "unknown") {
   if (!running) return;
 
   const inputTime = eventSongTime(eventTimestamp);
@@ -635,14 +581,11 @@ function resolveHit(note, side, songTime) {
   note.life = 0;
 
   const direction = side === "left" ? 1 : -1;
-  const vertical = delta <= 0 ? -1 : -0.72;
-  const vectorLength =
-    Math.hypot(direction, vertical) || 1;
+  const vertical = -1;
+  const vectorLength = Math.hypot(direction, vertical) || 1;
 
-  note.vx =
-    (direction / vectorLength) * POST_HIT_SPEED;
-  note.vy =
-    (vertical / vectorLength) * POST_HIT_SPEED;
+  note.vx = (direction / vectorLength) * POST_HIT_SPEED;
+  note.vy = (vertical / vectorLength) * POST_HIT_SPEED;
 
   resolved.add(note.key);
   flippers[side].hitThisSwing = true;
@@ -653,11 +596,8 @@ function resolveHit(note, side, songTime) {
   );
 
   hitSound(side, judgement);
-
   if (navigator.vibrate) {
-    navigator.vibrate(
-      judgement === JUDGEMENTS.perfect ? 8 : 5
-    );
+    navigator.vibrate(judgement === JUDGEMENTS.perfect ? 8 : 5);
   }
 
   updateHud();
@@ -675,20 +615,14 @@ function miss(note) {
 
   showMessage("MISS", "#ff7184", 360);
 
-  if (navigator.vibrate) {
-    navigator.vibrate(12);
-  }
+  if (navigator.vibrate) navigator.vibrate(12);
 
   updateHud();
 }
 
 function updateHud() {
   scoreEl.textContent = String(score);
-  comboEl.textContent =
-    combo
-      ? `${combo} · x${comboMultiplier(combo)}`
-      : "0";
-
+  comboEl.textContent = combo ? `${combo} · x${comboMultiplier(combo)}` : "0";
   lastHitEl.textContent =
     lastDeltaMs === null
       ? lastJudgement
@@ -702,24 +636,18 @@ function updateNotes(dt, songTime) {
       note.x += note.vx * dt;
       note.y += note.vy * dt;
 
-      if (
-        note.x < NOTE_RADIUS &&
-        note.vx < 0
-      ) {
+      if (note.x < NOTE_RADIUS && note.vx < 0) {
         note.x = NOTE_RADIUS;
         note.vx *= -1;
-      } else if (
-        note.x > DESIGN.width - NOTE_RADIUS &&
-        note.vx > 0
-      ) {
+      } else if (note.x > DESIGN.width - NOTE_RADIUS && note.vx > 0) {
         note.x = DESIGN.width - NOTE_RADIUS;
         note.vx *= -1;
       }
 
       if (
-        note.life > 1.25 ||
-        note.y < -80 ||
-        note.y > DESIGN.height + 80
+        note.life > PROJECTILE_LIFE ||
+        note.y < -70 ||
+        note.y > DESIGN.height + 70
       ) {
         active.delete(note.key);
       }
@@ -727,48 +655,28 @@ function updateNotes(dt, songTime) {
       continue;
     }
 
-    const distance =
-      note.path.length -
-      NOTE_SPEED * (note.targetTime - songTime);
+    note.pathDistance =
+      note.path.length - NOTE_SPEED * (note.targetTime - songTime);
 
-    const point = pointAtDistance(
-      note.path,
-      distance
-    );
-
+    const point = pointAtDistance(note.path, note.pathDistance);
     note.x = point.x;
     note.y = point.y;
 
-    if (
-      songTime - note.targetTime >
-      WINDOWS.good
-    ) {
+    if (songTime - note.targetTime > WINDOWS.good) {
       miss(note);
     }
   }
 }
 
-function resolveCollisions(songTime) {
+function resolveFlipperCollisions(songTime) {
   for (const side of ["left", "right"]) {
     const state = flippers[side];
-    const segment = flipperSegment(
-      side,
-      songTime
-    );
+    const segment = flipperSegment(side, songTime);
 
-    if (
-      !segment.phase.attack ||
-      state.hitThisSwing
-    ) {
-      continue;
-    }
+    if (!segment.phase.attack || state.hitThisSwing) continue;
 
     const candidates = [...active.values()]
-      .filter(
-        (note) =>
-          !note.launched &&
-          note.side === side
-      )
+      .filter((note) => !note.launched && note.side === side)
       .sort(
         (a, b) =>
           Math.abs(a.targetTime - songTime) -
@@ -776,24 +684,10 @@ function resolveCollisions(songTime) {
       );
 
     for (const note of candidates) {
-      if (
-        Math.abs(
-          songTime - note.targetTime
-        ) > WINDOWS.good + 0.035
-      ) {
-        continue;
-      }
+      if (Math.abs(songTime - note.targetTime) > WINDOWS.good + 0.035) continue;
 
-      const distance =
-        distancePointToSegment(
-          note,
-          segment.pivot,
-          segment.tip
-        );
-
-      const collisionDistance =
-        NOTE_RADIUS +
-        FLIPPER.width * 0.5;
+      const distance = distancePointToSegment(note, segment.pivot, segment.tip);
+      const collisionDistance = NOTE_RADIUS + FLIPPER.width * 0.5;
 
       if (
         distance <= collisionDistance &&
@@ -805,20 +699,79 @@ function resolveCollisions(songTime) {
   }
 }
 
+function createExplosion(x, y) {
+  explosions.push({
+    x,
+    y,
+    life: 0,
+    duration: 0.28,
+    particles: Array.from({ length: 7 }, (_, index) => {
+      const angle = (Math.PI * 2 * index) / 7;
+      return {
+        angle,
+        speed: 70 + index * 8
+      };
+    })
+  });
+
+  if (explosions.length > 10) {
+    explosions.shift();
+  }
+
+  explosionSound();
+}
+
+function resolveProjectileCollisions() {
+  const launched = [...active.values()].filter((note) => note.launched);
+
+  for (let i = 0; i < launched.length; i += 1) {
+    const a = launched[i];
+    if (!active.has(a.key)) continue;
+
+    for (let j = i + 1; j < launched.length; j += 1) {
+      const b = launched[j];
+      if (!active.has(b.key)) continue;
+
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+
+      if (distance <= NOTE_RADIUS * 1.65) {
+        const x = (a.x + b.x) / 2;
+        const y = (a.y + b.y) / 2;
+
+        active.delete(a.key);
+        active.delete(b.key);
+        collisionCount += 1;
+        score += 50 * comboMultiplier(combo);
+        createExplosion(x, y);
+        showMessage("COLISIÓN +50", "#ffffff", 260);
+        updateHud();
+        break;
+      }
+    }
+  }
+}
+
+function updateExplosions(dt) {
+  for (const explosion of explosions) {
+    explosion.life += dt;
+  }
+
+  explosions = explosions.filter(
+    (explosion) => explosion.life < explosion.duration
+  );
+}
+
 function updateWhiffs(songTime) {
   for (const side of ["left", "right"]) {
     const state = flippers[side];
-    const elapsed =
-      songTime - state.startTime;
+    const elapsed = songTime - state.startTime;
 
     if (
       Number.isFinite(state.startTime) &&
       elapsed >= FLIPPER.cycle &&
       elapsed < FLIPPER.cycle + 0.050
     ) {
-      if (!state.hitThisSwing) {
-        whiffCount += 1;
-      }
+      if (!state.hitThisSwing) whiffCount += 1;
 
       state.startTime = -Infinity;
       state.hitThisSwing = false;
@@ -828,141 +781,80 @@ function updateWhiffs(songTime) {
 
 function drawBackground() {
   ctx.fillStyle = "#0a1020";
-  ctx.fillRect(
-    0,
-    0,
-    DESIGN.width,
-    DESIGN.height
-  );
+  ctx.fillRect(0, 0, DESIGN.width, DESIGN.height);
 
-  ctx.fillStyle =
-    "rgba(255,255,255,.15)";
-
+  ctx.fillStyle = "rgba(255,255,255,.15)";
   for (let i = 0; i < 34; i += 1) {
-    const x =
-      (((i * 73) % 521) / 521) *
-      DESIGN.width;
-    const y =
-      (((i * 113) % 601) / 601) *
-      DESIGN.height *
-      0.61;
-
+    const x = (((i * 73) % 521) / 521) * DESIGN.width;
+    const y = (((i * 113) % 601) / 601) * DESIGN.height * 0.61;
     ctx.fillRect(x, y, 1.2, 1.2);
   }
 }
 
-function drawPath(
-  path,
-  alpha = 0.06,
-  width = 1.2
-) {
-  ctx.strokeStyle =
-    `rgba(210,230,255,${alpha})`;
-  ctx.lineWidth = width;
-  ctx.beginPath();
+function drawTrail(note) {
+  if (note.launched) {
+    const speed = Math.hypot(note.vx, note.vy) || 1;
+    const ux = note.vx / speed;
+    const uy = note.vy / speed;
 
-  path.points.forEach(
-    (point, index) => {
-      if (index === 0) {
-        ctx.moveTo(point.x, point.y);
-      } else {
-        ctx.lineTo(point.x, point.y);
-      }
-    }
-  );
+    ctx.strokeStyle =
+      note.side === "left"
+        ? "rgba(110,215,255,.24)"
+        : "rgba(216,139,255,.24)";
 
-  ctx.stroke();
-}
-
-function drawTimingTicks(note) {
-  if (note.launched) return;
-
-  const markers = [
-    {
-      seconds: WINDOWS.good,
-      color: "rgba(121,216,255,.48)"
-    },
-    {
-      seconds: WINDOWS.great,
-      color: "rgba(202,140,255,.55)"
-    },
-    {
-      seconds: WINDOWS.perfect,
-      color: "rgba(255,228,122,.68)"
-    }
-  ];
-
-  for (const marker of markers) {
-    const distance =
-      note.path.length -
-      NOTE_SPEED * marker.seconds;
-
-    const a = pointAtDistance(
-      note.path,
-      distance - 5
-    );
-    const b = pointAtDistance(
-      note.path,
-      distance + 5
-    );
-
-    const tx = b.x - a.x;
-    const ty = b.y - a.y;
-    const tangentLength =
-      Math.hypot(tx, ty) || 1;
-
-    const nx = -ty / tangentLength;
-    const ny = tx / tangentLength;
-
-    const center = pointAtDistance(
-      note.path,
-      distance
-    );
-
-    ctx.strokeStyle = marker.color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 8;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(
-      center.x - nx * 13,
-      center.y - ny * 13
-    );
-    ctx.lineTo(
-      center.x + nx * 13,
-      center.y + ny * 13
-    );
+    ctx.moveTo(note.x, note.y);
+    ctx.lineTo(note.x - ux * 42, note.y - uy * 42);
     ctx.stroke();
+    return;
+  }
+
+  const trailDistances = [18, 36, 54];
+
+  for (let i = 0; i < trailDistances.length; i += 1) {
+    const point = pointAtDistance(
+      note.path,
+      Math.max(0, note.pathDistance - trailDistances[i])
+    );
+
+    const alpha = 0.18 - i * 0.045;
+
+    ctx.fillStyle =
+      note.side === "left"
+        ? `rgba(110,215,255,${alpha})`
+        : `rgba(216,139,255,${alpha})`;
+
+    ctx.beginPath();
+    ctx.arc(
+      point.x,
+      point.y,
+      Math.max(4, NOTE_RADIUS - 8 - i * 2),
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
   }
 }
 
 function drawNote(note) {
+  drawTrail(note);
+
   ctx.save();
   ctx.translate(note.x, note.y);
 
   if (note.launched) {
-    ctx.rotate(
-      Math.atan2(note.vy, note.vx) +
-      Math.PI / 2
-    );
+    ctx.rotate(Math.atan2(note.vy, note.vx) + Math.PI / 2);
   }
 
-  ctx.fillStyle =
-    note.side === "left"
-      ? "#6ed7ff"
-      : "#d88bff";
-
+  ctx.fillStyle = note.side === "left" ? "#6ed7ff" : "#d88bff";
   ctx.beginPath();
-  ctx.arc(
-    0,
-    0,
-    NOTE_RADIUS,
-    0,
-    Math.PI * 2
-  );
+  ctx.arc(0, 0, NOTE_RADIUS, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#08101d";
-  ctx.font =
-    "900 25px system-ui, sans-serif";
+  ctx.font = "900 25px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(note.symbol, 0, 1);
@@ -970,47 +862,9 @@ function drawNote(note) {
   ctx.restore();
 }
 
-function drawSweepFan(side, songTime) {
-  const m = view();
-  const pivot = m.pivot[side];
-  const phase = flipperPhase(
-    side,
-    songTime
-  );
-  const rest = m.restAngle[side];
-  const strike = m.strikeAngle[side];
-
-  ctx.save();
-  ctx.globalAlpha =
-    phase.active ? 0.18 : 0.08;
-  ctx.fillStyle =
-    phase.active
-      ? "#ffe985"
-      : "#9ecfff";
-
-  ctx.beginPath();
-  ctx.moveTo(pivot.x, pivot.y);
-  ctx.arc(
-    pivot.x,
-    pivot.y,
-    FLIPPER.length + 15,
-    rest,
-    strike,
-    side === "right"
-  );
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
 function drawFlipper(side, songTime) {
-  const segment = flipperSegment(
-    side,
-    songTime
-  );
+  const segment = flipperSegment(side, songTime);
   const phase = segment.phase;
-
-  drawSweepFan(side, songTime);
 
   ctx.save();
 
@@ -1023,182 +877,109 @@ function drawFlipper(side, songTime) {
 
   ctx.lineWidth = FLIPPER.width;
   ctx.lineCap = "round";
-
   ctx.beginPath();
-  ctx.moveTo(
-    segment.pivot.x,
-    segment.pivot.y
-  );
-  ctx.lineTo(
-    segment.tip.x,
-    segment.tip.y
-  );
+  ctx.moveTo(segment.pivot.x, segment.pivot.y);
+  ctx.lineTo(segment.tip.x, segment.tip.y);
   ctx.stroke();
 
   ctx.fillStyle = "#15243a";
   ctx.beginPath();
-  ctx.arc(
-    segment.pivot.x,
-    segment.pivot.y,
-    10,
-    0,
-    Math.PI * 2
-  );
+  ctx.arc(segment.pivot.x, segment.pivot.y, 9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Receptor integrado en la punta de la pinza.
+  ctx.shadowBlur = phase.attack ? 20 : 9;
+  ctx.shadowColor = phase.attack ? "#ffe985" : "#9edcff";
+  ctx.fillStyle = phase.attack ? "#ffe985" : "#9edcff";
+  ctx.beginPath();
+  ctx.arc(segment.tip.x, segment.tip.y, phase.attack ? 9 : 7, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
 }
 
-function drawMessage() {
-  if (
-    performance.now() >
-    messageUntil
-  ) {
-    return;
+function drawExplosions() {
+  for (const explosion of explosions) {
+    const t = clamp(explosion.life / explosion.duration, 0, 1);
+    const alpha = 1 - t;
+
+    ctx.strokeStyle = `rgba(255,240,170,${alpha * 0.8})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(explosion.x, explosion.y, 8 + t * 30, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (const particle of explosion.particles) {
+      const distance = particle.speed * explosion.life;
+      const x = explosion.x + Math.cos(particle.angle) * distance;
+      const y = explosion.y + Math.sin(particle.angle) * distance;
+
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
+}
+
+function drawMessage() {
+  if (performance.now() > messageUntil) return;
 
   ctx.fillStyle = messageColor;
-  ctx.font =
-    "900 25px system-ui, sans-serif";
+  ctx.font = "900 25px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
-  ctx.fillText(
-    message,
-    DESIGN.width / 2,
-    455
-  );
+  ctx.fillText(message, DESIGN.width / 2, 455);
 }
 
 function drawCountIn(songTime) {
   if (songTime >= 0) return;
 
-  const remaining =
-    Math.max(1, Math.ceil(-clock.beat));
+  const remaining = Math.max(1, Math.ceil(-clock.beat));
 
-  ctx.fillStyle =
-    "rgba(255,255,255,.86)";
-  ctx.font =
-    "900 42px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,.86)";
+  ctx.font = "900 42px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  ctx.fillText(String(remaining), DESIGN.width / 2, 365);
 
-  ctx.fillText(
-    String(remaining),
-    DESIGN.width / 2,
-    365
-  );
-
-  ctx.font =
-    "700 12px system-ui, sans-serif";
-  ctx.fillStyle =
-    "rgba(255,255,255,.48)";
-
-  ctx.fillText(
-    "PREPÁRATE",
-    DESIGN.width / 2,
-    405
-  );
+  ctx.font = "700 12px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,.48)";
+  ctx.fillText("PREPÁRATE", DESIGN.width / 2, 405);
 }
 
 function drawDebug(songTime) {
-  const loopBeat =
-    ((clock.beat % LOOP_BEATS) +
-      LOOP_BEATS) %
-    LOOP_BEATS;
-
-  const leftPhase =
-    flipperPhase("left", songTime);
-  const rightPhase =
-    flipperPhase("right", songTime);
+  const loopBeat = ((clock.beat % LOOP_BEATS) + LOOP_BEATS) % LOOP_BEATS;
+  const leftPhase = flipperPhase("left", songTime);
+  const rightPhase = flipperPhase("right", songTime);
 
   const lines = [
-    `TAP v0.6   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
-    `velocidad notas ${NOTE_SPEED}px/s CONSTANTE`,
+    `TAP v0.7   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
+    `nota ${NOTE_SPEED}px/s CONSTANTE   post-hit ${POST_HIT_SPEED}px/s`,
     `P ±45  G ±90  GOOD ±160ms`,
     `último Δ ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}`,
     `L ${leftPhase.active ? "OCUPADA" : "LISTA"}   R ${rightPhase.active ? "OCUPADA" : "LISTA"}`,
-    `hits ${hitCount}   miss ${missCount}   swings vacíos ${whiffCount}`,
+    `hits ${hitCount}   miss ${missCount}   vacío ${whiffCount}   colisiones ${collisionCount}`,
     `input ${lastInputType}   offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)}   multi x${comboMultiplier(combo)}`
   ];
 
-  ctx.fillStyle =
-    "rgba(0,0,0,.50)";
-  ctx.fillRect(12, 92, 350, 132);
+  ctx.fillStyle = "rgba(0,0,0,.50)";
+  ctx.fillRect(12, 92, 390, 132);
 
-  ctx.fillStyle =
-    "rgba(235,244,255,.78)";
-  ctx.font =
-    "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.fillStyle = "rgba(235,244,255,.78)";
+  ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
-  lines.forEach(
-    (line, index) => {
-      ctx.fillText(
-        line,
-        19,
-        101 + index * 15
-      );
-    }
-  );
+  lines.forEach((line, index) => {
+    ctx.fillText(line, 19, 101 + index * 15);
+  });
 }
 
 function render(songTime) {
   clearCanvas();
   drawBackground();
-
-  for (const side of [
-    "left",
-    "right"
-  ]) {
-    routes[side].forEach((path) =>
-      drawPath(path)
-    );
-  }
-
-  const nextBySide = {
-    left: [...active.values()]
-      .filter(
-        (note) =>
-          !note.launched &&
-          note.side === "left"
-      )
-      .sort(
-        (a, b) =>
-          a.targetTime - b.targetTime
-      )[0],
-
-    right: [...active.values()]
-      .filter(
-        (note) =>
-          !note.launched &&
-          note.side === "right"
-      )
-      .sort(
-        (a, b) =>
-          a.targetTime - b.targetTime
-      )[0]
-  };
-
-  if (nextBySide.left) {
-    drawPath(
-      nextBySide.left.path,
-      0.18,
-      2
-    );
-    drawTimingTicks(nextBySide.left);
-  }
-
-  if (nextBySide.right) {
-    drawPath(
-      nextBySide.right.path,
-      0.18,
-      2
-    );
-    drawTimingTicks(nextBySide.right);
-  }
 
   for (const note of active.values()) {
     drawNote(note);
@@ -1206,6 +987,7 @@ function render(songTime) {
 
   drawFlipper("left", songTime);
   drawFlipper("right", songTime);
+  drawExplosions();
   drawMessage();
   drawCountIn(songTime);
   drawDebug(songTime);
@@ -1214,24 +996,18 @@ function render(songTime) {
 function frame(now) {
   if (!running) return;
 
-  const dt =
-    Math.min(
-      0.033,
-      (now - lastFrame) / 1000 || 0
-    );
-
+  const dt = Math.min(0.033, (now - lastFrame) / 1000 || 0);
   lastFrame = now;
 
-  if (dt > 0) {
-    fps +=
-      ((1 / dt) - fps) * 0.08;
-  }
+  if (dt > 0) fps += ((1 / dt) - fps) * 0.08;
 
   const songTime = clock.songTime;
 
   spawnReady(songTime);
   updateNotes(dt, songTime);
-  resolveCollisions(songTime);
+  resolveFlipperCollisions(songTime);
+  resolveProjectileCollisions();
+  updateExplosions(dt);
   updateWhiffs(songTime);
   render(songTime);
 
@@ -1239,224 +1015,130 @@ function frame(now) {
 }
 
 function pressVisual(button, state) {
-  button.classList.toggle(
-    "active",
-    state
-  );
+  button.classList.toggle("active", state);
 }
 
 function bindButton(button, side) {
-  button.addEventListener(
-    "pointerdown",
-    (event) => {
-      event.preventDefault();
-      button.setPointerCapture?.(
-        event.pointerId
-      );
-      pressVisual(button, true);
-      triggerFlipper(
-        side,
-        event.timeStamp,
-        event.pointerType || "touch"
-      );
-    }
-  );
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    button.setPointerCapture?.(event.pointerId);
+    pressVisual(button, true);
+    triggerFlipper(side, event.timeStamp, event.pointerType || "touch");
+  });
 
   const release = (event) => {
     event?.preventDefault?.();
     pressVisual(button, false);
   };
 
-  button.addEventListener(
-    "pointerup",
-    release
-  );
-  button.addEventListener(
-    "pointercancel",
-    release
-  );
-  button.addEventListener(
-    "lostpointercapture",
-    release
-  );
+  button.addEventListener("pointerup", release);
+  button.addEventListener("pointercancel", release);
+  button.addEventListener("lostpointercapture", release);
 }
 
 bindButton(leftButton, "left");
 bindButton(rightButton, "right");
 
-window.addEventListener(
-  "keydown",
-  (event) => {
-    if (event.repeat) return;
+window.addEventListener("keydown", (event) => {
+  if (event.repeat) return;
 
-    const key =
-      event.key.toLowerCase();
+  const key = event.key.toLowerCase();
 
-    if (key === "[") {
-      calibrationOffsetMs =
-        clamp(
-          calibrationOffsetMs - 5,
-          -200,
-          200
-        );
-
-      showMessage(
-        `OFFSET ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
-        "#79d8ff",
-        500
-      );
-      return;
-    }
-
-    if (key === "]") {
-      calibrationOffsetMs =
-        clamp(
-          calibrationOffsetMs + 5,
-          -200,
-          200
-        );
-
-      showMessage(
-        `OFFSET ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
-        "#79d8ff",
-        500
-      );
-      return;
-    }
-
-    if (
-      key === "a" ||
-      event.key === "ArrowLeft"
-    ) {
-      pressVisual(
-        leftButton,
-        true
-      );
-      triggerFlipper(
-        "left",
-        event.timeStamp,
-        "keyboard"
-      );
-    }
-
-    if (
-      key === "d" ||
-      event.key === "ArrowRight"
-    ) {
-      pressVisual(
-        rightButton,
-        true
-      );
-      triggerFlipper(
-        "right",
-        event.timeStamp,
-        "keyboard"
-      );
-    }
+  if (key === "[") {
+    calibrationOffsetMs = clamp(calibrationOffsetMs - 5, -200, 200);
+    showMessage(
+      `OFFSET ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
+      "#79d8ff",
+      500
+    );
+    return;
   }
-);
 
-window.addEventListener(
-  "keyup",
-  (event) => {
-    const key =
-      event.key.toLowerCase();
-
-    if (
-      key === "a" ||
-      event.key === "ArrowLeft"
-    ) {
-      pressVisual(
-        leftButton,
-        false
-      );
-    }
-
-    if (
-      key === "d" ||
-      event.key === "ArrowRight"
-    ) {
-      pressVisual(
-        rightButton,
-        false
-      );
-    }
+  if (key === "]") {
+    calibrationOffsetMs = clamp(calibrationOffsetMs + 5, -200, 200);
+    showMessage(
+      `OFFSET ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
+      "#79d8ff",
+      500
+    );
+    return;
   }
-);
 
-startButton.addEventListener(
-  "click",
-  async () => {
-    score = 0;
-    combo = 0;
-    hitCount = 0;
-    missCount = 0;
-    whiffCount = 0;
-    lastDeltaMs = null;
-    lastJudgement = "—";
-    lastInputType = "—";
-    message = "";
-
-    active.clear();
-    resolved.clear();
-
-    flippers.left.startTime =
-      -Infinity;
-    flippers.left.hitThisSwing =
-      false;
-    flippers.right.startTime =
-      -Infinity;
-    flippers.right.hitThisSwing =
-      false;
-
-    updateHud();
-
-    startButton.disabled = true;
-    startButton.textContent =
-      "INICIANDO…";
-
-    await clock.start();
-
-    running = true;
-    lastFrame = performance.now();
-    startPanel.hidden = true;
-
-    requestAnimationFrame(frame);
+  if (key === "a" || event.key === "ArrowLeft") {
+    pressVisual(leftButton, true);
+    triggerFlipper("left", event.timeStamp, "keyboard");
   }
-);
 
-window.addEventListener(
-  "resize",
-  () => {
-    resizeCanvas();
-    render(clock.songTime);
+  if (key === "d" || event.key === "ArrowRight") {
+    pressVisual(rightButton, true);
+    triggerFlipper("right", event.timeStamp, "keyboard");
   }
-);
+});
 
-window.addEventListener(
-  "orientationchange",
-  resizeCanvas
-);
+window.addEventListener("keyup", (event) => {
+  const key = event.key.toLowerCase();
 
-document.addEventListener(
-  "visibilitychange",
-  () => {
-    if (
-      !document.hidden ||
-      !running
-    ) {
-      return;
-    }
-
-    running = false;
-    clock.stopScheduler();
-
-    startPanel.hidden = false;
-    startButton.disabled = false;
-    startButton.textContent =
-      "REINICIAR PRUEBA";
+  if (key === "a" || event.key === "ArrowLeft") {
+    pressVisual(leftButton, false);
   }
-);
+
+  if (key === "d" || event.key === "ArrowRight") {
+    pressVisual(rightButton, false);
+  }
+});
+
+startButton.addEventListener("click", async () => {
+  score = 0;
+  combo = 0;
+  hitCount = 0;
+  missCount = 0;
+  whiffCount = 0;
+  collisionCount = 0;
+  lastDeltaMs = null;
+  lastJudgement = "—";
+  lastInputType = "—";
+  message = "";
+
+  active.clear();
+  resolved.clear();
+  explosions = [];
+
+  flippers.left.startTime = -Infinity;
+  flippers.left.hitThisSwing = false;
+  flippers.right.startTime = -Infinity;
+  flippers.right.hitThisSwing = false;
+
+  updateHud();
+
+  startButton.disabled = true;
+  startButton.textContent = "INICIANDO…";
+
+  await clock.start();
+
+  running = true;
+  lastFrame = performance.now();
+  startPanel.hidden = true;
+
+  requestAnimationFrame(frame);
+});
+
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  render(clock.songTime);
+});
+
+window.addEventListener("orientationchange", resizeCanvas);
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden || !running) return;
+
+  running = false;
+  clock.stopScheduler();
+
+  startPanel.hidden = false;
+  startButton.disabled = false;
+  startButton.textContent = "REINICIAR PRUEBA";
+});
 
 resizeCanvas();
 buildRoutes();
