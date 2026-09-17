@@ -1,4 +1,4 @@
-import { loadTapChart } from "./chart.js?v=0.10";
+import { loadGameChart } from "./chart.js?v=0.11";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -11,22 +11,29 @@ const comboEl = document.querySelector("#combo");
 const lastHitEl = document.querySelector("#lastHit");
 
 const DESIGN = { width: 540, height: 960 };
-let BPM = 120;
-let LOOP_BEATS = 16;
+
+let BPM = 110;
+let LOOP_BEATS = 24;
 let COUNT_IN_BEATS = 4;
 let CHART = [];
 let chartName = "cargando…";
 let chartLoaded = false;
 
-const NOTE_SPEED = 285;
+const NOTE_SPEED = 275;
 const NOTE_RADIUS = 20;
 const PATH_SAMPLES = 160;
 const POST_HIT_SPEED = 455;
 
-const WINDOWS = {
+const TAP_WINDOWS = {
   perfect: 0.045,
   great: 0.090,
   good: 0.160
+};
+
+const DRAW_WINDOWS = {
+  perfect: 0.150,
+  great: 0.280,
+  good: 0.550
 };
 
 const JUDGEMENTS = {
@@ -44,23 +51,51 @@ const FLIPPER = {
 };
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
+const SLIDE = {
+  leadSeconds: 1.35,
+  startEarly: 0.26,
+  startLate: 0.34,
+  radius: 62,
+  endGrace: 0.24,
+  minCoverage: 0.68
+};
 
+const DRAW = {
+  leadSeconds: 1.85,
+  recognitionThreshold: 0.72,
+  minPoints: 8
+};
 
 class RhythmClock {
   constructor() {
     this.context = null;
     this.startAt = 0;
-    this.nextClickBeat = 0;
+    this.nextStep = 0;
     this.timer = null;
+    this.noiseBuffer = null;
   }
 
   async start() {
     this.context ??= new AudioContext();
     await this.context.resume();
 
+    if (!this.noiseBuffer) {
+      const length = Math.floor(this.context.sampleRate * 0.12);
+      this.noiseBuffer = this.context.createBuffer(1, length, this.context.sampleRate);
+      const data = this.noiseBuffer.getChannelData(0);
+
+      for (let i = 0; i < length; i += 1) {
+        data[i] = Math.random() * 2 - 1;
+      }
+    }
+
     const beatDuration = 60 / BPM;
-    this.startAt = this.context.currentTime + 0.08 + COUNT_IN_BEATS * beatDuration;
-    this.nextClickBeat = -COUNT_IN_BEATS;
+    this.startAt =
+      this.context.currentTime +
+      0.10 +
+      COUNT_IN_BEATS * beatDuration;
+
+    this.nextStep = -COUNT_IN_BEATS * 2;
 
     this.stopScheduler();
     this.schedule();
@@ -87,29 +122,137 @@ class RhythmClock {
     if (!this.context) return;
 
     const beatDuration = 60 / BPM;
-    const horizon = this.context.currentTime + 0.12;
+    const horizon = this.context.currentTime + 0.14;
 
-    while (this.startAt + this.nextClickBeat * beatDuration < horizon) {
-      const time = this.startAt + this.nextClickBeat * beatDuration;
-      if (time >= this.context.currentTime) this.click(time, this.nextClickBeat);
-      this.nextClickBeat += 1;
+    while (
+      this.startAt + (this.nextStep / 2) * beatDuration <
+      horizon
+    ) {
+      const beat = this.nextStep / 2;
+      const time = this.startAt + beat * beatDuration;
+
+      if (time >= this.context.currentTime) {
+        if (beat < 0) {
+          if (Number.isInteger(beat)) this.scheduleCountIn(time, beat);
+        } else {
+          this.scheduleGroove(time, beat);
+        }
+      }
+
+      this.nextStep += 1;
     }
   }
 
-  click(time, beatNumber) {
+  scheduleCountIn(time, beat) {
     const oscillator = this.context.createOscillator();
     const gain = this.context.createGain();
-    const downbeat = beatNumber >= 0 && Math.floor(beatNumber) % 4 === 0;
 
-    oscillator.frequency.value = downbeat ? 880 : 620;
+    oscillator.frequency.value = beat === -1 ? 880 : 620;
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(downbeat ? 0.085 : 0.04, time + 0.002);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.038);
+    gain.gain.exponentialRampToValueAtTime(0.065, time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.045);
 
     oscillator.connect(gain);
     gain.connect(this.context.destination);
     oscillator.start(time);
-    oscillator.stop(time + 0.048);
+    oscillator.stop(time + 0.055);
+  }
+
+  scheduleGroove(time, beat) {
+    const barBeat = ((beat % 4) + 4) % 4;
+
+    this.scheduleHat(time, 0.018);
+
+    if (Math.abs(barBeat - 0) < 0.001 || Math.abs(barBeat - 2) < 0.001) {
+      this.scheduleKick(time);
+    }
+
+    if (Math.abs(barBeat - 1) < 0.001 || Math.abs(barBeat - 3) < 0.001) {
+      this.scheduleSnare(time);
+    }
+
+    if (Number.isInteger(beat)) {
+      this.scheduleBass(time, beat);
+    }
+  }
+
+  scheduleHat(time, volume) {
+    const source = this.context.createBufferSource();
+    const filter = this.context.createBiquadFilter();
+    const gain = this.context.createGain();
+
+    source.buffer = this.noiseBuffer;
+    filter.type = "highpass";
+    filter.frequency.value = 5200;
+
+    gain.gain.setValueAtTime(volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.035);
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.context.destination);
+
+    source.start(time);
+    source.stop(time + 0.045);
+  }
+
+  scheduleSnare(time) {
+    const source = this.context.createBufferSource();
+    const filter = this.context.createBiquadFilter();
+    const gain = this.context.createGain();
+
+    source.buffer = this.noiseBuffer;
+    filter.type = "bandpass";
+    filter.frequency.value = 1700;
+    filter.Q.value = 0.8;
+
+    gain.gain.setValueAtTime(0.045, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.085);
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.context.destination);
+
+    source.start(time);
+    source.stop(time + 0.09);
+  }
+
+  scheduleKick(time) {
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(125, time);
+    oscillator.frequency.exponentialRampToValueAtTime(48, time + 0.10);
+
+    gain.gain.setValueAtTime(0.085, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
+
+    oscillator.connect(gain);
+    gain.connect(this.context.destination);
+
+    oscillator.start(time);
+    oscillator.stop(time + 0.13);
+  }
+
+  scheduleBass(time, beat) {
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    const pattern = [110, 110, 123.47, 98];
+    const frequency = pattern[Math.floor(beat) % pattern.length];
+
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(frequency, time);
+
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.025, time + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.16);
+
+    oscillator.connect(gain);
+    gain.connect(this.context.destination);
+
+    oscillator.start(time);
+    oscillator.stop(time + 0.18);
   }
 }
 
@@ -125,20 +268,19 @@ let viewport = {
 };
 
 let routes = null;
+let slidePaths = null;
 let running = false;
 let active = new Map();
 let resolved = new Set();
 let explosions = [];
+let impactFlashes = [];
 let score = 0;
 let combo = 0;
 let hitCount = 0;
 let missCount = 0;
-let whiffCount = 0;
-let collisionCount = 0;
 let chainCount = 0;
+let collisionCount = 0;
 let wallExplosionCount = 0;
-let impactFlashes = [];
-let showDebug = false;
 let lastDeltaMs = null;
 let lastJudgement = "—";
 let lastFrame = performance.now();
@@ -148,6 +290,10 @@ let messageColor = "#ffffff";
 let messageUntil = 0;
 let calibrationOffsetMs = 0;
 let lastInputType = "—";
+let showDebug = false;
+
+let slidePointer = null;
+let drawGesture = null;
 
 const flippers = {
   left: { startTime: -Infinity, hitThisSwing: false },
@@ -168,14 +314,14 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.10", import.meta.url);
-  const chart = await loadTapChart(chartUrl);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.11", import.meta.url);
+  const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
   LOOP_BEATS = chart.loopBeats;
   COUNT_IN_BEATS = chart.countInBeats;
   CHART = chart.events;
-  chartName = chart.name || "Tap chart";
+  chartName = chart.name || "Mechanics chart";
   chartLoaded = true;
 }
 
@@ -220,6 +366,7 @@ function resizeCanvas() {
   canvas.height = Math.round(rect.height * dpr);
 
   const scale = Math.min(rect.width / DESIGN.width, rect.height / DESIGN.height);
+
   viewport = {
     scale,
     offsetX: (rect.width - DESIGN.width * scale) / 2,
@@ -232,6 +379,7 @@ function resizeCanvas() {
 
 function setDesignTransform() {
   const { dpr, scale, offsetX, offsetY } = viewport;
+
   ctx.setTransform(
     dpr * scale,
     0,
@@ -248,8 +396,16 @@ function clearCanvas() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = "#080b12";
   ctx.fillRect(0, 0, cssWidth, cssHeight);
-
   setDesignTransform();
+}
+
+function eventToDesign(event) {
+  const rect = canvas.getBoundingClientRect();
+
+  return {
+    x: (event.clientX - rect.left - viewport.offsetX) / viewport.scale,
+    y: (event.clientY - rect.top - viewport.offsetY) / viewport.scale
+  };
 }
 
 function cubicPoint(a, b, c, d, t) {
@@ -301,27 +457,27 @@ function makePath(start, c1, c2, end) {
   };
 }
 
-function buildRoutes() {
+function buildPaths() {
   const m = view();
   const mirror = (point) => ({ x: DESIGN.width - point.x, y: point.y });
 
   const leftDefs = [
     [
-      { x: 72, y: 88 },
-      { x: 60, y: 300 },
-      { x: 118, y: 570 },
+      { x: 62, y: 88 },
+      { x: 56, y: 285 },
+      { x: 84, y: 520 },
       m.impact.left
     ],
     [
-      { x: 245, y: 70 },
-      { x: 232, y: 280 },
-      { x: 196, y: 560 },
+      { x: 240, y: 72 },
+      { x: 222, y: 255 },
+      { x: 172, y: 520 },
       m.impact.left
     ],
     [
-      { x: 410, y: 120 },
-      { x: 346, y: 300 },
-      { x: 276, y: 570 },
+      { x: 410, y: 116 },
+      { x: 330, y: 292 },
+      { x: 236, y: 540 },
       m.impact.left
     ]
   ];
@@ -334,6 +490,27 @@ function buildRoutes() {
   });
 
   routes = { left, right };
+
+  slidePaths = {
+    "arc-left": makePath(
+      { x: 128, y: 610 },
+      { x: 152, y: 440 },
+      { x: 366, y: 430 },
+      { x: 404, y: 620 }
+    ),
+    "arc-right": makePath(
+      { x: 410, y: 600 },
+      { x: 348, y: 440 },
+      { x: 180, y: 458 },
+      { x: 132, y: 620 }
+    ),
+    wave: makePath(
+      { x: 128, y: 610 },
+      { x: 220, y: 470 },
+      { x: 320, y: 720 },
+      { x: 410, y: 570 }
+    )
+  };
 }
 
 function routeFor(side, routeIndex) {
@@ -346,6 +523,7 @@ function pointAtDistance(path, distance) {
   if (distance >= path.length) {
     const end = path.points.at(-1);
     const extra = distance - path.length;
+
     return {
       x: end.x + path.tangent.x * extra,
       y: end.y + path.tangent.y * extra
@@ -357,6 +535,7 @@ function pointAtDistance(path, distance) {
 
   while (low < high - 1) {
     const mid = Math.floor((low + high) / 2);
+
     if (path.points[mid].distance < distance) low = mid;
     else high = mid;
   }
@@ -381,12 +560,12 @@ function eventSongTime(eventTimestamp) {
   return clock.songTime - processingDelayMs / 1000 + calibrationOffsetMs / 1000;
 }
 
-function judgementFor(deltaSeconds) {
-  const error = Math.abs(deltaSeconds);
+function judgementFor(errorSeconds, windows = TAP_WINDOWS) {
+  const error = Math.abs(errorSeconds);
 
-  if (error <= WINDOWS.perfect) return JUDGEMENTS.perfect;
-  if (error <= WINDOWS.great) return JUDGEMENTS.great;
-  if (error <= WINDOWS.good) return JUDGEMENTS.good;
+  if (error <= windows.perfect) return JUDGEMENTS.perfect;
+  if (error <= windows.great) return JUDGEMENTS.great;
+  if (error <= windows.good) return JUDGEMENTS.good;
 
   return null;
 }
@@ -399,31 +578,68 @@ function spawnReady(songTime) {
   for (const loop of loops) {
     CHART.forEach((event, index) => {
       const key = `${loop}:${index}`;
+
       if (active.has(key) || resolved.has(key)) return;
 
-      const path = routeFor(event.side, event.route);
       const targetTime = loop * duration + beatToSeconds(event.beat);
-      const spawnLead = path.length / NOTE_SPEED;
-      const timeUntil = targetTime - songTime;
+      let lead = 0;
+      let expireAt = targetTime + 1;
 
-      if (
-        timeUntil <= spawnLead + 0.04 &&
-        timeUntil >= -WINDOWS.good - 0.20
-      ) {
+      if (event.type === "tap") {
+        const path = routeFor(event.side, event.route);
+        lead = path.length / NOTE_SPEED;
+        expireAt = targetTime + TAP_WINDOWS.good + 0.22;
+      } else if (event.type === "slide") {
+        lead = SLIDE.leadSeconds;
+        expireAt = targetTime + beatToSeconds(event.durationBeats) + SLIDE.endGrace;
+      } else if (event.type === "draw") {
+        lead = DRAW.leadSeconds;
+        expireAt = targetTime + DRAW_WINDOWS.good;
+      }
+
+      if (songTime > expireAt) return;
+      if (targetTime - songTime > lead + 0.04) return;
+
+      if (event.type === "tap") {
+        const path = routeFor(event.side, event.route);
+
         active.set(key, {
           key,
+          loop,
           ...event,
-          path,
           targetTime,
+          path,
           pathDistance: 0,
           launched: false,
           x: path.points[0].x,
           y: path.points[0].y,
-          vx: 0,
-          vy: 0,
           prevX: path.points[0].x,
           prevY: path.points[0].y,
-          life: 0
+          vx: 0,
+          vy: 0
+        });
+      }
+
+      if (event.type === "slide") {
+        active.set(key, {
+          key,
+          loop,
+          ...event,
+          targetTime,
+          endTime: targetTime + beatToSeconds(event.durationBeats),
+          pathObject: slidePaths[event.path],
+          trackingTime: 0,
+          goodTime: 0,
+          lastDistance: Infinity
+        });
+      }
+
+      if (event.type === "draw") {
+        active.set(key, {
+          key,
+          loop,
+          ...event,
+          targetTime
         });
       }
     });
@@ -431,7 +647,10 @@ function spawnReady(songTime) {
 
   for (const key of [...resolved]) {
     const loop = Number(key.split(":")[0]);
-    if (loop < currentLoop - 1) resolved.delete(key);
+
+    if (loop < currentLoop - 1) {
+      resolved.delete(key);
+    }
   }
 }
 
@@ -516,11 +735,13 @@ function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
 
   oscillator.type = type;
   oscillator.frequency.setValueAtTime(frequency, now);
+
   gain.gain.setValueAtTime(Math.max(0.0001, volume), now);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
   oscillator.connect(gain);
   gain.connect(clock.context.destination);
+
   oscillator.start(now);
   oscillator.stop(now + duration + 0.01);
 }
@@ -540,6 +761,10 @@ function hitSound(side, judgement) {
     judgement === JUDGEMENTS.perfect ? 0.075 : 0.055,
     "triangle"
   );
+}
+
+function successTone(frequency = 700) {
+  playTone(frequency, 0.07, 0.055, "triangle");
 }
 
 function explosionSound() {
@@ -576,10 +801,10 @@ function createImpactFlash(x, y, judgement) {
     color: judgement.color
   });
 
-  if (impactFlashes.length > 8) impactFlashes.shift();
+  if (impactFlashes.length > 10) impactFlashes.shift();
 }
 
-function resolveHit(note, side, songTime) {
+function resolveTapHit(note, side, songTime) {
   const delta = songTime - note.targetTime;
   const judgement = judgementFor(delta);
 
@@ -589,6 +814,7 @@ function resolveHit(note, side, songTime) {
 
   combo += 1;
   const multiplier = comboMultiplier(combo);
+
   score += judgement.points * multiplier;
   hitCount += 1;
 
@@ -596,7 +822,6 @@ function resolveHit(note, side, songTime) {
   lastJudgement = judgement.label;
 
   note.launched = true;
-  note.life = 0;
   note.prevX = note.x;
   note.prevY = note.y;
 
@@ -619,6 +844,7 @@ function resolveHit(note, side, songTime) {
   );
 
   hitSound(side, judgement);
+
   if (navigator.vibrate) {
     navigator.vibrate(judgement === JUDGEMENTS.perfect ? 8 : 5);
   }
@@ -627,72 +853,20 @@ function resolveHit(note, side, songTime) {
   return true;
 }
 
-function miss(note) {
+function failEvent(event, label = "MISS") {
   combo = 0;
   missCount += 1;
   lastDeltaMs = null;
-  lastJudgement = "MISS";
+  lastJudgement = label;
 
-  active.delete(note.key);
-  resolved.add(note.key);
+  active.delete(event.key);
+  resolved.add(event.key);
 
-  showMessage("MISS", "#ff7184", 360);
+  showMessage(label, "#ff7184", 360);
 
   if (navigator.vibrate) navigator.vibrate(12);
 
   updateHud();
-}
-
-function updateHud() {
-  scoreEl.textContent = String(score);
-  comboEl.textContent = combo ? `${combo} · x${comboMultiplier(combo)}` : "0";
-  lastHitEl.textContent =
-    lastDeltaMs === null
-      ? lastJudgement
-      : `${lastJudgement} ${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`;
-}
-
-function updateNotes(dt, songTime) {
-  for (const note of [...active.values()]) {
-    if (note.launched) {
-      note.life += dt;
-      note.prevX = note.x;
-      note.prevY = note.y;
-      note.x += note.vx * dt;
-      note.y += note.vy * dt;
-
-      const hitWall =
-        note.x <= NOTE_RADIUS ||
-        note.x >= DESIGN.width - NOTE_RADIUS ||
-        note.y <= 72 ||
-        note.y >= DESIGN.height - NOTE_RADIUS;
-
-      if (hitWall) {
-        active.delete(note.key);
-        wallExplosionCount += 1;
-        createExplosion(
-          clamp(note.x, NOTE_RADIUS, DESIGN.width - NOTE_RADIUS),
-          clamp(note.y, 72, DESIGN.height - NOTE_RADIUS)
-        );
-      }
-
-      continue;
-    }
-
-    note.prevX = note.x;
-    note.prevY = note.y;
-
-    note.pathDistance =
-      note.path.length - NOTE_SPEED * (note.targetTime - songTime);
-
-    const point = pointAtDistance(note.path, note.pathDistance);
-    note.x = point.x;
-    note.y = point.y;
-
-    if (songTime - note.targetTime > WINDOWS.good) {
-      miss(note);
-    }
-  }
 }
 
 function resolveFlipperCollisions(songTime) {
@@ -703,7 +877,12 @@ function resolveFlipperCollisions(songTime) {
     if (!segment.phase.attack || state.hitThisSwing) continue;
 
     const candidates = [...active.values()]
-      .filter((note) => !note.launched && note.side === side)
+      .filter(
+        (event) =>
+          event.type === "tap" &&
+          !event.launched &&
+          event.side === side
+      )
       .sort(
         (a, b) =>
           Math.abs(a.targetTime - songTime) -
@@ -711,14 +890,25 @@ function resolveFlipperCollisions(songTime) {
       );
 
     for (const note of candidates) {
-      if (Math.abs(songTime - note.targetTime) > WINDOWS.good + 0.035) continue;
+      if (
+        Math.abs(songTime - note.targetTime) >
+        TAP_WINDOWS.good + 0.035
+      ) {
+        continue;
+      }
 
-      const distance = distancePointToSegment(note, segment.pivot, segment.tip);
-      const collisionDistance = NOTE_RADIUS + FLIPPER.width * 0.5;
+      const distance = distancePointToSegment(
+        note,
+        segment.pivot,
+        segment.tip
+      );
+
+      const collisionDistance =
+        NOTE_RADIUS + FLIPPER.width * 0.5;
 
       if (
         distance <= collisionDistance &&
-        resolveHit(note, side, songTime)
+        resolveTapHit(note, side, songTime)
       ) {
         break;
       }
@@ -734,6 +924,7 @@ function createExplosion(x, y) {
     duration: 0.28,
     particles: Array.from({ length: 7 }, (_, index) => {
       const angle = (Math.PI * 2 * index) / 7;
+
       return {
         angle,
         speed: 70 + index * 8
@@ -741,9 +932,7 @@ function createExplosion(x, y) {
     })
   });
 
-  if (explosions.length > 10) {
-    explosions.shift();
-  }
+  if (explosions.length > 12) explosions.shift();
 
   explosionSound();
 }
@@ -756,8 +945,11 @@ function sweptProjectileHit(a, b) {
 
   const relativeStartX = ax0 - bx0;
   const relativeStartY = ay0 - by0;
-  const relativeStepX = (a.x - ax0) - (b.x - bx0);
-  const relativeStepY = (a.y - ay0) - (b.y - by0);
+
+  const relativeStepX =
+    (a.x - ax0) - (b.x - bx0);
+  const relativeStepY =
+    (a.y - ay0) - (b.y - by0);
 
   const relativeSpeedSq =
     relativeStepX * relativeStepX +
@@ -778,7 +970,7 @@ function sweptProjectileHit(a, b) {
 
   const separationX = relativeStartX + relativeStepX * t;
   const separationY = relativeStartY + relativeStepY * t;
-  const collisionRadius = NOTE_RADIUS * 2;
+  const collisionRadius = NOTE_RADIUS * 2.15;
 
   if (
     separationX * separationX +
@@ -800,24 +992,34 @@ function sweptProjectileHit(a, b) {
 }
 
 function resolveProjectileCollisions() {
-  const projectiles = [...active.values()].filter((note) => note.launched);
-  const checkedPairs = new Set();
+  const projectiles = [...active.values()].filter(
+    (event) => event.type === "tap" && event.launched
+  );
+
+  const checked = new Set();
 
   for (const projectile of projectiles) {
     if (!active.has(projectile.key)) continue;
 
     for (const other of [...active.values()]) {
-      if (other.key === projectile.key || !active.has(other.key)) continue;
+      if (
+        other.type !== "tap" ||
+        other.key === projectile.key ||
+        !active.has(other.key)
+      ) {
+        continue;
+      }
 
       const pairKey =
         projectile.key < other.key
           ? `${projectile.key}|${other.key}`
           : `${other.key}|${projectile.key}`;
 
-      if (checkedPairs.has(pairKey)) continue;
-      checkedPairs.add(pairKey);
+      if (checked.has(pairKey)) continue;
+      checked.add(pairKey);
 
       const collision = sweptProjectileHit(projectile, other);
+
       if (!collision) continue;
 
       const chain = !other.launched;
@@ -843,7 +1045,406 @@ function resolveProjectileCollisions() {
   }
 }
 
-function updateExplosions(dt) {
+function updateTap(note, dt, songTime) {
+  if (note.launched) {
+    note.prevX = note.x;
+    note.prevY = note.y;
+
+    note.x += note.vx * dt;
+    note.y += note.vy * dt;
+
+    const hitWall =
+      note.x <= NOTE_RADIUS ||
+      note.x >= DESIGN.width - NOTE_RADIUS ||
+      note.y <= 72 ||
+      note.y >= DESIGN.height - NOTE_RADIUS;
+
+    if (hitWall) {
+      active.delete(note.key);
+      wallExplosionCount += 1;
+
+      createExplosion(
+        clamp(note.x, NOTE_RADIUS, DESIGN.width - NOTE_RADIUS),
+        clamp(note.y, 72, DESIGN.height - NOTE_RADIUS)
+      );
+    }
+
+    return;
+  }
+
+  note.prevX = note.x;
+  note.prevY = note.y;
+
+  note.pathDistance =
+    note.path.length - NOTE_SPEED * (note.targetTime - songTime);
+
+  const point = pointAtDistance(note.path, note.pathDistance);
+  note.x = point.x;
+  note.y = point.y;
+
+  if (songTime - note.targetTime > TAP_WINDOWS.good) {
+    failEvent(note, "MISS");
+  }
+}
+
+function activeSlideCandidate(songTime, point) {
+  return [...active.values()]
+    .filter((event) => event.type === "slide")
+    .map((event) => {
+      const start = event.pathObject.points[0];
+      const distance = Math.hypot(point.x - start.x, point.y - start.y);
+
+      return {
+        event,
+        distance,
+        timeDelta: songTime - event.targetTime
+      };
+    })
+    .filter(
+      ({ distance, timeDelta }) =>
+        distance <= 64 &&
+        timeDelta >= -SLIDE.startEarly &&
+        timeDelta <= SLIDE.startLate
+    )
+    .sort((a, b) => a.distance - b.distance)[0]?.event ?? null;
+}
+
+function beginSlide(event, pointerId, point) {
+  slidePointer = {
+    key: event.key,
+    pointerId,
+    x: point.x,
+    y: point.y
+  };
+
+  event.goodTime = 0;
+  event.trackingTime = 0;
+  event.lastDistance = 0;
+
+  canvas.setPointerCapture?.(pointerId);
+  showMessage("SLIDE", "#9edcff", 260);
+}
+
+function updateSlideTracking(event, dt, songTime) {
+  if (!slidePointer || slidePointer.key !== event.key) return;
+
+  if (songTime < event.targetTime || songTime > event.endTime) return;
+
+  const progress = clamp(
+    (songTime - event.targetTime) /
+    Math.max(0.001, event.endTime - event.targetTime),
+    0,
+    1
+  );
+
+  const expected = pointAtDistance(
+    event.pathObject,
+    event.pathObject.length * progress
+  );
+
+  const distance = Math.hypot(
+    slidePointer.x - expected.x,
+    slidePointer.y - expected.y
+  );
+
+  event.lastDistance = distance;
+  event.trackingTime += dt;
+
+  if (distance <= SLIDE.radius) {
+    event.goodTime += dt;
+  }
+}
+
+function finishSlide(event, songTime, point) {
+  const releaseDelta = songTime - event.endTime;
+  const duration = Math.max(0.001, event.endTime - event.targetTime);
+  const coverage = event.goodTime / duration;
+  const endPoint = event.pathObject.points.at(-1);
+  const endDistance = Math.hypot(point.x - endPoint.x, point.y - endPoint.y);
+
+  const success =
+    Math.abs(releaseDelta) <= SLIDE.endGrace &&
+    coverage >= SLIDE.minCoverage &&
+    endDistance <= 82;
+
+  slidePointer = null;
+
+  if (!success) {
+    showMessage("SLIDE FALLÓ", "#ff7184", 360);
+    return;
+  }
+
+  let judgement = JUDGEMENTS.good;
+
+  if (coverage >= 0.91 && Math.abs(releaseDelta) <= 0.10) {
+    judgement = JUDGEMENTS.perfect;
+  } else if (coverage >= 0.80 && Math.abs(releaseDelta) <= 0.17) {
+    judgement = JUDGEMENTS.great;
+  }
+
+  combo += 1;
+  score += (judgement.points + 120) * comboMultiplier(combo);
+  lastJudgement = `SLIDE ${judgement.label}`;
+  lastDeltaMs = Math.round(releaseDelta * 1000);
+
+  active.delete(event.key);
+  resolved.add(event.key);
+
+  showMessage(
+    `SLIDE ${judgement.label} · ${Math.round(coverage * 100)}%`,
+    judgement.color,
+    520
+  );
+
+  successTone(760);
+
+  if (navigator.vibrate) navigator.vibrate(9);
+
+  updateHud();
+}
+
+function drawTemplate(symbol) {
+  if (symbol === "u") {
+    return [
+      { x: 0.12, y: 0.08 },
+      { x: 0.12, y: 0.62 },
+      { x: 0.20, y: 0.83 },
+      { x: 0.38, y: 0.94 },
+      { x: 0.60, y: 0.94 },
+      { x: 0.80, y: 0.83 },
+      { x: 0.88, y: 0.62 },
+      { x: 0.88, y: 0.08 }
+    ];
+  }
+
+  if (symbol === "l") {
+    return [
+      { x: 0.20, y: 0.06 },
+      { x: 0.20, y: 0.35 },
+      { x: 0.20, y: 0.65 },
+      { x: 0.20, y: 0.92 },
+      { x: 0.48, y: 0.92 },
+      { x: 0.76, y: 0.92 },
+      { x: 0.90, y: 0.92 }
+    ];
+  }
+
+  return [
+    { x: 0.10, y: 0.10 },
+    { x: 0.42, y: 0.10 },
+    { x: 0.88, y: 0.10 },
+    { x: 0.66, y: 0.38 },
+    { x: 0.42, y: 0.66 },
+    { x: 0.12, y: 0.92 },
+    { x: 0.50, y: 0.92 },
+    { x: 0.90, y: 0.92 }
+  ];
+}
+
+function resamplePolyline(points, count) {
+  if (points.length < 2) return points.slice();
+
+  const distances = [0];
+
+  for (let i = 1; i < points.length; i += 1) {
+    distances.push(
+      distances[i - 1] +
+      Math.hypot(
+        points[i].x - points[i - 1].x,
+        points[i].y - points[i - 1].y
+      )
+    );
+  }
+
+  const total = distances.at(-1);
+
+  if (total <= 0.001) {
+    return Array.from({ length: count }, () => ({ ...points[0] }));
+  }
+
+  const result = [];
+
+  for (let i = 0; i < count; i += 1) {
+    const target = (total * i) / (count - 1);
+    let index = 1;
+
+    while (index < distances.length && distances[index] < target) {
+      index += 1;
+    }
+
+    const a = points[index - 1];
+    const b = points[Math.min(index, points.length - 1)];
+    const start = distances[index - 1];
+    const end = distances[Math.min(index, distances.length - 1)];
+    const span = Math.max(0.0001, end - start);
+    const t = (target - start) / span;
+
+    result.push({
+      x: lerp(a.x, b.x, t),
+      y: lerp(a.y, b.y, t)
+    });
+  }
+
+  return result;
+}
+
+function normalizeGesture(points) {
+  const sampled = resamplePolyline(points, 32);
+  const xs = sampled.map((point) => point.x);
+  const ys = sampled.map((point) => point.y);
+
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const width = Math.max(1, maxX - minX);
+  const height = Math.max(1, maxY - minY);
+
+  return sampled.map((point) => ({
+    x: (point.x - minX) / width,
+    y: (point.y - minY) / height
+  }));
+}
+
+function gestureScore(points, template) {
+  if (points.length < DRAW.minPoints) return 0;
+
+  const gesture = normalizeGesture(points);
+  const target = resamplePolyline(template, 32);
+
+  const compare = (candidate) => {
+    let distance = 0;
+
+    for (let i = 0; i < candidate.length; i += 1) {
+      distance += Math.hypot(
+        candidate[i].x - target[i].x,
+        candidate[i].y - target[i].y
+      );
+    }
+
+    const mean = distance / candidate.length;
+    return clamp(1 - mean / 0.82, 0, 1);
+  };
+
+  return Math.max(
+    compare(gesture),
+    compare([...gesture].reverse())
+  );
+}
+
+function activeDrawCandidate(songTime) {
+  return [...active.values()]
+    .filter((event) => event.type === "draw")
+    .filter(
+      (event) =>
+        songTime >= event.targetTime - DRAW.leadSeconds &&
+        songTime <= event.targetTime + DRAW_WINDOWS.good
+    )
+    .sort(
+      (a, b) =>
+        Math.abs(a.targetTime - songTime) -
+        Math.abs(b.targetTime - songTime)
+    )[0] ?? null;
+}
+
+function beginDraw(event, pointerId, point) {
+  drawGesture = {
+    key: event.key,
+    pointerId,
+    points: [point]
+  };
+
+  canvas.setPointerCapture?.(pointerId);
+}
+
+function finishDraw(event, songTime) {
+  const points = drawGesture?.points ?? [];
+  const scoreValue = gestureScore(points, drawTemplate(event.symbol));
+  const timingDelta = songTime - event.targetTime;
+  const judgement = judgementFor(timingDelta, DRAW_WINDOWS);
+
+  drawGesture = null;
+
+  if (scoreValue < DRAW.recognitionThreshold || !judgement) {
+    showMessage(
+      scoreValue < DRAW.recognitionThreshold
+        ? "TRAZO NO RECONOCIDO"
+        : "FUERA DE TIEMPO",
+      "#ff9da9",
+      360
+    );
+    return;
+  }
+
+  combo += 1;
+  score += (judgement.points + 150) * comboMultiplier(combo);
+  lastJudgement = `MAGIC ${event.symbol.toUpperCase()}`;
+  lastDeltaMs = Math.round(timingDelta * 1000);
+
+  active.delete(event.key);
+  resolved.add(event.key);
+
+  const constellation = constellationPoints(event.symbol);
+
+  for (const point of constellation) {
+    createExplosion(point.x, point.y);
+  }
+
+  showMessage(
+    `MAGIC ${event.symbol.toUpperCase()} · ${judgement.label} · ${Math.round(scoreValue * 100)}%`,
+    judgement.color,
+    560
+  );
+
+  successTone(860);
+
+  if (navigator.vibrate) navigator.vibrate([5, 25, 5]);
+
+  updateHud();
+}
+
+function constellationPoints(symbol) {
+  const template = resamplePolyline(drawTemplate(symbol), 8);
+
+  return template.map((point) => ({
+    x: 190 + point.x * 160,
+    y: 300 + point.y * 145
+  }));
+}
+
+function updateEvents(dt, songTime) {
+  for (const event of [...active.values()]) {
+    if (event.type === "tap") {
+      updateTap(event, dt, songTime);
+      continue;
+    }
+
+    if (event.type === "slide") {
+      updateSlideTracking(event, dt, songTime);
+
+      if (
+        songTime > event.endTime + SLIDE.endGrace &&
+        active.has(event.key)
+      ) {
+        if (slidePointer?.key === event.key) slidePointer = null;
+        failEvent(event, "SLIDE MISS");
+      }
+
+      continue;
+    }
+
+    if (
+      event.type === "draw" &&
+      songTime > event.targetTime + DRAW_WINDOWS.good
+    ) {
+      if (drawGesture?.key === event.key) drawGesture = null;
+      failEvent(event, "MAGIC MISS");
+    }
+  }
+}
+
+function updateEffects(dt) {
   for (const explosion of explosions) {
     explosion.life += dt;
   }
@@ -861,33 +1462,27 @@ function updateExplosions(dt) {
   );
 }
 
-function updateWhiffs(songTime) {
-  for (const side of ["left", "right"]) {
-    const state = flippers[side];
-    const elapsed = songTime - state.startTime;
+function updateHud() {
+  scoreEl.textContent = String(score);
+  comboEl.textContent =
+    combo ? `${combo} · x${comboMultiplier(combo)}` : "0";
 
-    if (
-      Number.isFinite(state.startTime) &&
-      elapsed >= FLIPPER.cycle &&
-      elapsed < FLIPPER.cycle + 0.050
-    ) {
-      if (!state.hitThisSwing) whiffCount += 1;
-
-      state.startTime = -Infinity;
-      state.hitThisSwing = false;
-    }
-  }
+  lastHitEl.textContent =
+    lastDeltaMs === null
+      ? lastJudgement
+      : `${lastJudgement} ${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`;
 }
 
 function drawBackground() {
   ctx.fillStyle = "#0a1020";
   ctx.fillRect(0, 0, DESIGN.width, DESIGN.height);
 
-  ctx.fillStyle = "rgba(255,255,255,.15)";
-  for (let i = 0; i < 34; i += 1) {
+  ctx.fillStyle = "rgba(255,255,255,.13)";
+
+  for (let i = 0; i < 28; i += 1) {
     const x = (((i * 73) % 521) / 521) * DESIGN.width;
-    const y = (((i * 113) % 601) / 601) * DESIGN.height * 0.61;
-    ctx.fillRect(x, y, 1.2, 1.2);
+    const y = (((i * 113) % 601) / 601) * DESIGN.height * 0.60;
+    ctx.fillRect(x, y, 1.15, 1.15);
   }
 }
 
@@ -899,14 +1494,14 @@ function drawTrail(note) {
 
     ctx.strokeStyle =
       note.side === "left"
-        ? "rgba(110,215,255,.24)"
-        : "rgba(216,139,255,.24)";
+        ? "rgba(110,215,255,.20)"
+        : "rgba(216,139,255,.20)";
 
     ctx.lineWidth = 6;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(note.x, note.y);
-    ctx.lineTo(note.x - ux * 32, note.y - uy * 32);
+    ctx.lineTo(note.x - ux * 30, note.y - uy * 30);
     ctx.stroke();
     return;
   }
@@ -919,7 +1514,7 @@ function drawTrail(note) {
       Math.max(0, note.pathDistance - trailDistances[i])
     );
 
-    const alpha = 0.13 - i * 0.045;
+    const alpha = 0.12 - i * 0.045;
 
     ctx.fillStyle =
       note.side === "left"
@@ -930,7 +1525,7 @@ function drawTrail(note) {
     ctx.arc(
       point.x,
       point.y,
-      Math.max(4, NOTE_RADIUS - 8 - i * 2),
+      Math.max(4, NOTE_RADIUS - 9 - i * 2),
       0,
       Math.PI * 2
     );
@@ -938,7 +1533,7 @@ function drawTrail(note) {
   }
 }
 
-function drawNote(note) {
+function drawTap(note) {
   drawTrail(note);
 
   ctx.save();
@@ -948,7 +1543,11 @@ function drawNote(note) {
     ctx.rotate(Math.atan2(note.vy, note.vx) + Math.PI / 2);
   }
 
-  ctx.fillStyle = note.side === "left" ? "#6ed7ff" : "#d88bff";
+  ctx.fillStyle =
+    note.side === "left"
+      ? "#6ed7ff"
+      : "#d88bff";
+
   ctx.beginPath();
   ctx.arc(0, 0, NOTE_RADIUS, 0, Math.PI * 2);
   ctx.fill();
@@ -957,25 +1556,9 @@ function drawNote(note) {
   ctx.font = "900 25px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(note.symbol, 0, 1);
+  ctx.fillText(note.symbol || "♪", 0, 1);
 
   ctx.restore();
-}
-
-function roundedRectPath(x, y, width, height, radius) {
-  const r = Math.min(radius, width / 2, height / 2);
-
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
 }
 
 function drawFingerprint(cx, cy, side, activeState) {
@@ -984,28 +1567,37 @@ function drawFingerprint(cx, cy, side, activeState) {
 
   ctx.strokeStyle =
     side === "left"
-      ? `rgba(156,226,255,${activeState ? .88 : .48})`
-      : `rgba(224,190,255,${activeState ? .88 : .48})`;
+      ? `rgba(157,227,255,${activeState ? .92 : .54})`
+      : `rgba(228,196,255,${activeState ? .92 : .54})`;
+
   ctx.lineWidth = activeState ? 3 : 2;
   ctx.lineCap = "round";
 
   const rings = [
-    { rx: 34, ry: 45, start: Math.PI * .17, end: Math.PI * .83 },
-    { rx: 26, ry: 36, start: Math.PI * .13, end: Math.PI * .87 },
-    { rx: 18, ry: 27, start: Math.PI * .10, end: Math.PI * .90 },
-    { rx: 10, ry: 17, start: Math.PI * .08, end: Math.PI * .92 }
+    { rx: 32, ry: 43 },
+    { rx: 24, ry: 34 },
+    { rx: 16, ry: 25 },
+    { rx: 8, ry: 15 }
   ];
 
   for (const ring of rings) {
     ctx.beginPath();
-    ctx.ellipse(0, 4, ring.rx, ring.ry, 0, ring.start, ring.end);
+    ctx.ellipse(
+      0,
+      2,
+      ring.rx,
+      ring.ry,
+      0,
+      Math.PI * 0.16,
+      Math.PI * 0.84
+    );
     ctx.stroke();
   }
 
   ctx.beginPath();
-  ctx.moveTo(-29, 23);
-  ctx.quadraticCurveTo(-8, 49, 0, 50);
-  ctx.quadraticCurveTo(8, 49, 29, 23);
+  ctx.moveTo(-28, 23);
+  ctx.quadraticCurveTo(-8, 48, 0, 49);
+  ctx.quadraticCurveTo(8, 48, 28, 23);
   ctx.stroke();
 
   ctx.restore();
@@ -1017,68 +1609,76 @@ function drawControlModule(side, songTime) {
   const phase = flipperPhase(side, songTime);
   const left = side === "left";
 
-  const pad = left
-    ? { x: 18, y: 812, w: 205, h: 140 }
-    : { x: 317, y: 812, w: 205, h: 140 };
-
-  const neckOuterX = left ? 96 : 444;
-  const neckInnerX = left ? 140 : 400;
-  const neckTopY = pivot.y + 8;
-  const neckBottomY = 840;
+  const x0 = left ? 16 : 316;
+  const x1 = left ? 224 : 524;
+  const neckLeft = left ? 94 : 400;
+  const neckRight = left ? 142 : 448;
+  const shoulderY = 822;
+  const bottomY = 950;
 
   ctx.save();
 
-  ctx.shadowBlur = phase.active ? 24 : 10;
+  ctx.shadowBlur = phase.active ? 22 : 9;
   ctx.shadowColor = left
-    ? "rgba(92,198,255,.38)"
-    : "rgba(196,121,255,.34)";
+    ? "rgba(89,197,255,.36)"
+    : "rgba(196,121,255,.32)";
 
   ctx.beginPath();
 
   if (left) {
-    ctx.moveTo(neckOuterX, neckTopY);
-    ctx.quadraticCurveTo(96, 794, 82, 812);
-    ctx.lineTo(54, 812);
-    ctx.quadraticCurveTo(18, 812, 18, 848);
-    ctx.lineTo(18, 916);
-    ctx.quadraticCurveTo(18, 952, 54, 952);
-    ctx.lineTo(187, 952);
-    ctx.quadraticCurveTo(223, 952, 223, 916);
-    ctx.lineTo(223, 858);
-    ctx.quadraticCurveTo(223, 828, 194, 820);
-    ctx.lineTo(neckInnerX, neckBottomY);
-    ctx.lineTo(neckInnerX, neckTopY);
-    ctx.closePath();
+    ctx.moveTo(neckLeft, pivot.y + 8);
+    ctx.bezierCurveTo(94, 792, 74, 807, 54, shoulderY);
+    ctx.bezierCurveTo(30, 836, x0, 856, x0, 882);
+    ctx.lineTo(x0, 914);
+    ctx.quadraticCurveTo(x0, bottomY, 52, bottomY);
+    ctx.lineTo(188, bottomY);
+    ctx.quadraticCurveTo(x1, bottomY, x1, 914);
+    ctx.lineTo(x1, 870);
+    ctx.bezierCurveTo(x1, 842, 204, 827, 180, shoulderY);
+    ctx.bezierCurveTo(158, 815, 145, 798, neckRight, pivot.y + 8);
   } else {
-    ctx.moveTo(neckInnerX, neckTopY);
-    ctx.lineTo(neckInnerX, neckBottomY);
-    ctx.lineTo(346, 820);
-    ctx.quadraticCurveTo(317, 828, 317, 858);
-    ctx.lineTo(317, 916);
-    ctx.quadraticCurveTo(317, 952, 353, 952);
-    ctx.lineTo(486, 952);
-    ctx.quadraticCurveTo(522, 952, 522, 916);
-    ctx.lineTo(522, 848);
-    ctx.quadraticCurveTo(522, 812, 486, 812);
-    ctx.lineTo(458, 812);
-    ctx.quadraticCurveTo(444, 794, neckOuterX, neckTopY);
-    ctx.closePath();
+    ctx.moveTo(neckLeft, pivot.y + 8);
+    ctx.bezierCurveTo(397, 798, 384, 815, 360, shoulderY);
+    ctx.bezierCurveTo(336, 827, x0, 842, x0, 870);
+    ctx.lineTo(x0, 914);
+    ctx.quadraticCurveTo(x0, bottomY, 352, bottomY);
+    ctx.lineTo(488, bottomY);
+    ctx.quadraticCurveTo(x1, bottomY, x1, 914);
+    ctx.lineTo(x1, 882);
+    ctx.bezierCurveTo(x1, 856, 510, 836, 486, shoulderY);
+    ctx.bezierCurveTo(466, 807, 446, 792, neckRight, pivot.y + 8);
   }
 
-  const fill = ctx.createLinearGradient(0, neckTopY, 0, 952);
+  ctx.closePath();
+
+  const fill = ctx.createLinearGradient(0, pivot.y, 0, bottomY);
 
   if (left) {
-    fill.addColorStop(0, phase.active ? "rgba(55,123,162,.98)" : "rgba(23,63,91,.94)");
-    fill.addColorStop(1, "rgba(10,27,45,.98)");
-    ctx.strokeStyle = phase.active
-      ? "rgba(183,237,255,.88)"
-      : "rgba(120,210,255,.46)";
+    fill.addColorStop(
+      0,
+      phase.active
+        ? "rgba(55,124,164,.98)"
+        : "rgba(22,62,91,.95)"
+    );
+    fill.addColorStop(1, "rgba(9,27,45,.99)");
+
+    ctx.strokeStyle =
+      phase.active
+        ? "rgba(185,239,255,.90)"
+        : "rgba(119,209,255,.47)";
   } else {
-    fill.addColorStop(0, phase.active ? "rgba(98,70,134,.98)" : "rgba(53,39,83,.94)");
-    fill.addColorStop(1, "rgba(25,20,51,.98)");
-    ctx.strokeStyle = phase.active
-      ? "rgba(236,213,255,.88)"
-      : "rgba(211,166,255,.44)";
+    fill.addColorStop(
+      0,
+      phase.active
+        ? "rgba(101,72,140,.98)"
+        : "rgba(53,39,83,.95)"
+    );
+    fill.addColorStop(1, "rgba(25,20,51,.99)");
+
+    ctx.strokeStyle =
+      phase.active
+        ? "rgba(239,219,255,.90)"
+        : "rgba(211,166,255,.46)";
   }
 
   ctx.fillStyle = fill;
@@ -1086,24 +1686,24 @@ function drawControlModule(side, songTime) {
   ctx.fill();
   ctx.stroke();
 
-  ctx.globalAlpha = phase.active ? .95 : .72;
   drawFingerprint(
-    left ? pad.x + 103 : pad.x + 102,
-    pad.y + 63,
+    left ? 121 : 419,
+    875,
     side,
     phase.active
   );
-  ctx.globalAlpha = 1;
 
-  ctx.fillStyle = phase.active
-    ? "#fff2ad"
-    : left
-      ? "rgba(224,247,255,.78)"
-      : "rgba(245,229,255,.78)";
+  ctx.fillStyle =
+    phase.active
+      ? "#fff1a9"
+      : left
+        ? "rgba(224,247,255,.80)"
+        : "rgba(245,229,255,.80)";
+
   ctx.font = "900 13px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(left ? "A" : "D", pad.x + pad.w / 2, 927);
+  ctx.fillText(left ? "A" : "D", left ? 121 : 419, 928);
 
   ctx.restore();
 }
@@ -1118,6 +1718,7 @@ function drawFlipper(side, songTime) {
 
   ctx.shadowBlur = phase.attack ? 22 : 6;
   ctx.shadowColor = phase.attack ? "#fff0a3" : "#79cfff";
+
   ctx.strokeStyle =
     phase.attack
       ? "#fff0a3"
@@ -1125,7 +1726,11 @@ function drawFlipper(side, songTime) {
         ? "#f2fbff"
         : "#cfe9ff";
 
-  ctx.lineWidth = phase.attack ? FLIPPER.width + 5 : FLIPPER.width;
+  ctx.lineWidth =
+    phase.attack
+      ? FLIPPER.width + 5
+      : FLIPPER.width;
+
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(segment.pivot.x, segment.pivot.y);
@@ -1133,7 +1738,11 @@ function drawFlipper(side, songTime) {
   ctx.stroke();
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle = phase.active ? "#243a51" : "#132238";
+  ctx.fillStyle =
+    phase.active
+      ? "#243a51"
+      : "#132238";
+
   ctx.beginPath();
   ctx.arc(segment.pivot.x, segment.pivot.y, 11, 0, Math.PI * 2);
   ctx.fill();
@@ -1141,10 +1750,176 @@ function drawFlipper(side, songTime) {
   ctx.shadowBlur = phase.attack ? 22 : 8;
   ctx.shadowColor = phase.attack ? "#ffe985" : "#9edcff";
   ctx.fillStyle = phase.attack ? "#ffe985" : "#9edcff";
+
   ctx.beginPath();
-  ctx.arc(segment.tip.x, segment.tip.y, phase.attack ? 10 : 7, 0, Math.PI * 2);
+  ctx.arc(
+    segment.tip.x,
+    segment.tip.y,
+    phase.attack ? 10 : 7,
+    0,
+    Math.PI * 2
+  );
   ctx.fill();
 
+  ctx.restore();
+}
+
+function drawSlide(event, songTime) {
+  const path = event.pathObject;
+
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.strokeStyle = "rgba(155,217,255,.16)";
+  ctx.lineWidth = 22;
+  ctx.beginPath();
+
+  path.points.forEach((point, index) => {
+    if (index === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+  });
+
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(205,239,255,.68)";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+
+  path.points.forEach((point, index) => {
+    if (index === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+  });
+
+  ctx.stroke();
+
+  for (const fraction of [0, 0.25, 0.5, 0.75, 1]) {
+    const star = pointAtDistance(path, path.length * fraction);
+    const activeStar =
+      slidePointer?.key === event.key &&
+      Math.abs(
+        fraction -
+        clamp(
+          (songTime - event.targetTime) /
+          Math.max(0.001, event.endTime - event.targetTime),
+          0,
+          1
+        )
+      ) < 0.12;
+
+    ctx.fillStyle =
+      activeStar
+        ? "#fff1a9"
+        : "rgba(205,239,255,.72)";
+
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, activeStar ? 8 : 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const progress = clamp(
+    (songTime - event.targetTime) /
+    Math.max(0.001, event.endTime - event.targetTime),
+    0,
+    1
+  );
+
+  const head = pointAtDistance(path, path.length * progress);
+
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = "#fff1a9";
+  ctx.fillStyle = "#fff1a9";
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (slidePointer?.key === event.key) {
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle =
+      event.lastDistance <= SLIDE.radius
+        ? "rgba(126,255,192,.80)"
+        : "rgba(255,113,132,.80)";
+
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(
+      slidePointer.x,
+      slidePointer.y,
+      18,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawConstellation(event, songTime) {
+  const points = constellationPoints(event.symbol);
+  const pulse = 0.55 +
+    0.45 * Math.sin(performance.now() / 140);
+
+  ctx.save();
+
+  ctx.strokeStyle = "rgba(255,255,255,.16)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+
+  points.forEach((point, index) => {
+    if (index === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+  });
+
+  ctx.stroke();
+
+  const proximity = clamp(
+    1 -
+    Math.abs(songTime - event.targetTime) /
+    DRAW.leadSeconds,
+    0,
+    1
+  );
+
+  for (const point of points) {
+    ctx.shadowBlur = 12 + 10 * proximity;
+    ctx.shadowColor = "#fff1a9";
+    ctx.fillStyle =
+      `rgba(255,241,169,${0.48 + pulse * 0.36})`;
+
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 5 + proximity * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(255,255,255,.54)";
+  ctx.font = "800 11px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("DIBUJA", 270, 472);
+
+  ctx.restore();
+}
+
+function drawCurrentGesture() {
+  if (!drawGesture || drawGesture.points.length < 2) return;
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,244,188,.92)";
+  ctx.lineWidth = 7;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = "#fff1a9";
+
+  ctx.beginPath();
+
+  drawGesture.points.forEach((point, index) => {
+    if (index === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+  });
+
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -1168,18 +1943,32 @@ function drawExplosions() {
     const t = clamp(explosion.life / explosion.duration, 0, 1);
     const alpha = 1 - t;
 
-    ctx.strokeStyle = `rgba(255,240,170,${alpha * 0.8})`;
+    ctx.strokeStyle =
+      `rgba(255,240,170,${alpha * 0.8})`;
+
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(explosion.x, explosion.y, 8 + t * 30, 0, Math.PI * 2);
+    ctx.arc(
+      explosion.x,
+      explosion.y,
+      8 + t * 30,
+      0,
+      Math.PI * 2
+    );
     ctx.stroke();
 
     for (const particle of explosion.particles) {
       const distance = particle.speed * explosion.life;
-      const x = explosion.x + Math.cos(particle.angle) * distance;
-      const y = explosion.y + Math.sin(particle.angle) * distance;
+      const x =
+        explosion.x +
+        Math.cos(particle.angle) * distance;
+      const y =
+        explosion.y +
+        Math.sin(particle.angle) * distance;
 
-      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fillStyle =
+        `rgba(255,255,255,${alpha})`;
+
       ctx.beginPath();
       ctx.arc(x, y, 2.5, 0, Math.PI * 2);
       ctx.fill();
@@ -1191,22 +1980,28 @@ function drawMessage() {
   if (performance.now() > messageUntil) return;
 
   ctx.fillStyle = messageColor;
-  ctx.font = "900 25px system-ui, sans-serif";
+  ctx.font = "900 24px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(message, DESIGN.width / 2, 455);
+  ctx.fillText(message, DESIGN.width / 2, 510);
 }
 
 function drawCountIn(songTime) {
   if (songTime >= 0) return;
 
-  const remaining = Math.max(1, Math.ceil(-clock.beat));
+  const remaining =
+    Math.max(1, Math.ceil(-clock.beat));
 
   ctx.fillStyle = "rgba(255,255,255,.86)";
   ctx.font = "900 42px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(String(remaining), DESIGN.width / 2, 365);
+
+  ctx.fillText(
+    String(remaining),
+    DESIGN.width / 2,
+    365
+  );
 
   ctx.font = "700 12px system-ui, sans-serif";
   ctx.fillStyle = "rgba(255,255,255,.48)";
@@ -1214,31 +2009,31 @@ function drawCountIn(songTime) {
 }
 
 function drawDebug(songTime) {
-  const loopBeat = ((clock.beat % LOOP_BEATS) + LOOP_BEATS) % LOOP_BEATS;
-  const leftPhase = flipperPhase("left", songTime);
-  const rightPhase = flipperPhase("right", songTime);
+  const loopBeat =
+    ((clock.beat % LOOP_BEATS) + LOOP_BEATS) %
+    LOOP_BEATS;
 
   const lines = [
-    `TAP v0.10   ${chartName}   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
-    `nota ${NOTE_SPEED}px/s CONSTANTE   post-hit ${POST_HIT_SPEED}px/s`,
-    `P ±45  G ±90  GOOD ±160ms`,
-    `último Δ ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}`,
-    `L ${leftPhase.active ? "OCUPADA" : "LISTA"}   R ${rightPhase.active ? "OCUPADA" : "LISTA"}`,
+    `LAB v0.11 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
+    `tap P±45 G±90 GOOD±160ms · draw P±150 G±280 GOOD±550ms`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
-    `input ${lastInputType}   offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
-    `FPS ${fps.toFixed(0)}   multi x${comboMultiplier(combo)}`
+    `slide ${slidePointer ? "ACTIVO" : "—"} · draw ${drawGesture ? "ACTIVO" : "—"}`,
+    `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
+    `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`
   ];
 
-  ctx.fillStyle = "rgba(0,0,0,.50)";
-  ctx.fillRect(12, 92, 390, 132);
+  ctx.fillStyle = "rgba(0,0,0,.52)";
+  ctx.fillRect(12, 92, 500, 117);
 
   ctx.fillStyle = "rgba(235,244,255,.78)";
-  ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.font =
+    "11px ui-monospace, SFMono-Regular, Menlo, monospace";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
   lines.forEach((line, index) => {
-    ctx.fillText(line, 19, 101 + index * 15);
+    ctx.fillText(line, 18, 100 + index * 15);
   });
 }
 
@@ -1246,12 +2041,29 @@ function render(songTime) {
   clearCanvas();
   drawBackground();
 
-  for (const note of active.values()) {
-    drawNote(note);
+  for (const event of active.values()) {
+    if (event.type === "slide") {
+      drawSlide(event, songTime);
+    }
   }
+
+  for (const event of active.values()) {
+    if (event.type === "draw") {
+      drawConstellation(event, songTime);
+    }
+  }
+
+  for (const event of active.values()) {
+    if (event.type === "tap") {
+      drawTap(event);
+    }
+  }
+
+  drawCurrentGesture();
 
   drawFlipper("left", songTime);
   drawFlipper("right", songTime);
+
   drawImpactFlashes();
   drawExplosions();
   drawMessage();
@@ -1263,19 +2075,25 @@ function render(songTime) {
 function frame(now) {
   if (!running) return;
 
-  const dt = Math.min(0.033, (now - lastFrame) / 1000 || 0);
+  const dt =
+    Math.min(
+      0.033,
+      (now - lastFrame) / 1000 || 0
+    );
+
   lastFrame = now;
 
-  if (dt > 0) fps += ((1 / dt) - fps) * 0.08;
+  if (dt > 0) {
+    fps += ((1 / dt) - fps) * 0.08;
+  }
 
   const songTime = clock.songTime;
 
   spawnReady(songTime);
-  updateNotes(dt, songTime);
+  updateEvents(dt, songTime);
   resolveFlipperCollisions(songTime);
   resolveProjectileCollisions();
-  updateExplosions(dt);
-  updateWhiffs(songTime);
+  updateEffects(dt);
   render(songTime);
 
   requestAnimationFrame(frame);
@@ -1290,7 +2108,12 @@ function bindButton(button, side) {
     event.preventDefault();
     button.setPointerCapture?.(event.pointerId);
     pressVisual(button, true);
-    triggerFlipper(side, event.timeStamp, event.pointerType || "touch");
+
+    triggerFlipper(
+      side,
+      event.timeStamp,
+      event.pointerType || "touch"
+    );
   });
 
   const release = (event) => {
@@ -1306,6 +2129,104 @@ function bindButton(button, side) {
 bindButton(leftButton, "left");
 bindButton(rightButton, "right");
 
+canvas.addEventListener("pointerdown", (event) => {
+  if (!running) return;
+
+  event.preventDefault();
+
+  const point = eventToDesign(event);
+  const songTime = eventSongTime(event.timeStamp);
+
+  const slide = activeSlideCandidate(songTime, point);
+
+  if (slide) {
+    beginSlide(slide, event.pointerId, point);
+    return;
+  }
+
+  const draw = activeDrawCandidate(songTime);
+
+  if (draw) {
+    beginDraw(draw, event.pointerId, point);
+  }
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  const point = eventToDesign(event);
+
+  if (
+    slidePointer &&
+    slidePointer.pointerId === event.pointerId
+  ) {
+    slidePointer.x = point.x;
+    slidePointer.y = point.y;
+    return;
+  }
+
+  if (
+    drawGesture &&
+    drawGesture.pointerId === event.pointerId
+  ) {
+    const last = drawGesture.points.at(-1);
+
+    if (
+      !last ||
+      Math.hypot(point.x - last.x, point.y - last.y) >= 4
+    ) {
+      drawGesture.points.push(point);
+    }
+  }
+});
+
+canvas.addEventListener("pointerup", (event) => {
+  const point = eventToDesign(event);
+  const songTime = eventSongTime(event.timeStamp);
+
+  if (
+    slidePointer &&
+    slidePointer.pointerId === event.pointerId
+  ) {
+    const activeSlide = active.get(slidePointer.key);
+
+    if (activeSlide) {
+      finishSlide(activeSlide, songTime, point);
+    } else {
+      slidePointer = null;
+    }
+
+    return;
+  }
+
+  if (
+    drawGesture &&
+    drawGesture.pointerId === event.pointerId
+  ) {
+    const activeDraw = active.get(drawGesture.key);
+
+    if (activeDraw) {
+      finishDraw(activeDraw, songTime);
+    } else {
+      drawGesture = null;
+    }
+  }
+});
+
+canvas.addEventListener("pointercancel", (event) => {
+  if (
+    slidePointer &&
+    slidePointer.pointerId === event.pointerId
+  ) {
+    slidePointer = null;
+  }
+
+  if (
+    drawGesture &&
+    drawGesture.pointerId === event.pointerId
+  ) {
+    drawGesture = null;
+  }
+});
+
 window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
 
@@ -1317,22 +2238,34 @@ window.addEventListener("keydown", (event) => {
   }
 
   if (key === "[") {
-    calibrationOffsetMs = clamp(calibrationOffsetMs - 5, -200, 200);
+    calibrationOffsetMs = clamp(
+      calibrationOffsetMs - 5,
+      -200,
+      200
+    );
+
     showMessage(
       `OFFSET ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
       "#79d8ff",
       500
     );
+
     return;
   }
 
   if (key === "]") {
-    calibrationOffsetMs = clamp(calibrationOffsetMs + 5, -200, 200);
+    calibrationOffsetMs = clamp(
+      calibrationOffsetMs + 5,
+      -200,
+      200
+    );
+
     showMessage(
       `OFFSET ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
       "#79d8ff",
       500
     );
+
     return;
   }
 
@@ -1364,10 +2297,10 @@ startButton.addEventListener("click", async () => {
   combo = 0;
   hitCount = 0;
   missCount = 0;
-  whiffCount = 0;
-  collisionCount = 0;
   chainCount = 0;
+  collisionCount = 0;
   wallExplosionCount = 0;
+
   lastDeltaMs = null;
   lastJudgement = "—";
   lastInputType = "—";
@@ -1377,6 +2310,8 @@ startButton.addEventListener("click", async () => {
   resolved.clear();
   explosions = [];
   impactFlashes = [];
+  slidePointer = null;
+  drawGesture = null;
 
   flippers.left.startTime = -Infinity;
   flippers.left.hitThisSwing = false;
@@ -1389,6 +2324,7 @@ startButton.addEventListener("click", async () => {
   startButton.textContent = "INICIANDO…";
 
   await ensureChartLoaded();
+  buildPaths();
   await clock.start();
 
   running = true;
@@ -1400,10 +2336,13 @@ startButton.addEventListener("click", async () => {
 
 window.addEventListener("resize", () => {
   resizeCanvas();
+
+  if (routes && slidePaths) {
+    buildPaths();
+  }
+
   render(clock.songTime);
 });
-
-window.addEventListener("orientationchange", resizeCanvas);
 
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden || !running) return;
@@ -1417,6 +2356,6 @@ document.addEventListener("visibilitychange", () => {
 });
 
 resizeCanvas();
-buildRoutes();
+buildPaths();
 updateHud();
 render(clock.songTime);
