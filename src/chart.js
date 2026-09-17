@@ -32,8 +32,7 @@ function validateGameChart(chart) {
     throw new Error("El chart necesita un array de events.");
   }
 
-  const supported = new Set(["tap", "slide", "draw"]);
-  const paths = new Set(["arc-left", "arc-right", "wave"]);
+  const supported = new Set(["tap", "link", "draw"]);
 
   for (const [index, event] of chart.events.entries()) {
     if (!supported.has(event.type)) {
@@ -54,17 +53,39 @@ function validateGameChart(chart) {
       }
     }
 
-    if (event.type === "slide") {
+    if (event.type === "link") {
       if (!Number.isFinite(event.durationBeats) || event.durationBeats <= 0) {
         throw new Error(`Evento ${index}: durationBeats inválido.`);
       }
 
       if (event.beat + event.durationBeats > chart.loopBeats) {
-        throw new Error(`Evento ${index}: slide excede el loop.`);
+        throw new Error(`Evento ${index}: link excede el loop.`);
       }
 
-      if (!paths.has(event.path)) {
-        throw new Error(`Evento ${index}: path de slide inválido.`);
+      if (!Array.isArray(event.segments) || event.segments.length < 1) {
+        throw new Error(`Evento ${index}: link necesita segments.`);
+      }
+
+      if (event.segments[0].beat !== 0) {
+        throw new Error(`Evento ${index}: el primer segmento de link debe comenzar en beat 0.`);
+      }
+
+      let previousBeat = -Infinity;
+
+      for (const [segmentIndex, segment] of event.segments.entries()) {
+        if (!Number.isFinite(segment.beat) || segment.beat < 0 || segment.beat >= event.durationBeats) {
+          throw new Error(`Evento ${index}, segmento ${segmentIndex}: beat inválido.`);
+        }
+
+        if (segment.beat <= previousBeat) {
+          throw new Error(`Evento ${index}: segments debe estar ordenado y sin beats repetidos.`);
+        }
+
+        if (!["left", "right"].includes(segment.side)) {
+          throw new Error(`Evento ${index}, segmento ${segmentIndex}: side inválido.`);
+        }
+
+        previousBeat = segment.beat;
       }
     }
 
