@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.11";
+import { loadGameChart } from "./chart.js?v=0.12";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -31,9 +31,9 @@ const TAP_WINDOWS = {
 };
 
 const DRAW_WINDOWS = {
-  perfect: 0.150,
-  great: 0.280,
-  good: 0.550
+  perfect: 0.200,
+  great: 0.400,
+  good: 0.850
 };
 
 const JUDGEMENTS = {
@@ -52,18 +52,18 @@ const FLIPPER = {
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
 const SLIDE = {
-  leadSeconds: 1.35,
-  startEarly: 0.26,
-  startLate: 0.34,
-  radius: 62,
-  endGrace: 0.24,
-  minCoverage: 0.68
+  leadSeconds: 2.20,
+  startEarly: 0.48,
+  startLate: 0.48,
+  radius: 96,
+  endGrace: 0.36,
+  minCoverage: 0.58
 };
 
 const DRAW = {
-  leadSeconds: 1.85,
-  recognitionThreshold: 0.72,
-  minPoints: 8
+  leadSeconds: 2.80,
+  recognitionThreshold: 0.62,
+  minPoints: 6
 };
 
 class RhythmClock {
@@ -314,7 +314,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.11", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.12", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -330,12 +330,12 @@ function comboMultiplier(value = combo) {
 }
 
 function view() {
-  const leftPivot = { x: 118, y: 768 };
-  const rightPivot = { x: 422, y: 768 };
+  const leftPivot = { x: 145, y: 805 };
+  const rightPivot = { x: 395, y: 805 };
 
-  const leftRest = -0.22;
+  const leftRest = -0.24;
   const leftStrike = -1.12;
-  const rightRest = Math.PI + 0.22;
+  const rightRest = Math.PI + 0.24;
   const rightStrike = Math.PI + 1.12;
 
   const leftImpactAngle = (leftRest + leftStrike) / 2;
@@ -493,22 +493,22 @@ function buildPaths() {
 
   slidePaths = {
     "arc-left": makePath(
-      { x: 128, y: 610 },
-      { x: 152, y: 440 },
-      { x: 366, y: 430 },
-      { x: 404, y: 620 }
+      { x: 82, y: 646 },
+      { x: 112, y: 334 },
+      { x: 422, y: 330 },
+      { x: 458, y: 646 }
     ),
     "arc-right": makePath(
-      { x: 410, y: 600 },
-      { x: 348, y: 440 },
-      { x: 180, y: 458 },
-      { x: 132, y: 620 }
+      { x: 458, y: 646 },
+      { x: 420, y: 336 },
+      { x: 118, y: 344 },
+      { x: 82, y: 646 }
     ),
     wave: makePath(
-      { x: 128, y: 610 },
-      { x: 220, y: 470 },
-      { x: 320, y: 720 },
-      { x: 410, y: 570 }
+      { x: 78, y: 624 },
+      { x: 190, y: 286 },
+      { x: 355, y: 770 },
+      { x: 462, y: 608 }
     )
   };
 }
@@ -1408,8 +1408,8 @@ function constellationPoints(symbol) {
   const template = resamplePolyline(drawTemplate(symbol), 8);
 
   return template.map((point) => ({
-    x: 190 + point.x * 160,
-    y: 300 + point.y * 145
+    x: 88 + point.x * 364,
+    y: 205 + point.y * 360
   }));
 }
 
@@ -1561,149 +1561,88 @@ function drawTap(note) {
   ctx.restore();
 }
 
-function drawFingerprint(cx, cy, side, activeState) {
-  ctx.save();
-  ctx.translate(cx, cy);
-
-  ctx.strokeStyle =
-    side === "left"
-      ? `rgba(157,227,255,${activeState ? .92 : .54})`
-      : `rgba(228,196,255,${activeState ? .92 : .54})`;
-
-  ctx.lineWidth = activeState ? 3 : 2;
-  ctx.lineCap = "round";
-
-  const rings = [
-    { rx: 32, ry: 43 },
-    { rx: 24, ry: 34 },
-    { rx: 16, ry: 25 },
-    { rx: 8, ry: 15 }
-  ];
-
-  for (const ring of rings) {
-    ctx.beginPath();
-    ctx.ellipse(
-      0,
-      2,
-      ring.rx,
-      ring.ry,
-      0,
-      Math.PI * 0.16,
-      Math.PI * 0.84
-    );
-    ctx.stroke();
-  }
-
-  ctx.beginPath();
-  ctx.moveTo(-28, 23);
-  ctx.quadraticCurveTo(-8, 48, 0, 49);
-  ctx.quadraticCurveTo(8, 48, 28, 23);
-  ctx.stroke();
-
-  ctx.restore();
+function controlButtonCenter(side) {
+  return side === "left"
+    ? { x: 62, y: 862 }
+    : { x: 478, y: 862 };
 }
 
-function drawControlModule(side, songTime) {
+function drawControlButton(side, songTime) {
+  const center = controlButtonCenter(side);
   const m = view();
   const pivot = m.pivot[side];
   const phase = flipperPhase(side, songTime);
   const left = side === "left";
 
-  const x0 = left ? 16 : 316;
-  const x1 = left ? 224 : 524;
-  const neckLeft = left ? 94 : 400;
-  const neckRight = left ? 142 : 448;
-  const shoulderY = 822;
-  const bottomY = 950;
-
   ctx.save();
 
-  ctx.shadowBlur = phase.active ? 22 : 9;
-  ctx.shadowColor = left
-    ? "rgba(89,197,255,.36)"
-    : "rgba(196,121,255,.32)";
-
+  ctx.strokeStyle = left
+    ? "rgba(122,211,255,.26)"
+    : "rgba(211,166,255,.25)";
+  ctx.lineWidth = 11;
+  ctx.lineCap = "round";
   ctx.beginPath();
+  ctx.moveTo(center.x + (left ? 24 : -24), center.y - 20);
+  ctx.quadraticCurveTo(
+    left ? 102 : 438,
+    825,
+    pivot.x,
+    pivot.y + 5
+  );
+  ctx.stroke();
 
-  if (left) {
-    ctx.moveTo(neckLeft, pivot.y + 8);
-    ctx.bezierCurveTo(94, 792, 74, 807, 54, shoulderY);
-    ctx.bezierCurveTo(30, 836, x0, 856, x0, 882);
-    ctx.lineTo(x0, 914);
-    ctx.quadraticCurveTo(x0, bottomY, 52, bottomY);
-    ctx.lineTo(188, bottomY);
-    ctx.quadraticCurveTo(x1, bottomY, x1, 914);
-    ctx.lineTo(x1, 870);
-    ctx.bezierCurveTo(x1, 842, 204, 827, 180, shoulderY);
-    ctx.bezierCurveTo(158, 815, 145, 798, neckRight, pivot.y + 8);
-  } else {
-    ctx.moveTo(neckLeft, pivot.y + 8);
-    ctx.bezierCurveTo(397, 798, 384, 815, 360, shoulderY);
-    ctx.bezierCurveTo(336, 827, x0, 842, x0, 870);
-    ctx.lineTo(x0, 914);
-    ctx.quadraticCurveTo(x0, bottomY, 352, bottomY);
-    ctx.lineTo(488, bottomY);
-    ctx.quadraticCurveTo(x1, bottomY, x1, 914);
-    ctx.lineTo(x1, 882);
-    ctx.bezierCurveTo(x1, 856, 510, 836, 486, shoulderY);
-    ctx.bezierCurveTo(466, 807, 446, 792, neckRight, pivot.y + 8);
-  }
+  ctx.shadowBlur = phase.active ? 24 : 10;
+  ctx.shadowColor = left
+    ? "rgba(92,204,255,.55)"
+    : "rgba(204,139,255,.52)";
 
-  ctx.closePath();
+  ctx.fillStyle = phase.active
+    ? "#fff0a3"
+    : left
+      ? "#153e5d"
+      : "#34264f";
 
-  const fill = ctx.createLinearGradient(0, pivot.y, 0, bottomY);
+  ctx.strokeStyle = phase.active
+    ? "#fff7c7"
+    : left
+      ? "rgba(142,222,255,.75)"
+      : "rgba(224,188,255,.72)";
 
-  if (left) {
-    fill.addColorStop(
-      0,
-      phase.active
-        ? "rgba(55,124,164,.98)"
-        : "rgba(22,62,91,.95)"
-    );
-    fill.addColorStop(1, "rgba(9,27,45,.99)");
-
-    ctx.strokeStyle =
-      phase.active
-        ? "rgba(185,239,255,.90)"
-        : "rgba(119,209,255,.47)";
-  } else {
-    fill.addColorStop(
-      0,
-      phase.active
-        ? "rgba(101,72,140,.98)"
-        : "rgba(53,39,83,.95)"
-    );
-    fill.addColorStop(1, "rgba(25,20,51,.99)");
-
-    ctx.strokeStyle =
-      phase.active
-        ? "rgba(239,219,255,.90)"
-        : "rgba(211,166,255,.46)";
-  }
-
-  ctx.fillStyle = fill;
-  ctx.lineWidth = phase.active ? 3 : 2;
+  ctx.lineWidth = phase.active ? 4 : 2.5;
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, 36, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  drawFingerprint(
-    left ? 121 : 419,
-    875,
-    side,
-    phase.active
-  );
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = phase.active
+    ? "rgba(32,42,48,.76)"
+    : left
+      ? "rgba(170,232,255,.58)"
+      : "rgba(235,210,255,.56)";
 
-  ctx.fillStyle =
-    phase.active
-      ? "#fff1a9"
-      : left
-        ? "rgba(224,247,255,.80)"
-        : "rgba(245,229,255,.80)";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
 
-  ctx.font = "900 13px system-ui, sans-serif";
+  for (const radius of [24, 17, 10]) {
+    ctx.beginPath();
+    ctx.arc(
+      center.x,
+      center.y + 3,
+      radius,
+      Math.PI * 1.15,
+      Math.PI * 1.85
+    );
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = phase.active
+    ? "#101723"
+    : "rgba(244,250,255,.84)";
+  ctx.font = "900 12px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(left ? "A" : "D", left ? 121 : 419, 928);
+  ctx.fillText(left ? "A" : "D", center.x, center.y + 15);
 
   ctx.restore();
 }
@@ -1712,7 +1651,7 @@ function drawFlipper(side, songTime) {
   const segment = flipperSegment(side, songTime);
   const phase = segment.phase;
 
-  drawControlModule(side, songTime);
+  drawControlButton(side, songTime);
 
   ctx.save();
 
@@ -1771,8 +1710,8 @@ function drawSlide(event, songTime) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  ctx.strokeStyle = "rgba(155,217,255,.16)";
-  ctx.lineWidth = 22;
+  ctx.strokeStyle = "rgba(155,217,255,.19)";
+  ctx.lineWidth = 46;
   ctx.beginPath();
 
   path.points.forEach((point, index) => {
@@ -1782,8 +1721,8 @@ function drawSlide(event, songTime) {
 
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(205,239,255,.68)";
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(215,244,255,.82)";
+  ctx.lineWidth = 9;
   ctx.beginPath();
 
   path.points.forEach((point, index) => {
@@ -1813,7 +1752,7 @@ function drawSlide(event, songTime) {
         : "rgba(205,239,255,.72)";
 
     ctx.beginPath();
-    ctx.arc(star.x, star.y, activeStar ? 8 : 5, 0, Math.PI * 2);
+    ctx.arc(star.x, star.y, activeStar ? 14 : 9, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -1830,7 +1769,7 @@ function drawSlide(event, songTime) {
   ctx.shadowColor = "#fff1a9";
   ctx.fillStyle = "#fff1a9";
   ctx.beginPath();
-  ctx.arc(head.x, head.y, 10, 0, Math.PI * 2);
+  ctx.arc(head.x, head.y, 16, 0, Math.PI * 2);
   ctx.fill();
 
   if (slidePointer?.key === event.key) {
@@ -1845,12 +1784,25 @@ function drawSlide(event, songTime) {
     ctx.arc(
       slidePointer.x,
       slidePointer.y,
-      18,
+      28,
       0,
       Math.PI * 2
     );
     ctx.stroke();
   }
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(235,248,255,.74)";
+  ctx.font = "800 13px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    slidePointer?.key === event.key
+      ? "MANTÉN Y SIGUE"
+      : "TOCA EL INICIO",
+    DESIGN.width / 2,
+    692
+  );
 
   ctx.restore();
 }
@@ -1888,15 +1840,15 @@ function drawConstellation(event, songTime) {
       `rgba(255,241,169,${0.48 + pulse * 0.36})`;
 
     ctx.beginPath();
-    ctx.arc(point.x, point.y, 5 + proximity * 2, 0, Math.PI * 2);
+    ctx.arc(point.x, point.y, 8 + proximity * 4, 0, Math.PI * 2);
     ctx.fill();
   }
 
   ctx.shadowBlur = 0;
   ctx.fillStyle = "rgba(255,255,255,.54)";
-  ctx.font = "800 11px system-ui, sans-serif";
+  ctx.font = "900 15px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("DIBUJA", 270, 472);
+  ctx.fillText("DIBUJA LA CONSTELACIÓN", 270, 620);
 
   ctx.restore();
 }
@@ -2014,9 +1966,9 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.11 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.12 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap P±45 G±90 GOOD±160ms · draw P±150 G±280 GOOD±550ms`,
+    `tap P±45 G±90 GOOD±160ms · draw P±200 G±400 GOOD±850ms`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `slide ${slidePointer ? "ACTIVO" : "—"} · draw ${drawGesture ? "ACTIVO" : "—"}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
