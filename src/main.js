@@ -1,3 +1,5 @@
+import { loadTapChart } from "./chart.js?v=0.8";
+
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
 const startPanel = document.querySelector("#startPanel");
@@ -9,15 +11,18 @@ const comboEl = document.querySelector("#combo");
 const lastHitEl = document.querySelector("#lastHit");
 
 const DESIGN = { width: 540, height: 960 };
-const BPM = 120;
-const LOOP_BEATS = 16;
-const COUNT_IN_BEATS = 4;
+let BPM = 120;
+let LOOP_BEATS = 16;
+let COUNT_IN_BEATS = 4;
+let CHART = [];
+let chartName = "cargando…";
+let chartLoaded = false;
 
 const NOTE_SPEED = 285;
 const NOTE_RADIUS = 20;
 const PATH_SAMPLES = 160;
-const POST_HIT_SPEED = 420;
-const PROJECTILE_LIFE = 0.68;
+const POST_HIT_SPEED = 455;
+const PROJECTILE_LIFE = 1.80;
 
 const WINDOWS = {
   perfect: 0.045,
@@ -32,33 +37,15 @@ const JUDGEMENTS = {
 };
 
 const FLIPPER = {
-  length: 76,
-  width: 16,
-  attack: 0.072,
-  hold: 0.012,
-  return: 0.092
+  length: 74,
+  width: 17,
+  attack: 0.055,
+  hold: 0.018,
+  return: 0.105
 };
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
-const CHART = [
-  { beat: 0, side: "left", route: 0, symbol: "♩" },
-  { beat: 1, side: "right", route: 0, symbol: "♪" },
-  { beat: 2, side: "left", route: 1, symbol: "♪" },
-  { beat: 3, side: "right", route: 2, symbol: "♩" },
-  { beat: 4, side: "left", route: 2, symbol: "♬" },
-  { beat: 4.5, side: "right", route: 1, symbol: "♬" },
-  { beat: 5, side: "left", route: 0, symbol: "♬" },
-  { beat: 5.5, side: "right", route: 2, symbol: "♬" },
-  { beat: 7, side: "right", route: 0, symbol: "♩" },
-  { beat: 8, side: "left", route: 2, symbol: "♪" },
-  { beat: 9, side: "left", route: 1, symbol: "♪" },
-  { beat: 10, side: "right", route: 1, symbol: "♪" },
-  { beat: 11, side: "right", route: 2, symbol: "♪" },
-  { beat: 12, side: "left", route: 0, symbol: "♩" },
-  { beat: 13, side: "right", route: 0, symbol: "♩" },
-  { beat: 14, side: "left", route: 1, symbol: "♪" },
-  { beat: 15, side: "right", route: 2, symbol: "♪" }
-];
+
 
 class RhythmClock {
   constructor() {
@@ -149,6 +136,9 @@ let hitCount = 0;
 let missCount = 0;
 let whiffCount = 0;
 let collisionCount = 0;
+let wallExplosionCount = 0;
+let impactFlashes = [];
+let showDebug = false;
 let lastDeltaMs = null;
 let lastJudgement = "—";
 let lastFrame = performance.now();
@@ -175,18 +165,32 @@ function loopDuration() {
   return beatToSeconds(LOOP_BEATS);
 }
 
+async function ensureChartLoaded() {
+  if (chartLoaded) return;
+
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.8", import.meta.url);
+  const chart = await loadTapChart(chartUrl);
+
+  BPM = chart.bpm;
+  LOOP_BEATS = chart.loopBeats;
+  COUNT_IN_BEATS = chart.countInBeats;
+  CHART = chart.events;
+  chartName = chart.name || "Tap chart";
+  chartLoaded = true;
+}
+
 function comboMultiplier(value = combo) {
   return Math.min(4, 1 + Math.floor(Math.max(0, value) / 10));
 }
 
 function view() {
-  const leftPivot = { x: 186, y: 828 };
-  const rightPivot = { x: 354, y: 828 };
+  const leftPivot = { x: 190, y: 818 };
+  const rightPivot = { x: 350, y: 818 };
 
-  const leftRest = -0.50;
-  const leftStrike = -1.08;
-  const rightRest = Math.PI + 0.50;
-  const rightStrike = Math.PI + 1.08;
+  const leftRest = -0.38;
+  const leftStrike = -1.18;
+  const rightRest = Math.PI + 0.38;
+  const rightStrike = Math.PI + 1.18;
 
   const leftImpactAngle = (leftRest + leftStrike) / 2;
   const rightImpactAngle = (rightRest + rightStrike) / 2;
@@ -561,6 +565,18 @@ function triggerFlipper(side, eventTimestamp = null, inputType = "unknown") {
   flippers[side].hitThisSwing = false;
 }
 
+function createImpactFlash(x, y, judgement) {
+  impactFlashes.push({
+    x,
+    y,
+    life: 0,
+    duration: 0.16,
+    color: judgement.color
+  });
+
+  if (impactFlashes.length > 8) impactFlashes.shift();
+}
+
 function resolveHit(note, side, songTime) {
   const delta = songTime - note.targetTime;
   const judgement = judgementFor(delta);
@@ -589,6 +605,9 @@ function resolveHit(note, side, songTime) {
 
   resolved.add(note.key);
   flippers[side].hitThisSwing = true;
+
+  const contact = flipperSegment(side, songTime).tip;
+  createImpactFlash(contact.x, contact.y, judgement);
 
   showMessage(
     `${judgement.label} · ${deltaMs >= 0 ? "+" : ""}${deltaMs}ms · x${multiplier}`,
@@ -636,20 +655,19 @@ function updateNotes(dt, songTime) {
       note.x += note.vx * dt;
       note.y += note.vy * dt;
 
-      if (note.x < NOTE_RADIUS && note.vx < 0) {
-        note.x = NOTE_RADIUS;
-        note.vx *= -1;
-      } else if (note.x > DESIGN.width - NOTE_RADIUS && note.vx > 0) {
-        note.x = DESIGN.width - NOTE_RADIUS;
-        note.vx *= -1;
-      }
+      const hitWall =
+        note.x <= NOTE_RADIUS ||
+        note.x >= DESIGN.width - NOTE_RADIUS ||
+        note.y <= 72 ||
+        note.y >= DESIGN.height - NOTE_RADIUS;
 
-      if (
-        note.life > PROJECTILE_LIFE ||
-        note.y < -70 ||
-        note.y > DESIGN.height + 70
-      ) {
+      if (hitWall || note.life > PROJECTILE_LIFE) {
         active.delete(note.key);
+        wallExplosionCount += 1;
+        createExplosion(
+          clamp(note.x, NOTE_RADIUS, DESIGN.width - NOTE_RADIUS),
+          clamp(note.y, 72, DESIGN.height - NOTE_RADIUS)
+        );
       }
 
       continue;
@@ -756,8 +774,16 @@ function updateExplosions(dt) {
     explosion.life += dt;
   }
 
+  for (const flash of impactFlashes) {
+    flash.life += dt;
+  }
+
   explosions = explosions.filter(
     (explosion) => explosion.life < explosion.duration
+  );
+
+  impactFlashes = impactFlashes.filter(
+    (flash) => flash.life < flash.duration
   );
 }
 
@@ -802,16 +828,16 @@ function drawTrail(note) {
         ? "rgba(110,215,255,.24)"
         : "rgba(216,139,255,.24)";
 
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 6;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(note.x, note.y);
-    ctx.lineTo(note.x - ux * 42, note.y - uy * 42);
+    ctx.lineTo(note.x - ux * 32, note.y - uy * 32);
     ctx.stroke();
     return;
   }
 
-  const trailDistances = [18, 36, 54];
+  const trailDistances = [16, 32];
 
   for (let i = 0; i < trailDistances.length; i += 1) {
     const point = pointAtDistance(
@@ -819,7 +845,7 @@ function drawTrail(note) {
       Math.max(0, note.pathDistance - trailDistances[i])
     );
 
-    const alpha = 0.18 - i * 0.045;
+    const alpha = 0.13 - i * 0.045;
 
     ctx.fillStyle =
       note.side === "left"
@@ -865,30 +891,56 @@ function drawNote(note) {
 function drawFlipper(side, songTime) {
   const segment = flipperSegment(side, songTime);
   const phase = segment.phase;
+  const m = view();
+  const restAngle = m.restAngle[side];
+  const currentAngle = Math.atan2(
+    segment.tip.y - segment.pivot.y,
+    segment.tip.x - segment.pivot.x
+  );
 
   ctx.save();
 
+  if (phase.attack) {
+    for (let i = 1; i <= 2; i += 1) {
+      const ghostAngle = lerp(currentAngle, restAngle, i * 0.28);
+      const ghostTip = {
+        x: segment.pivot.x + Math.cos(ghostAngle) * FLIPPER.length,
+        y: segment.pivot.y + Math.sin(ghostAngle) * FLIPPER.length
+      };
+
+      ctx.strokeStyle = `rgba(255,240,163,${0.16 / i})`;
+      ctx.lineWidth = FLIPPER.width + 2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(segment.pivot.x, segment.pivot.y);
+      ctx.lineTo(ghostTip.x, ghostTip.y);
+      ctx.stroke();
+    }
+  }
+
+  ctx.shadowBlur = phase.attack ? 18 : 5;
+  ctx.shadowColor = phase.attack ? "#fff0a3" : "#79cfff";
   ctx.strokeStyle =
     phase.attack
       ? "#fff0a3"
       : phase.active
-        ? "#d7efff"
+        ? "#e7f6ff"
         : "#cfe9ff";
 
-  ctx.lineWidth = FLIPPER.width;
+  ctx.lineWidth = phase.attack ? FLIPPER.width + 4 : FLIPPER.width;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(segment.pivot.x, segment.pivot.y);
   ctx.lineTo(segment.tip.x, segment.tip.y);
   ctx.stroke();
 
-  ctx.fillStyle = "#15243a";
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#132238";
   ctx.beginPath();
-  ctx.arc(segment.pivot.x, segment.pivot.y, 9, 0, Math.PI * 2);
+  ctx.arc(segment.pivot.x, segment.pivot.y, 10, 0, Math.PI * 2);
   ctx.fill();
 
-  // Receptor integrado en la punta de la pinza.
-  ctx.shadowBlur = phase.attack ? 20 : 9;
+  ctx.shadowBlur = phase.attack ? 20 : 8;
   ctx.shadowColor = phase.attack ? "#ffe985" : "#9edcff";
   ctx.fillStyle = phase.attack ? "#ffe985" : "#9edcff";
   ctx.beginPath();
@@ -896,6 +948,21 @@ function drawFlipper(side, songTime) {
   ctx.fill();
 
   ctx.restore();
+}
+
+function drawImpactFlashes() {
+  for (const flash of impactFlashes) {
+    const t = clamp(flash.life / flash.duration, 0, 1);
+    const alpha = 1 - t;
+
+    ctx.strokeStyle = flash.color;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(flash.x, flash.y, 8 + t * 22, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 }
 
 function drawExplosions() {
@@ -954,12 +1021,12 @@ function drawDebug(songTime) {
   const rightPhase = flipperPhase("right", songTime);
 
   const lines = [
-    `TAP v0.7   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
+    `TAP v0.8   ${chartName}   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
     `nota ${NOTE_SPEED}px/s CONSTANTE   post-hit ${POST_HIT_SPEED}px/s`,
     `P ±45  G ±90  GOOD ±160ms`,
     `último Δ ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}`,
     `L ${leftPhase.active ? "OCUPADA" : "LISTA"}   R ${rightPhase.active ? "OCUPADA" : "LISTA"}`,
-    `hits ${hitCount}   miss ${missCount}   vacío ${whiffCount}   colisiones ${collisionCount}`,
+    `hits ${hitCount} miss ${missCount} vacío ${whiffCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `input ${lastInputType}   offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)}   multi x${comboMultiplier(combo)}`
   ];
@@ -987,10 +1054,12 @@ function render(songTime) {
 
   drawFlipper("left", songTime);
   drawFlipper("right", songTime);
+  drawImpactFlashes();
   drawExplosions();
   drawMessage();
   drawCountIn(songTime);
-  drawDebug(songTime);
+
+  if (showDebug) drawDebug(songTime);
 }
 
 function frame(now) {
@@ -1044,6 +1113,11 @@ window.addEventListener("keydown", (event) => {
 
   const key = event.key.toLowerCase();
 
+  if (key === "h") {
+    showDebug = !showDebug;
+    return;
+  }
+
   if (key === "[") {
     calibrationOffsetMs = clamp(calibrationOffsetMs - 5, -200, 200);
     showMessage(
@@ -1094,6 +1168,7 @@ startButton.addEventListener("click", async () => {
   missCount = 0;
   whiffCount = 0;
   collisionCount = 0;
+  wallExplosionCount = 0;
   lastDeltaMs = null;
   lastJudgement = "—";
   lastInputType = "—";
@@ -1102,6 +1177,7 @@ startButton.addEventListener("click", async () => {
   active.clear();
   resolved.clear();
   explosions = [];
+  impactFlashes = [];
 
   flippers.left.startTime = -Infinity;
   flippers.left.hitThisSwing = false;
@@ -1113,6 +1189,7 @@ startButton.addEventListener("click", async () => {
   startButton.disabled = true;
   startButton.textContent = "INICIANDO…";
 
+  await ensureChartLoaded();
   await clock.start();
 
   running = true;
