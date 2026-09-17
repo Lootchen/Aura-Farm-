@@ -1,4 +1,4 @@
-import { loadTapChart } from "./chart.js?v=0.8";
+import { loadTapChart } from "./chart.js?v=0.9";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -22,7 +22,6 @@ const NOTE_SPEED = 285;
 const NOTE_RADIUS = 20;
 const PATH_SAMPLES = 160;
 const POST_HIT_SPEED = 455;
-const PROJECTILE_LIFE = 1.80;
 
 const WINDOWS = {
   perfect: 0.045,
@@ -39,9 +38,9 @@ const JUDGEMENTS = {
 const FLIPPER = {
   length: 74,
   width: 17,
-  attack: 0.055,
-  hold: 0.018,
-  return: 0.105
+  attack: 0.045,
+  hold: 0.012,
+  return: 0.095
 };
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
@@ -168,7 +167,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.8", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.9", import.meta.url);
   const chart = await loadTapChart(chartUrl);
 
   BPM = chart.bpm;
@@ -184,13 +183,13 @@ function comboMultiplier(value = combo) {
 }
 
 function view() {
-  const leftPivot = { x: 190, y: 818 };
-  const rightPivot = { x: 350, y: 818 };
+  const leftPivot = { x: 154, y: 802 };
+  const rightPivot = { x: 386, y: 802 };
 
-  const leftRest = -0.38;
-  const leftStrike = -1.18;
-  const rightRest = Math.PI + 0.38;
-  const rightStrike = Math.PI + 1.18;
+  const leftRest = -0.30;
+  const leftStrike = -1.14;
+  const rightRest = Math.PI + 0.30;
+  const rightStrike = Math.PI + 1.14;
 
   const leftImpactAngle = (leftRest + leftStrike) / 2;
   const rightImpactAngle = (rightRest + rightStrike) / 2;
@@ -421,6 +420,8 @@ function spawnReady(songTime) {
           y: path.points[0].y,
           vx: 0,
           vy: 0,
+          prevX: path.points[0].x,
+          prevY: path.points[0].y,
           life: 0
         });
       }
@@ -595,6 +596,8 @@ function resolveHit(note, side, songTime) {
 
   note.launched = true;
   note.life = 0;
+  note.prevX = note.x;
+  note.prevY = note.y;
 
   const direction = side === "left" ? 1 : -1;
   const vertical = -1;
@@ -652,6 +655,8 @@ function updateNotes(dt, songTime) {
   for (const note of [...active.values()]) {
     if (note.launched) {
       note.life += dt;
+      note.prevX = note.x;
+      note.prevY = note.y;
       note.x += note.vx * dt;
       note.y += note.vy * dt;
 
@@ -661,7 +666,7 @@ function updateNotes(dt, songTime) {
         note.y <= 72 ||
         note.y >= DESIGN.height - NOTE_RADIUS;
 
-      if (hitWall || note.life > PROJECTILE_LIFE) {
+      if (hitWall) {
         active.delete(note.key);
         wallExplosionCount += 1;
         createExplosion(
@@ -739,6 +744,57 @@ function createExplosion(x, y) {
   explosionSound();
 }
 
+function sweptProjectileHit(a, b) {
+  const ax0 = Number.isFinite(a.prevX) ? a.prevX : a.x;
+  const ay0 = Number.isFinite(a.prevY) ? a.prevY : a.y;
+  const bx0 = Number.isFinite(b.prevX) ? b.prevX : b.x;
+  const by0 = Number.isFinite(b.prevY) ? b.prevY : b.y;
+
+  const relativeStartX = ax0 - bx0;
+  const relativeStartY = ay0 - by0;
+  const relativeStepX = (a.x - ax0) - (b.x - bx0);
+  const relativeStepY = (a.y - ay0) - (b.y - by0);
+
+  const relativeSpeedSq =
+    relativeStepX * relativeStepX +
+    relativeStepY * relativeStepY;
+
+  let t = 0;
+
+  if (relativeSpeedSq > 0.000001) {
+    t = clamp(
+      -(
+        relativeStartX * relativeStepX +
+        relativeStartY * relativeStepY
+      ) / relativeSpeedSq,
+      0,
+      1
+    );
+  }
+
+  const separationX = relativeStartX + relativeStepX * t;
+  const separationY = relativeStartY + relativeStepY * t;
+  const collisionRadius = NOTE_RADIUS * 2;
+
+  if (
+    separationX * separationX +
+    separationY * separationY >
+    collisionRadius * collisionRadius
+  ) {
+    return null;
+  }
+
+  const ax = lerp(ax0, a.x, t);
+  const ay = lerp(ay0, a.y, t);
+  const bx = lerp(bx0, b.x, t);
+  const by = lerp(by0, b.y, t);
+
+  return {
+    x: (ax + bx) / 2,
+    y: (ay + by) / 2
+  };
+}
+
 function resolveProjectileCollisions() {
   const launched = [...active.values()].filter((note) => note.launched);
 
@@ -750,21 +806,17 @@ function resolveProjectileCollisions() {
       const b = launched[j];
       if (!active.has(b.key)) continue;
 
-      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      const collision = sweptProjectileHit(a, b);
+      if (!collision) continue;
 
-      if (distance <= NOTE_RADIUS * 1.65) {
-        const x = (a.x + b.x) / 2;
-        const y = (a.y + b.y) / 2;
-
-        active.delete(a.key);
-        active.delete(b.key);
-        collisionCount += 1;
-        score += 50 * comboMultiplier(combo);
-        createExplosion(x, y);
-        showMessage("COLISIÓN +50", "#ffffff", 260);
-        updateHud();
-        break;
-      }
+      active.delete(a.key);
+      active.delete(b.key);
+      collisionCount += 1;
+      score += 50 * comboMultiplier(combo);
+      createExplosion(collision.x, collision.y);
+      showMessage("COLISIÓN +50", "#ffffff", 260);
+      updateHud();
+      break;
     }
   }
 }
@@ -888,37 +940,48 @@ function drawNote(note) {
   ctx.restore();
 }
 
+function drawControlLink(side) {
+  const m = view();
+  const pivot = m.pivot[side];
+  const padAnchor = {
+    x: side === "left" ? 135 : 405,
+    y: 855
+  };
+
+  ctx.save();
+  ctx.strokeStyle =
+    side === "left"
+      ? "rgba(126,214,255,.30)"
+      : "rgba(213,166,255,.28)";
+  ctx.lineWidth = 11;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(pivot.x, pivot.y + 4);
+  ctx.lineTo(
+    lerp(pivot.x, padAnchor.x, 0.62),
+    lerp(pivot.y, padAnchor.y, 0.62)
+  );
+  ctx.lineTo(padAnchor.x, padAnchor.y);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(235,247,255,.16)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(pivot.x, pivot.y + 4);
+  ctx.lineTo(padAnchor.x, padAnchor.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawFlipper(side, songTime) {
   const segment = flipperSegment(side, songTime);
   const phase = segment.phase;
-  const m = view();
-  const restAngle = m.restAngle[side];
-  const currentAngle = Math.atan2(
-    segment.tip.y - segment.pivot.y,
-    segment.tip.x - segment.pivot.x
-  );
+
+  drawControlLink(side);
 
   ctx.save();
 
-  if (phase.attack) {
-    for (let i = 1; i <= 2; i += 1) {
-      const ghostAngle = lerp(currentAngle, restAngle, i * 0.28);
-      const ghostTip = {
-        x: segment.pivot.x + Math.cos(ghostAngle) * FLIPPER.length,
-        y: segment.pivot.y + Math.sin(ghostAngle) * FLIPPER.length
-      };
-
-      ctx.strokeStyle = `rgba(255,240,163,${0.16 / i})`;
-      ctx.lineWidth = FLIPPER.width + 2;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(segment.pivot.x, segment.pivot.y);
-      ctx.lineTo(ghostTip.x, ghostTip.y);
-      ctx.stroke();
-    }
-  }
-
-  ctx.shadowBlur = phase.attack ? 18 : 5;
+  ctx.shadowBlur = phase.attack ? 20 : 5;
   ctx.shadowColor = phase.attack ? "#fff0a3" : "#79cfff";
   ctx.strokeStyle =
     phase.attack
@@ -927,7 +990,7 @@ function drawFlipper(side, songTime) {
         ? "#e7f6ff"
         : "#cfe9ff";
 
-  ctx.lineWidth = phase.attack ? FLIPPER.width + 4 : FLIPPER.width;
+  ctx.lineWidth = phase.attack ? FLIPPER.width + 5 : FLIPPER.width;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(segment.pivot.x, segment.pivot.y);
@@ -940,11 +1003,11 @@ function drawFlipper(side, songTime) {
   ctx.arc(segment.pivot.x, segment.pivot.y, 10, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.shadowBlur = phase.attack ? 20 : 8;
+  ctx.shadowBlur = phase.attack ? 22 : 8;
   ctx.shadowColor = phase.attack ? "#ffe985" : "#9edcff";
   ctx.fillStyle = phase.attack ? "#ffe985" : "#9edcff";
   ctx.beginPath();
-  ctx.arc(segment.tip.x, segment.tip.y, phase.attack ? 9 : 7, 0, Math.PI * 2);
+  ctx.arc(segment.tip.x, segment.tip.y, phase.attack ? 10 : 7, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -1021,7 +1084,7 @@ function drawDebug(songTime) {
   const rightPhase = flipperPhase("right", songTime);
 
   const lines = [
-    `TAP v0.8   ${chartName}   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
+    `TAP v0.9   ${chartName}   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
     `nota ${NOTE_SPEED}px/s CONSTANTE   post-hit ${POST_HIT_SPEED}px/s`,
     `P ±45  G ±90  GOOD ±160ms`,
     `último Δ ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}`,
