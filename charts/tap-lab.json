@@ -1,7 +1,7 @@
 {
-  "name": "Mechanics Lab 02",
+  "name": "Mechanics Lab 03 · Link",
   "bpm": 110,
-  "loopBeats": 40,
+  "loopBeats": 44,
   "countInBeats": 4,
   "events": [
     {
@@ -33,10 +33,15 @@
       "symbol": "♩"
     },
     {
-      "type": "slide",
+      "type": "link",
       "beat": 7,
       "durationBeats": 4,
-      "path": "arc-left"
+      "segments": [
+        {
+          "beat": 0,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "draw",
@@ -58,14 +63,23 @@
       "symbol": "♪"
     },
     {
-      "type": "slide",
+      "type": "link",
       "beat": 29,
       "durationBeats": 4,
-      "path": "arc-right"
+      "segments": [
+        {
+          "beat": 0,
+          "side": "left"
+        },
+        {
+          "beat": 2,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "draw",
-      "beat": 38,
+      "beat": 39,
       "symbol": "z"
     }
   ]
