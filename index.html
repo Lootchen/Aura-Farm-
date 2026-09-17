@@ -18,18 +18,18 @@
     </div>
 
     <div class="controls" aria-label="Controles de pinzas">
-      <button id="leftButton" class="finger-control left-control" type="button" aria-label="Pinza izquierda"><span class="fingerprint" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span class="control-key">A</span></button>
-      <button id="rightButton" class="finger-control right-control" type="button" aria-label="Pinza derecha"><span class="fingerprint" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span class="control-key">D</span></button>
+      <button id="leftButton" class="touch-zone left-touch" type="button" aria-label="Pinza izquierda"></button>
+      <button id="rightButton" class="touch-zone right-touch" type="button" aria-label="Pinza derecha"></button>
     </div>
 
     <section id="startPanel" class="start-panel">
       <h1>Aura Farm</h1>
-      <p>Tap v0.9: controles-huella unidos a las pinzas y colisión continua entre proyectiles.</p>
+      <p>Tap v0.10: módulo huella + pivote + pinza en una sola pieza; proyectil contra cualquier bola genera explosión.</p>
       <button id="startButton" type="button">INICIAR PRUEBA</button>
       <small>A / D o toca las zonas inferiores. H muestra el debug.</small>
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.9"></script>
+  <script type="module" src="./src/main.js?v=0.10"></script>
 </body>
 </html>
