@@ -1,4 +1,4 @@
-export async function loadTapChart(url) {
+export async function loadGameChart(url) {
   const response = await fetch(url, { cache: "no-store" });
 
   if (!response.ok) {
@@ -6,12 +6,12 @@ export async function loadTapChart(url) {
   }
 
   const chart = await response.json();
-  validateTapChart(chart);
+  validateGameChart(chart);
   chart.events.sort((a, b) => a.beat - b.beat);
   return chart;
 }
 
-function validateTapChart(chart) {
+function validateGameChart(chart) {
   if (!chart || typeof chart !== "object") {
     throw new Error("El chart debe ser un objeto JSON.");
   }
@@ -32,17 +32,44 @@ function validateTapChart(chart) {
     throw new Error("El chart necesita un array de events.");
   }
 
+  const supported = new Set(["tap", "slide", "draw"]);
+  const paths = new Set(["arc-left", "arc-right", "wave"]);
+
   for (const [index, event] of chart.events.entries()) {
+    if (!supported.has(event.type)) {
+      throw new Error(`Evento ${index}: type inválido.`);
+    }
+
     if (!Number.isFinite(event.beat) || event.beat < 0 || event.beat >= chart.loopBeats) {
       throw new Error(`Evento ${index}: beat inválido.`);
     }
 
-    if (!["left", "right"].includes(event.side)) {
-      throw new Error(`Evento ${index}: side inválido.`);
+    if (event.type === "tap") {
+      if (!["left", "right"].includes(event.side)) {
+        throw new Error(`Evento ${index}: side inválido.`);
+      }
+
+      if (!Number.isInteger(event.route) || event.route < 0 || event.route > 2) {
+        throw new Error(`Evento ${index}: route debe estar entre 0 y 2.`);
+      }
     }
 
-    if (!Number.isInteger(event.route) || event.route < 0 || event.route > 2) {
-      throw new Error(`Evento ${index}: route debe estar entre 0 y 2.`);
+    if (event.type === "slide") {
+      if (!Number.isFinite(event.durationBeats) || event.durationBeats <= 0) {
+        throw new Error(`Evento ${index}: durationBeats inválido.`);
+      }
+
+      if (event.beat + event.durationBeats > chart.loopBeats) {
+        throw new Error(`Evento ${index}: slide excede el loop.`);
+      }
+
+      if (!paths.has(event.path)) {
+        throw new Error(`Evento ${index}: path de slide inválido.`);
+      }
+    }
+
+    if (event.type === "draw" && !["u", "l", "z"].includes(event.symbol)) {
+      throw new Error(`Evento ${index}: símbolo de draw inválido.`);
     }
   }
 }
