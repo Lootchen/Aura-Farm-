@@ -8,14 +8,24 @@ const scoreEl = document.querySelector("#score");
 const comboEl = document.querySelector("#combo");
 const lastHitEl = document.querySelector("#lastHit");
 
+const DESIGN = { width: 540, height: 960 };
 const BPM = 120;
 const LOOP_BEATS = 16;
 const COUNT_IN_BEATS = 4;
 const NOTE_LEAD_SECONDS = 1.55;
+const APPROACH_SECONDS = 0.48;
+const MISS_AFTER_SECONDS = 0.24;
+
 const WINDOWS = {
   perfect: 0.070,
   great: 0.140,
   good: 0.220
+};
+
+const JUDGEMENTS = {
+  perfect: { label: "PERFECT", short: "P", points: 300, color: "#ffe47a" },
+  great: { label: "GREAT", short: "G", points: 200, color: "#ca8cff" },
+  good: { label: "GOOD", short: "OK", points: 100, color: "#79d8ff" }
 };
 
 const CHART = [
@@ -94,7 +104,7 @@ class RhythmClock {
 
     oscillator.frequency.value = downbeat ? 880 : 620;
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(downbeat ? 0.12 : 0.065, time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(downbeat ? 0.105 : 0.055, time + 0.002);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.045);
 
     oscillator.connect(gain);
@@ -105,6 +115,7 @@ class RhythmClock {
 }
 
 const clock = new RhythmClock();
+let viewport = { scale: 1, offsetX: 0, offsetY: 0, dpr: 1, cssWidth: 540, cssHeight: 960 };
 let running = false;
 let active = new Map();
 let resolved = new Set();
@@ -116,7 +127,17 @@ let lastFrame = performance.now();
 let fps = 60;
 let flash = { left: 0, right: 0 };
 let message = "";
+let messageColor = "#fff0a3";
 let messageUntil = 0;
+let hitCount = 0;
+let totalAbsDeltaMs = 0;
+let totalSignedDeltaMs = 0;
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const smoothstep = (value) => {
+  const t = clamp(value, 0, 1);
+  return t * t * (3 - 2 * t);
+};
 
 function beatToSeconds(beat) {
   return beat * (60 / BPM);
@@ -131,26 +152,51 @@ function resizeCanvas() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
+
+  const scale = Math.min(rect.width / DESIGN.width, rect.height / DESIGN.height);
+  viewport = {
+    scale,
+    offsetX: (rect.width - DESIGN.width * scale) / 2,
+    offsetY: (rect.height - DESIGN.height * scale) / 2,
+    dpr,
+    cssWidth: rect.width,
+    cssHeight: rect.height
+  };
+}
+
+function setDesignTransform() {
+  const { dpr, scale, offsetX, offsetY } = viewport;
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+}
+
+function clearCanvas() {
+  const { dpr, cssWidth, cssHeight } = viewport;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#080b12";
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
+  setDesignTransform();
 }
 
 function view() {
-  const rect = canvas.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
-  const hitY = height * 0.77;
   return {
-    width,
-    height,
-    hitY,
-    spawnY: height * 0.13,
-    leftX: width * 0.34,
-    rightX: width * 0.66,
-    centerX: width * 0.5,
-    auraY: height * 0.80,
-    auraOuter: Math.min(width * 0.43, height * 0.22),
-    auraMiddle: Math.min(width * 0.34, height * 0.17),
-    auraInner: Math.min(width * 0.25, height * 0.125)
+    width: DESIGN.width,
+    height: DESIGN.height,
+    centerX: 270,
+    auraY: 806,
+    auraOuter: 226,
+    auraMiddle: 170,
+    auraInner: 114,
+    spawnY: 118,
+    approachY: 470,
+    laneX: { left: 154, right: 386 },
+    contact: {
+      left: { x: 235, y: 756 },
+      right: { x: 305, y: 756 }
+    },
+    pivot: {
+      left: { x: 176, y: 810 },
+      right: { x: 364, y: 810 }
+    }
   };
 }
 
@@ -163,14 +209,14 @@ function spawnReady(songTime) {
     CHART.forEach((event, index) => {
       const key = `${loop}:${index}`;
       if (active.has(key) || resolved.has(key)) return;
+
       const targetTime = loop * duration + beatToSeconds(event.beat);
       const until = targetTime - songTime;
-      if (until <= NOTE_LEAD_SECONDS + 0.04 && until >= -WINDOWS.good - 0.08) {
+      if (until <= NOTE_LEAD_SECONDS + 0.04 && until >= -MISS_AFTER_SECONDS - 0.04) {
         active.set(key, {
           key,
           ...event,
           targetTime,
-          hit: false,
           launched: false,
           x: 0,
           y: 0,
@@ -190,49 +236,73 @@ function spawnReady(songTime) {
 
 function judgementFor(delta) {
   const abs = Math.abs(delta);
-  if (abs <= WINDOWS.perfect) return { label: "PERFECT", points: 300 };
-  if (abs <= WINDOWS.great) return { label: "GREAT", points: 200 };
-  if (abs <= WINDOWS.good) return { label: "GOOD", points: 100 };
+  if (abs <= WINDOWS.perfect) return JUDGEMENTS.perfect;
+  if (abs <= WINDOWS.great) return JUDGEMENTS.great;
+  if (abs <= WINDOWS.good) return JUDGEMENTS.good;
   return null;
+}
+
+function timingWord(deltaMs) {
+  if (Math.abs(deltaMs) <= 8) return "CENTRO";
+  return deltaMs < 0 ? "EARLY" : "LATE";
+}
+
+function candidateFor(side, now) {
+  return [...active.values()]
+    .filter((note) => !note.launched && note.side === side)
+    .map((note) => ({ note, delta: now - note.targetTime }))
+    .filter(({ delta }) => Math.abs(delta) <= WINDOWS.good)
+    .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))[0] ?? null;
+}
+
+function oppositeCandidate(side, now) {
+  const opposite = side === "left" ? "right" : "left";
+  return candidateFor(opposite, now);
 }
 
 function hit(side) {
   if (!running) return;
-  flash[side] = performance.now() + 110;
+  flash[side] = performance.now() + 120;
 
   const now = clock.songTime;
-  const candidates = [...active.values()]
-    .filter((note) => !note.launched && note.side === side)
-    .map((note) => ({ note, delta: now - note.targetTime }))
-    .filter(({ delta }) => Math.abs(delta) <= WINDOWS.good)
-    .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta));
+  const candidate = candidateFor(side, now);
 
-  if (!candidates.length) {
-    lastJudgement = "VACÍO";
+  if (!candidate) {
+    const opposite = oppositeCandidate(side, now);
+    lastJudgement = opposite ? "LADO" : "VACÍO";
     lastDeltaMs = null;
-    message = "SIN NOTA";
-    messageUntil = performance.now() + 280;
+    message = opposite ? "LADO CONTRARIO" : "SIN NOTA";
+    messageColor = opposite ? "#ff9da9" : "rgba(235,244,255,.72)";
+    messageUntil = performance.now() + 300;
     updateHud();
     return;
   }
 
-  const { note, delta } = candidates[0];
+  const { note, delta } = candidate;
   const judgement = judgementFor(delta);
   if (!judgement) return;
 
+  const deltaMs = Math.round(delta * 1000);
   score += judgement.points;
   combo += 1;
-  lastDeltaMs = Math.round(delta * 1000);
+  hitCount += 1;
+  totalAbsDeltaMs += Math.abs(deltaMs);
+  totalSignedDeltaMs += deltaMs;
+  lastDeltaMs = deltaMs;
   lastJudgement = judgement.label;
-  message = judgement.label;
-  messageUntil = performance.now() + 420;
+  message = `${judgement.label} · ${timingWord(deltaMs)} ${Math.abs(deltaMs)}ms`;
+  messageColor = judgement.color;
+  messageUntil = performance.now() + 480;
 
-  note.hit = true;
   note.launched = true;
   note.life = 0;
-  note.vx = side === "left" ? 260 : -260;
-  note.vy = -360;
+  note.vx = side === "left" ? 370 : -370;
+  note.vy = -500;
+  note.x = view().contact[side].x;
+  note.y = view().contact[side].y;
   resolved.add(note.key);
+
+  if (navigator.vibrate) navigator.vibrate(judgement === JUDGEMENTS.perfect ? 8 : 5);
   updateHud();
 }
 
@@ -241,9 +311,11 @@ function miss(note) {
   lastDeltaMs = Math.round((clock.songTime - note.targetTime) * 1000);
   lastJudgement = "MISS";
   message = "MISS";
-  messageUntil = performance.now() + 380;
+  messageColor = "#ff7184";
+  messageUntil = performance.now() + 400;
   active.delete(note.key);
   resolved.add(note.key);
+  if (navigator.vibrate) navigator.vibrate(14);
   updateHud();
 }
 
@@ -255,25 +327,65 @@ function updateHud() {
     : `${lastJudgement} ${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`;
 }
 
-function updateNotes(dt, songTime, m) {
-  const speed = (m.hitY - m.spawnY) / NOTE_LEAD_SECONDS;
+function incomingPosition(note, songTime, m) {
+  const delta = songTime - note.targetTime;
+  const laneX = m.laneX[note.side];
+  const contact = m.contact[note.side];
 
+  if (delta <= -APPROACH_SECONDS) {
+    const travel = NOTE_LEAD_SECONDS - APPROACH_SECONDS;
+    const elapsed = delta + NOTE_LEAD_SECONDS;
+    const t = clamp(elapsed / travel, 0, 1);
+    return {
+      x: laneX,
+      y: m.spawnY + (m.approachY - m.spawnY) * t
+    };
+  }
+
+  if (delta <= 0) {
+    const t = smoothstep((delta + APPROACH_SECONDS) / APPROACH_SECONDS);
+    const bendX = laneX + (contact.x - laneX) * 0.35;
+    const bendY = 650;
+    const oneMinus = 1 - t;
+    return {
+      x: oneMinus * oneMinus * laneX + 2 * oneMinus * t * bendX + t * t * contact.x,
+      y: oneMinus * oneMinus * m.approachY + 2 * oneMinus * t * bendY + t * t * contact.y
+    };
+  }
+
+  const t = smoothstep(delta / MISS_AFTER_SECONDS);
+  const direction = note.side === "left" ? 1 : -1;
+  return {
+    x: contact.x + direction * 16 * t,
+    y: contact.y + 132 * t
+  };
+}
+
+function updateNotes(dt, songTime, m) {
   for (const note of [...active.values()]) {
     if (note.launched) {
       note.life += dt;
-      note.vy += 760 * dt;
+      note.vy += 820 * dt;
       note.x += note.vx * dt;
       note.y += note.vy * dt;
-      if (note.life > 0.9 || note.x < -50 || note.x > m.width + 50 || note.y > m.height + 60) {
-        active.delete(note.key);
+
+      if (note.x < 22 && note.vx < 0) {
+        note.x = 22;
+        note.vx *= -0.62;
+      } else if (note.x > m.width - 22 && note.vx > 0) {
+        note.x = m.width - 22;
+        note.vx *= -0.62;
       }
+
+      if (note.life > 1.25 || note.y > m.height + 70) active.delete(note.key);
       continue;
     }
 
-    note.x = note.side === "left" ? m.leftX : m.rightX;
-    note.y = m.hitY + (songTime - note.targetTime) * speed;
+    const point = incomingPosition(note, songTime, m);
+    note.x = point.x;
+    note.y = point.y;
 
-    if (songTime - note.targetTime > WINDOWS.good) miss(note);
+    if (songTime - note.targetTime > MISS_AFTER_SECONDS) miss(note);
   }
 }
 
@@ -281,19 +393,21 @@ function drawBackground(m) {
   ctx.fillStyle = "#0a1020";
   ctx.fillRect(0, 0, m.width, m.height);
 
-  ctx.fillStyle = "rgba(255,255,255,.18)";
+  ctx.fillStyle = "rgba(255,255,255,.16)";
   for (let i = 0; i < 34; i += 1) {
     const x = ((i * 73) % 521) / 521 * m.width;
-    const y = ((i * 113) % 601) / 601 * m.height * 0.62;
+    const y = ((i * 113) % 601) / 601 * m.height * 0.61;
     ctx.fillRect(x, y, 1.3, 1.3);
   }
 
-  ctx.strokeStyle = "rgba(255,255,255,.07)";
+  ctx.strokeStyle = "rgba(255,255,255,.055)";
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(m.width * 0.5, m.height * 0.12);
-  ctx.lineTo(m.width * 0.5, m.hitY + 20);
-  ctx.stroke();
+  for (const x of [m.laneX.left, m.laneX.right]) {
+    ctx.beginPath();
+    ctx.moveTo(x, m.spawnY - 20);
+    ctx.lineTo(x, m.approachY + 12);
+    ctx.stroke();
+  }
 }
 
 function semicircle(m, radius, fill) {
@@ -306,45 +420,58 @@ function semicircle(m, radius, fill) {
 }
 
 function drawAura(m) {
-  semicircle(m, m.auraOuter, "rgba(65,150,255,.12)");
-  semicircle(m, m.auraMiddle, "rgba(177,92,255,.14)");
-  semicircle(m, m.auraInner, "rgba(255,207,75,.17)");
+  semicircle(m, m.auraOuter, "rgba(65,150,255,.115)");
+  semicircle(m, m.auraMiddle, "rgba(177,92,255,.145)");
+  semicircle(m, m.auraInner, "rgba(255,207,75,.18)");
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "700 10px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(121,216,255,.58)";
+  ctx.fillText("GOOD", m.centerX, m.auraY - m.auraOuter + 17);
+  ctx.fillStyle = "rgba(202,140,255,.58)";
+  ctx.fillText("GREAT", m.centerX, m.auraY - m.auraMiddle + 17);
+  ctx.fillStyle = "rgba(255,228,122,.67)";
+  ctx.fillText("PERFECT", m.centerX, m.auraY - m.auraInner + 17);
+}
+
+function flipperAngle(side, pressed) {
+  if (side === "left") return pressed ? -0.80 : -0.38;
+  return pressed ? Math.PI + 0.80 : Math.PI + 0.38;
 }
 
 function drawFlipper(m, side) {
   const now = performance.now();
-  const isLeft = side === "left";
-  const x = isLeft ? m.leftX : m.rightX;
-  const y = m.hitY + 24;
+  const pivot = m.pivot[side];
   const pressed = flash[side] > now;
-  const baseAngle = isLeft ? 0.30 : Math.PI - 0.30;
-  const angle = baseAngle + (pressed ? (isLeft ? -0.48 : 0.48) : 0);
-  const length = Math.min(86, m.width * 0.19);
+  const angle = flipperAngle(side, pressed);
+  const length = 82;
 
   ctx.save();
-  ctx.translate(x, y);
+  ctx.translate(pivot.x, pivot.y);
   ctx.rotate(angle);
   ctx.strokeStyle = pressed ? "#fff0a3" : "#cfe9ff";
   ctx.lineWidth = 15;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(isLeft ? length : -length, 0);
+  ctx.lineTo(length, 0);
   ctx.stroke();
   ctx.restore();
 
   ctx.fillStyle = "#15243a";
   ctx.beginPath();
-  ctx.arc(x, y, 9, 0, Math.PI * 2);
+  ctx.arc(pivot.x, pivot.y, 9, 0, Math.PI * 2);
   ctx.fill();
 }
 
 function drawHitMarkers(m) {
-  for (const [side, x] of [["left", m.leftX], ["right", m.rightX]]) {
-    ctx.strokeStyle = flash[side] > performance.now() ? "#ffe985" : "rgba(145,215,255,.75)";
+  for (const side of ["left", "right"]) {
+    const point = m.contact[side];
+    ctx.strokeStyle = flash[side] > performance.now() ? "#ffe985" : "rgba(145,215,255,.68)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(x, m.hitY, 31, 0, Math.PI * 2);
+    ctx.arc(point.x, point.y, 28, 0, Math.PI * 2);
     ctx.stroke();
   }
 }
@@ -353,7 +480,7 @@ function drawNote(note) {
   ctx.save();
   ctx.translate(note.x, note.y);
 
-  if (note.launched) ctx.rotate(note.life * note.vx * 0.008);
+  if (note.launched) ctx.rotate(note.life * note.vx * 0.011);
 
   ctx.fillStyle = note.side === "left" ? "#6ed7ff" : "#d88bff";
   ctx.beginPath();
@@ -368,36 +495,53 @@ function drawNote(note) {
   ctx.restore();
 }
 
-function drawDebug(m, songTime) {
+function drawDebug(songTime) {
   const beat = clock.beat;
   const loopBeat = ((beat % LOOP_BEATS) + LOOP_BEATS) % LOOP_BEATS;
+  const avgAbs = hitCount ? totalAbsDeltaMs / hitCount : 0;
+  const bias = hitCount ? totalSignedDeltaMs / hitCount : 0;
   const lines = [
-    `BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
+    `TAP v0.2   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
     `time ${songTime.toFixed(3)}s   FPS ${fps.toFixed(0)}`,
     `P ±${Math.round(WINDOWS.perfect * 1000)}  G ±${Math.round(WINDOWS.great * 1000)}  OK ±${Math.round(WINDOWS.good * 1000)} ms`,
-    `delta ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}`
+    `delta ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}   avg |Δ| ${hitCount ? avgAbs.toFixed(0) : "—"}ms`,
+    `bias ${hitCount ? `${bias >= 0 ? "+" : ""}${bias.toFixed(0)}ms` : "—"}   hits ${hitCount}`
   ];
 
-  ctx.fillStyle = "rgba(0,0,0,.48)";
-  ctx.fillRect(10, m.height * 0.105, 250, 70);
-  ctx.fillStyle = "rgba(235,244,255,.76)";
+  ctx.fillStyle = "rgba(0,0,0,.52)";
+  ctx.fillRect(12, 92, 310, 87);
+  ctx.fillStyle = "rgba(235,244,255,.78)";
   ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  lines.forEach((line, index) => ctx.fillText(line, 17, m.height * 0.115 + index * 15));
+  lines.forEach((line, index) => ctx.fillText(line, 19, 101 + index * 15));
 }
 
-function drawMessage(m) {
+function drawMessage() {
   if (performance.now() > messageUntil) return;
-  ctx.fillStyle = message === "MISS" ? "#ff7184" : "#fff0a3";
-  ctx.font = "900 28px system-ui, sans-serif";
+  ctx.fillStyle = messageColor;
+  ctx.font = "900 25px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(message, m.centerX, m.height * 0.48);
+  ctx.fillText(message, DESIGN.width / 2, 455);
+}
+
+function drawCountIn(songTime) {
+  if (songTime >= 0) return;
+  const remaining = Math.max(1, Math.ceil(-clock.beat));
+  ctx.fillStyle = "rgba(255,255,255,.86)";
+  ctx.font = "900 42px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(remaining), DESIGN.width / 2, 365);
+  ctx.font = "700 12px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,.48)";
+  ctx.fillText("PREPÁRATE", DESIGN.width / 2, 405);
 }
 
 function render(songTime) {
   const m = view();
+  clearCanvas();
   drawBackground(m);
   drawAura(m);
   drawHitMarkers(m);
@@ -406,8 +550,9 @@ function render(songTime) {
 
   drawFlipper(m, "left");
   drawFlipper(m, "right");
-  drawMessage(m);
-  drawDebug(m, songTime);
+  drawMessage();
+  drawCountIn(songTime);
+  drawDebug(songTime);
 }
 
 function frame(now) {
@@ -474,6 +619,9 @@ startButton.addEventListener("click", async () => {
   lastDeltaMs = null;
   lastJudgement = "—";
   message = "";
+  hitCount = 0;
+  totalAbsDeltaMs = 0;
+  totalSignedDeltaMs = 0;
   active.clear();
   resolved.clear();
   updateHud();
@@ -487,7 +635,10 @@ startButton.addEventListener("click", async () => {
   requestAnimationFrame(frame);
 });
 
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  render(clock.songTime);
+});
 window.addEventListener("orientationchange", resizeCanvas);
 
 document.addEventListener("visibilitychange", () => {
