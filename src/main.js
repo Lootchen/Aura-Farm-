@@ -368,7 +368,6 @@ function strikeFault(label, detail = "") {
 
 function armHit(side, eventTimestamp = null, inputType = "unknown") {
   if (!running) return;
-  flash[side] = performance.now() + 100;
   lastInputType = inputType;
 
   const now = eventSongTime(eventTimestamp);
@@ -464,7 +463,7 @@ function updateHud() {
 }
 
 function incomingPosition(note, songTime, m) {
-  const secondsToImpact = Math.max(0, note.targetTime - songTime);
+  const secondsToImpact = note.targetTime - songTime;
   const distanceFromContact = NOTE_SPEED * secondsToImpact;
   const contact = m.contact[note.side];
   const outward = m.unit[note.side];
@@ -479,16 +478,15 @@ function updateNotes(dt, songTime, m) {
   for (const note of [...active.values()]) {
     if (note.launched) {
       note.life += dt;
-      note.vy += 820 * dt;
       note.x += note.vx * dt;
       note.y += note.vy * dt;
 
       if (note.x < 22 && note.vx < 0) {
         note.x = 22;
-        note.vx *= -0.62;
+        note.vx *= -1;
       } else if (note.x > m.width - 22 && note.vx > 0) {
         note.x = m.width - 22;
-        note.vx *= -0.62;
+        note.vx *= -1;
       }
 
       if (note.life > 1.25 || note.y > m.height + 70) active.delete(note.key);
@@ -665,9 +663,9 @@ function drawDebug(songTime) {
   const avgAbs = hitCount ? totalAbsDeltaMs / hitCount : 0;
   const bias = hitCount ? totalSignedDeltaMs / hitCount : 0;
   const lines = [
-    `TAP v0.5   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
+    `TAP v0.5.1   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
     `time ${songTime.toFixed(3)}s   FPS ${fps.toFixed(0)}`,
-    `P ±${Math.round(WINDOWS.perfect * 1000)}  G ±${Math.round(WINDOWS.great * 1000)}  OK ±${Math.round(WINDOWS.good * 1000)} ms`,
+    `zonas: P 0-${Math.round(WINDOWS.perfect * 1000)}  G ${Math.round(WINDOWS.perfect * 1000)}-${Math.round(WINDOWS.great * 1000)}  OK ${Math.round(WINDOWS.great * 1000)}-${Math.round(WINDOWS.good * 1000)}ms`,
     `delta ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}   avg |Δ| ${hitCount ? avgAbs.toFixed(0) : "—"}ms`,
     `velocidad ${NOTE_SPEED}px/s CONSTANTE   armados por zona`,
     `offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms   input ${lastInputType}   cola ${lastProcessingDelayMs.toFixed(1)}ms`,
