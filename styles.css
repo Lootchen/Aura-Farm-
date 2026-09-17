@@ -58,66 +58,147 @@ button { font: inherit; }
   left: 0;
   right: 0;
   bottom: 0;
-  height: max(132px, calc(112px + env(safe-area-inset-bottom)));
+  height: max(142px, calc(122px + env(safe-area-inset-bottom)));
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 10px 14px max(12px, env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(5,9,18,.96), rgba(5,9,18,.70) 72%, transparent);
+  align-items: end;
+  padding: 8px 14px max(12px, env(safe-area-inset-bottom));
   pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(5,9,18,.92),
+    rgba(5,9,18,.42) 62%,
+    transparent
+  );
 }
 
 .controls button {
-  min-width: 0;
-  height: 100%;
-  border: 1px solid rgba(151,220,255,.38);
-  border-radius: 26px 26px 12px 12px;
+  --tilt: 0deg;
+  position: relative;
+  justify-self: center;
+  width: 122px;
+  height: 112px;
+  padding: 0;
+  border: 1px solid rgba(153,221,255,.48);
+  border-radius: 52% 52% 38% 38% / 60% 60% 42% 42%;
   background:
-    radial-gradient(circle at 50% 0%, rgba(112,207,255,.18), transparent 52%),
-    rgba(13,28,48,.76);
-  color: #effaff;
+    radial-gradient(circle at 50% 30%, rgba(115,211,255,.20), transparent 46%),
+    linear-gradient(to bottom, rgba(25,62,88,.88), rgba(10,25,43,.94));
+  color: #dff5ff;
   pointer-events: auto;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 2px;
+  transform: rotate(var(--tilt));
+  transform-origin: 50% 100%;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.08),
-    0 -8px 28px rgba(50,150,220,.06);
-  transition: transform 60ms linear, background 60ms linear, box-shadow 60ms linear;
+    inset 0 1px 0 rgba(255,255,255,.11),
+    inset 0 -12px 24px rgba(0,0,0,.18),
+    0 0 24px rgba(70,178,240,.10);
+  transition:
+    transform 55ms linear,
+    filter 55ms linear,
+    box-shadow 55ms linear;
+  overflow: visible;
 }
 
-.controls button:last-child {
-  border-color: rgba(213,166,255,.34);
+.left-control {
+  --tilt: 5deg;
+}
+
+.right-control {
+  --tilt: -5deg;
+  border-color: rgba(215,170,255,.45);
+  color: #f0dcff;
   background:
-    radial-gradient(circle at 50% 0%, rgba(204,139,255,.16), transparent 52%),
-    rgba(25,24,52,.76);
+    radial-gradient(circle at 50% 30%, rgba(210,145,255,.20), transparent 46%),
+    linear-gradient(to bottom, rgba(53,39,83,.88), rgba(24,20,52,.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 -12px 24px rgba(0,0,0,.18),
+    0 0 24px rgba(186,110,255,.09);
+}
+
+.controls button::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -30px;
+  width: 17px;
+  height: 40px;
+  border-radius: 12px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to top,
+    currentColor,
+    rgba(210,240,255,.18)
+  );
+  opacity: .28;
+  pointer-events: none;
 }
 
 .controls button.active {
-  transform: translateY(3px) scale(.985);
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255,235,145,.34), transparent 58%),
-    rgba(35,66,88,.94);
+  transform: translateY(4px) scale(.965) rotate(var(--tilt));
+  filter: brightness(1.25);
   box-shadow:
-    inset 0 0 26px rgba(255,235,145,.12),
-    0 -6px 26px rgba(255,229,133,.10);
+    inset 0 0 30px rgba(255,236,150,.15),
+    0 0 28px rgba(255,229,133,.14);
+}
+
+.fingerprint {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  width: 64px;
+  height: 70px;
+  transform: translateX(-50%);
+  opacity: .78;
+}
+
+.fingerprint span {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  border: 2px solid currentColor;
+  border-bottom-color: transparent;
+  border-radius: 50% 50% 46% 46%;
+  transform: translateX(-50%);
+  opacity: .74;
+}
+
+.fingerprint span:nth-child(1) {
+  width: 58px;
+  height: 64px;
+}
+
+.fingerprint span:nth-child(2) {
+  width: 44px;
+  height: 51px;
+  bottom: 10px;
+}
+
+.fingerprint span:nth-child(3) {
+  width: 30px;
+  height: 38px;
+  bottom: 16px;
+}
+
+.fingerprint span:nth-child(4) {
+  width: 15px;
+  height: 24px;
+  bottom: 22px;
 }
 
 .control-key {
-  font-size: 1.55rem;
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  font-size: .82rem;
   line-height: 1;
   font-weight: 950;
-}
-
-.control-label {
-  font-size: .61rem;
-  letter-spacing: .12em;
-  opacity: .66;
-  font-weight: 800;
+  letter-spacing: .08em;
+  opacity: .86;
 }
 
 .start-panel {
