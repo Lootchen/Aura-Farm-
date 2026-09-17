@@ -17,8 +17,8 @@ const APPROACH_SECONDS = 0.48;
 const MISS_AFTER_SECONDS = 0.18;
 
 const WINDOWS = {
-  perfect: 0.055,
-  great: 0.105,
+  perfect: 0.045,
+  great: 0.090,
   good: 0.160
 };
 
@@ -251,6 +251,10 @@ function timingWord(deltaMs) {
   return deltaMs < 0 ? "EARLY" : "LATE";
 }
 
+function comboMultiplier(value = combo) {
+  return Math.min(4, 1 + Math.floor(Math.max(0, value) / 8));
+}
+
 function candidateFor(side, now) {
   return [...active.values()]
     .filter((note) => !note.launched && note.side === side)
@@ -298,6 +302,19 @@ function eventSongTime(eventTimestamp) {
   return clock.songTime - processingDelayMs / 1000 + calibrationOffsetMs / 1000;
 }
 
+function strikeFault(label, detail = "") {
+  combo = 0;
+  mistakeCount += 1;
+  lastJudgement = label;
+  lastDeltaMs = null;
+  message = detail ? `${label} · ${detail}` : label;
+  messageColor = "#ff8d9c";
+  messageUntil = performance.now() + 360;
+  playErrorSound();
+  if (navigator.vibrate) navigator.vibrate(10);
+  updateHud();
+}
+
 function hit(side, eventTimestamp = null, inputType = "unknown") {
   if (!running) return;
   flash[side] = performance.now() + 120;
@@ -308,22 +325,7 @@ function hit(side, eventTimestamp = null, inputType = "unknown") {
 
   if (!candidate) {
     const opposite = oppositeCandidate(side, now);
-    lastJudgement = opposite ? "ERROR" : "VACÍO";
-    lastDeltaMs = null;
-
-    if (opposite) {
-      combo = 0;
-      mistakeCount += 1;
-      message = "LADO CONTRARIO";
-      messageColor = "#ff9da9";
-      playErrorSound();
-    } else {
-      message = "SIN NOTA";
-      messageColor = "rgba(235,244,255,.72)";
-    }
-
-    messageUntil = performance.now() + 300;
-    updateHud();
+    strikeFault(opposite ? "LADO CONTRARIO" : "OVERSTRIKE");
     return;
   }
 
@@ -332,14 +334,15 @@ function hit(side, eventTimestamp = null, inputType = "unknown") {
   if (!judgement) return;
 
   const deltaMs = Math.round(delta * 1000);
-  score += judgement.points;
   combo += 1;
+  const multiplier = comboMultiplier(combo);
+  score += judgement.points * multiplier;
   hitCount += 1;
   totalAbsDeltaMs += Math.abs(deltaMs);
   totalSignedDeltaMs += deltaMs;
   lastDeltaMs = deltaMs;
   lastJudgement = judgement.label;
-  message = `${judgement.label} · ${timingWord(deltaMs)} ${Math.abs(deltaMs)}ms`;
+  message = `${judgement.label} · ${timingWord(deltaMs)} ${Math.abs(deltaMs)}ms · x${multiplier}`;
   messageColor = judgement.color;
   messageUntil = performance.now() + 480;
 
@@ -372,43 +375,62 @@ function miss(note) {
 
 function updateHud() {
   scoreEl.textContent = String(score);
-  comboEl.textContent = String(combo);
+  comboEl.textContent = combo ? `${combo} · x${comboMultiplier(combo)}` : "0";
   lastHitEl.textContent = lastDeltaMs === null
     ? lastJudgement
     : `${lastJudgement} ${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`;
 }
 
+function auraPoint(m, side, radius) {
+  const angle = (side === "left" ? -115 : -65) * Math.PI / 180;
+  return {
+    x: m.centerX + Math.cos(angle) * radius,
+    y: m.auraY + Math.sin(angle) * radius
+  };
+}
+
+function lerpPoint(a, b, t) {
+  const u = clamp(t, 0, 1);
+  return {
+    x: a.x + (b.x - a.x) * u,
+    y: a.y + (b.y - a.y) * u
+  };
+}
+
 function incomingPosition(note, songTime, m) {
   const delta = songTime - note.targetTime;
-  const laneX = m.laneX[note.side];
+  const spawn = { x: m.laneX[note.side], y: m.spawnY };
+  const outer = auraPoint(m, note.side, m.auraOuter);
+  const middle = auraPoint(m, note.side, m.auraMiddle);
+  const inner = auraPoint(m, note.side, m.auraInner);
   const contact = m.contact[note.side];
 
-  if (delta <= -APPROACH_SECONDS) {
-    const travel = NOTE_LEAD_SECONDS - APPROACH_SECONDS;
+  if (delta <= -WINDOWS.good) {
+    const travel = NOTE_LEAD_SECONDS - WINDOWS.good;
     const elapsed = delta + NOTE_LEAD_SECONDS;
-    const t = clamp(elapsed / travel, 0, 1);
-    return {
-      x: laneX,
-      y: m.spawnY + (m.approachY - m.spawnY) * t
-    };
+    return lerpPoint(spawn, outer, smoothstep(elapsed / travel));
+  }
+
+  if (delta <= -WINDOWS.great) {
+    const t = (delta + WINDOWS.good) / (WINDOWS.good - WINDOWS.great);
+    return lerpPoint(outer, middle, smoothstep(t));
+  }
+
+  if (delta <= -WINDOWS.perfect) {
+    const t = (delta + WINDOWS.great) / (WINDOWS.great - WINDOWS.perfect);
+    return lerpPoint(middle, inner, smoothstep(t));
   }
 
   if (delta <= 0) {
-    const t = smoothstep((delta + APPROACH_SECONDS) / APPROACH_SECONDS);
-    const bendX = laneX + (contact.x - laneX) * 0.35;
-    const bendY = 650;
-    const oneMinus = 1 - t;
-    return {
-      x: oneMinus * oneMinus * laneX + 2 * oneMinus * t * bendX + t * t * contact.x,
-      y: oneMinus * oneMinus * m.approachY + 2 * oneMinus * t * bendY + t * t * contact.y
-    };
+    const t = (delta + WINDOWS.perfect) / WINDOWS.perfect;
+    return lerpPoint(inner, contact, smoothstep(t));
   }
 
   const t = smoothstep(delta / MISS_AFTER_SECONDS);
   const direction = note.side === "left" ? 1 : -1;
   return {
-    x: contact.x + direction * 16 * t,
-    y: contact.y + 132 * t
+    x: contact.x + direction * 18 * t,
+    y: contact.y + 135 * t
   };
 }
 
@@ -470,19 +492,50 @@ function semicircle(m, radius, fill) {
   ctx.fill();
 }
 
-function drawAura(m) {
-  semicircle(m, m.auraOuter, "rgba(65,150,255,.115)");
-  semicircle(m, m.auraMiddle, "rgba(177,92,255,.145)");
-  semicircle(m, m.auraInner, "rgba(255,207,75,.18)");
+function activeTier(songTime) {
+  let best = null;
+  for (const note of active.values()) {
+    if (note.launched) continue;
+    const delta = songTime + calibrationOffsetMs / 1000 - note.targetTime;
+    const judgement = judgementFor(delta);
+    if (!judgement) continue;
+    if (!best || judgement.points > best.points) best = judgement;
+  }
+  return best;
+}
+
+function drawAura(m, songTime) {
+  const tier = activeTier(songTime);
+  const goodAlpha = tier === JUDGEMENTS.good ? .30 : .13;
+  const greatAlpha = tier === JUDGEMENTS.great ? .34 : .16;
+  const perfectAlpha = tier === JUDGEMENTS.perfect ? .38 : .19;
+
+  semicircle(m, m.auraOuter, `rgba(65,150,255,${goodAlpha})`);
+  semicircle(m, m.auraMiddle, `rgba(177,92,255,${greatAlpha})`);
+  semicircle(m, m.auraInner, `rgba(255,207,75,${perfectAlpha})`);
+
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(121,216,255,.34)";
+  ctx.beginPath();
+  ctx.arc(m.centerX, m.auraY, m.auraOuter, Math.PI, 0);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(202,140,255,.38)";
+  ctx.beginPath();
+  ctx.arc(m.centerX, m.auraY, m.auraMiddle, Math.PI, 0);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,228,122,.44)";
+  ctx.beginPath();
+  ctx.arc(m.centerX, m.auraY, m.auraInner, Math.PI, 0);
+  ctx.stroke();
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = "700 10px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(121,216,255,.58)";
+  ctx.fillStyle = "rgba(121,216,255,.64)";
   ctx.fillText("GOOD", m.centerX, m.auraY - m.auraOuter + 17);
-  ctx.fillStyle = "rgba(202,140,255,.58)";
+  ctx.fillStyle = "rgba(202,140,255,.64)";
   ctx.fillText("GREAT", m.centerX, m.auraY - m.auraMiddle + 17);
-  ctx.fillStyle = "rgba(255,228,122,.67)";
+  ctx.fillStyle = "rgba(255,228,122,.72)";
   ctx.fillText("PERFECT", m.centerX, m.auraY - m.auraInner + 17);
 }
 
@@ -491,17 +544,21 @@ function flipperAngle(side, pressed) {
   return pressed ? Math.PI + 0.80 : Math.PI + 0.38;
 }
 
-function drawFlipper(m, side) {
+function drawFlipper(m, side, songTime) {
   const now = performance.now();
   const pivot = m.pivot[side];
   const pressed = flash[side] > now;
+  const visualTime = songTime + calibrationOffsetMs / 1000;
+  const ready = Boolean(candidateFor(side, visualTime));
   const angle = flipperAngle(side, pressed);
   const length = 82;
 
   ctx.save();
   ctx.translate(pivot.x, pivot.y);
   ctx.rotate(angle);
-  ctx.strokeStyle = pressed ? "#fff0a3" : "#cfe9ff";
+  ctx.shadowBlur = ready ? 18 : 0;
+  ctx.shadowColor = ready ? "#ffe985" : "transparent";
+  ctx.strokeStyle = pressed ? "#fff0a3" : ready ? "#ffe985" : "#cfe9ff";
   ctx.lineWidth = 15;
   ctx.lineCap = "round";
   ctx.beginPath();
@@ -514,17 +571,6 @@ function drawFlipper(m, side) {
   ctx.beginPath();
   ctx.arc(pivot.x, pivot.y, 9, 0, Math.PI * 2);
   ctx.fill();
-}
-
-function drawHitMarkers(m) {
-  for (const side of ["left", "right"]) {
-    const point = m.contact[side];
-    ctx.strokeStyle = flash[side] > performance.now() ? "#ffe985" : "rgba(145,215,255,.68)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, 28, 0, Math.PI * 2);
-    ctx.stroke();
-  }
 }
 
 function drawNote(note) {
@@ -553,13 +599,13 @@ function drawDebug(songTime) {
   const bias = hitCount ? totalSignedDeltaMs / hitCount : 0;
   const suggestedOffset = hitCount ? -bias : 0;
   const lines = [
-    `TAP v0.3   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
+    `TAP v0.4   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
     `time ${songTime.toFixed(3)}s   FPS ${fps.toFixed(0)}`,
     `P ±${Math.round(WINDOWS.perfect * 1000)}  G ±${Math.round(WINDOWS.great * 1000)}  OK ±${Math.round(WINDOWS.good * 1000)} ms`,
     `delta ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}   avg |Δ| ${hitCount ? avgAbs.toFixed(0) : "—"}ms`,
     `bias ${hitCount ? `${bias >= 0 ? "+" : ""}${bias.toFixed(0)}ms` : "—"}   sugerido ${hitCount ? `${suggestedOffset >= 0 ? "+" : ""}${suggestedOffset.toFixed(0)}ms` : "—"}`,
     `offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms   input ${lastInputType}   cola ${lastProcessingDelayMs.toFixed(1)}ms`,
-    `hits ${hitCount}   errores ${mistakeCount}   [ / ] ajusta offset`
+    `hits ${hitCount}   errores ${mistakeCount}   multi x${comboMultiplier(combo)}   [ / ] offset`
   ];
 
   ctx.fillStyle = "rgba(0,0,0,.52)";
@@ -597,13 +643,12 @@ function render(songTime) {
   const m = view();
   clearCanvas();
   drawBackground(m);
-  drawAura(m);
-  drawHitMarkers(m);
+  drawAura(m, songTime);
 
   for (const note of active.values()) drawNote(note);
 
-  drawFlipper(m, "left");
-  drawFlipper(m, "right");
+  drawFlipper(m, "left", songTime);
+  drawFlipper(m, "right", songTime);
   drawMessage();
   drawCountIn(songTime);
   drawDebug(songTime);
