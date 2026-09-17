@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.12";
+import { loadGameChart } from "./chart.js?v=0.13";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -51,13 +51,14 @@ const FLIPPER = {
 };
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
-const SLIDE = {
-  leadSeconds: 2.20,
-  startEarly: 0.48,
-  startLate: 0.48,
-  radius: 96,
-  endGrace: 0.36,
-  minCoverage: 0.58
+const LINK = {
+  leadSeconds: 2.05,
+  scrollSpeed: 205,
+  startEarly: 0.22,
+  startLate: 0.22,
+  handoffGrace: 0.24,
+  releaseGrace: 0.30,
+  minCoverage: 0.72
 };
 
 const DRAW = {
@@ -268,7 +269,6 @@ let viewport = {
 };
 
 let routes = null;
-let slidePaths = null;
 let running = false;
 let active = new Map();
 let resolved = new Set();
@@ -292,8 +292,20 @@ let calibrationOffsetMs = 0;
 let lastInputType = "—";
 let showDebug = false;
 
-let slidePointer = null;
 let drawGesture = null;
+
+const holdState = {
+  left: {
+    held: false,
+    pressedAt: -Infinity,
+    releasedAt: -Infinity
+  },
+  right: {
+    held: false,
+    pressedAt: -Infinity,
+    releasedAt: -Infinity
+  }
+};
 
 const flippers = {
   left: { startTime: -Infinity, hitThisSwing: false },
@@ -314,7 +326,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.12", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.13", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -491,26 +503,6 @@ function buildPaths() {
 
   routes = { left, right };
 
-  slidePaths = {
-    "arc-left": makePath(
-      { x: 82, y: 646 },
-      { x: 112, y: 334 },
-      { x: 422, y: 330 },
-      { x: 458, y: 646 }
-    ),
-    "arc-right": makePath(
-      { x: 458, y: 646 },
-      { x: 420, y: 336 },
-      { x: 118, y: 344 },
-      { x: 82, y: 646 }
-    ),
-    wave: makePath(
-      { x: 78, y: 624 },
-      { x: 190, y: 286 },
-      { x: 355, y: 770 },
-      { x: 462, y: 608 }
-    )
-  };
 }
 
 function routeFor(side, routeIndex) {
@@ -589,9 +581,9 @@ function spawnReady(songTime) {
         const path = routeFor(event.side, event.route);
         lead = path.length / NOTE_SPEED;
         expireAt = targetTime + TAP_WINDOWS.good + 0.22;
-      } else if (event.type === "slide") {
-        lead = SLIDE.leadSeconds;
-        expireAt = targetTime + beatToSeconds(event.durationBeats) + SLIDE.endGrace;
+      } else if (event.type === "link") {
+        lead = LINK.leadSeconds;
+        expireAt = targetTime + beatToSeconds(event.durationBeats) + LINK.releaseGrace;
       } else if (event.type === "draw") {
         lead = DRAW.leadSeconds;
         expireAt = targetTime + DRAW_WINDOWS.good;
@@ -620,17 +612,20 @@ function spawnReady(songTime) {
         });
       }
 
-      if (event.type === "slide") {
+      if (event.type === "link") {
         active.set(key, {
           key,
           loop,
           ...event,
           targetTime,
           endTime: targetTime + beatToSeconds(event.durationBeats),
-          pathObject: slidePaths[event.path],
-          trackingTime: 0,
+          started: false,
           goodTime: 0,
-          lastDistance: Infinity
+          trackingTime: 0,
+          startDelta: null,
+          releaseDelta: null,
+          handoffDone: event.segments.map((segment, index) => index === 0),
+          handoffDelta: event.segments.map(() => null)
         });
       }
 
@@ -1087,120 +1082,380 @@ function updateTap(note, dt, songTime) {
   }
 }
 
-function activeSlideCandidate(songTime, point) {
-  return [...active.values()]
-    .filter((event) => event.type === "slide")
-    .map((event) => {
-      const start = event.pathObject.points[0];
-      const distance = Math.hypot(point.x - start.x, point.y - start.y);
+function setHeldSide(side, held, songTime) {
+  const state = holdState[side];
 
-      return {
-        event,
-        distance,
-        timeDelta: songTime - event.targetTime
-      };
-    })
-    .filter(
-      ({ distance, timeDelta }) =>
-        distance <= 64 &&
-        timeDelta >= -SLIDE.startEarly &&
-        timeDelta <= SLIDE.startLate
-    )
-    .sort((a, b) => a.distance - b.distance)[0]?.event ?? null;
-}
-
-function beginSlide(event, pointerId, point) {
-  slidePointer = {
-    key: event.key,
-    pointerId,
-    x: point.x,
-    y: point.y
-  };
-
-  event.goodTime = 0;
-  event.trackingTime = 0;
-  event.lastDistance = 0;
-
-  canvas.setPointerCapture?.(pointerId);
-  showMessage("SLIDE", "#9edcff", 260);
-}
-
-function updateSlideTracking(event, dt, songTime) {
-  if (!slidePointer || slidePointer.key !== event.key) return;
-
-  if (songTime < event.targetTime || songTime > event.endTime) return;
-
-  const progress = clamp(
-    (songTime - event.targetTime) /
-    Math.max(0.001, event.endTime - event.targetTime),
-    0,
-    1
-  );
-
-  const expected = pointAtDistance(
-    event.pathObject,
-    event.pathObject.length * progress
-  );
-
-  const distance = Math.hypot(
-    slidePointer.x - expected.x,
-    slidePointer.y - expected.y
-  );
-
-  event.lastDistance = distance;
-  event.trackingTime += dt;
-
-  if (distance <= SLIDE.radius) {
-    event.goodTime += dt;
-  }
-}
-
-function finishSlide(event, songTime, point) {
-  const releaseDelta = songTime - event.endTime;
-  const duration = Math.max(0.001, event.endTime - event.targetTime);
-  const coverage = event.goodTime / duration;
-  const endPoint = event.pathObject.points.at(-1);
-  const endDistance = Math.hypot(point.x - endPoint.x, point.y - endPoint.y);
-
-  const success =
-    Math.abs(releaseDelta) <= SLIDE.endGrace &&
-    coverage >= SLIDE.minCoverage &&
-    endDistance <= 82;
-
-  slidePointer = null;
-
-  if (!success) {
-    showMessage("SLIDE FALLÓ", "#ff7184", 360);
+  if (held) {
+    if (!state.held) {
+      state.held = true;
+      state.pressedAt = songTime;
+    }
     return;
   }
 
+  if (state.held) {
+    state.held = false;
+    state.releasedAt = songTime;
+  }
+}
+
+function linkSegmentTime(event, segment) {
+  return event.targetTime + beatToSeconds(segment.beat);
+}
+
+function expectedLinkSide(event, songTime) {
+  let current = event.segments[0];
+
+  for (const segment of event.segments) {
+    if (linkSegmentTime(event, segment) <= songTime) {
+      current = segment;
+    } else {
+      break;
+    }
+  }
+
+  return current.side;
+}
+
+function nextLinkSegment(event, songTime) {
+  return event.segments.find(
+    (segment, index) =>
+      index > 0 &&
+      linkSegmentTime(event, segment) > songTime
+  ) ?? null;
+}
+
+function updateLink(event, dt, songTime) {
+  const first = event.segments[0];
+  const firstSide = first.side;
+  const firstPress = holdState[firstSide].pressedAt;
+
+  if (!event.started) {
+    const startDelta = firstPress - event.targetTime;
+    const validPress =
+      holdState[firstSide].held &&
+      startDelta >= -LINK.startEarly &&
+      startDelta <= LINK.startLate;
+
+    if (validPress) {
+      event.started = true;
+      event.startDelta = startDelta;
+      lastInputType = "link";
+      showMessage(
+        `LINK · MANTÉN ${firstSide === "left" ? "A" : "D"}`,
+        "#9edcff",
+        380
+      );
+      successTone(590);
+    } else if (songTime > event.targetTime + LINK.startLate) {
+      failEvent(event, "LINK MISS");
+    }
+
+    return;
+  }
+
+  for (let i = 1; i < event.segments.length; i += 1) {
+    if (event.handoffDone[i]) continue;
+
+    const segment = event.segments[i];
+    const segmentTime = linkSegmentTime(event, segment);
+    const delta = holdState[segment.side].pressedAt - segmentTime;
+
+    if (Math.abs(delta) <= LINK.handoffGrace) {
+      event.handoffDone[i] = true;
+      event.handoffDelta[i] = delta;
+
+      showMessage(
+        `CONECTADO · ${segment.side === "left" ? "A" : "D"}`,
+        "#b8ffd9",
+        280
+      );
+
+      successTone(680);
+    }
+  }
+
+  if (songTime >= event.targetTime && songTime <= event.endTime) {
+    const expectedSide = expectedLinkSide(event, songTime);
+
+    event.trackingTime += dt;
+
+    if (holdState[expectedSide].held) {
+      event.goodTime += dt;
+    }
+  }
+
+  if (songTime < event.endTime) return;
+
+  const lastSegment = event.segments.at(-1);
+  const lastSide = lastSegment.side;
+  const releaseAt = holdState[lastSide].releasedAt;
+  const releaseDelta = releaseAt - event.endTime;
+
+  const releasedInWindow =
+    releaseAt >= event.endTime - LINK.releaseGrace &&
+    releaseAt <= event.endTime + LINK.releaseGrace;
+
+  if (releasedInWindow) {
+    finishLink(event, releaseDelta);
+    return;
+  }
+
+  if (songTime > event.endTime + LINK.releaseGrace) {
+    failEvent(event, "LINK MISS");
+  }
+}
+
+function finishLink(event, releaseDelta) {
+  const duration = Math.max(
+    0.001,
+    event.endTime - event.targetTime
+  );
+
+  const coverage = event.goodTime / duration;
+  const handoffsOk = event.handoffDone.every(Boolean);
+
+  const success =
+    coverage >= LINK.minCoverage &&
+    handoffsOk &&
+    Math.abs(releaseDelta) <= LINK.releaseGrace;
+
+  if (!success) {
+    failEvent(event, "LINK FALLÓ");
+    return;
+  }
+
+  const timingErrors = [
+    Math.abs(event.startDelta ?? LINK.startLate),
+    ...event.handoffDelta
+      .filter((value) => Number.isFinite(value))
+      .map(Math.abs),
+    Math.abs(releaseDelta)
+  ];
+
+  const worstTiming = Math.max(...timingErrors);
+
   let judgement = JUDGEMENTS.good;
 
-  if (coverage >= 0.91 && Math.abs(releaseDelta) <= 0.10) {
+  if (coverage >= 0.94 && worstTiming <= 0.10) {
     judgement = JUDGEMENTS.perfect;
-  } else if (coverage >= 0.80 && Math.abs(releaseDelta) <= 0.17) {
+  } else if (coverage >= 0.84 && worstTiming <= 0.19) {
     judgement = JUDGEMENTS.great;
   }
 
   combo += 1;
-  score += (judgement.points + 120) * comboMultiplier(combo);
-  lastJudgement = `SLIDE ${judgement.label}`;
+  score += (judgement.points + 180) * comboMultiplier(combo);
+  lastJudgement = `LINK ${judgement.label}`;
   lastDeltaMs = Math.round(releaseDelta * 1000);
 
   active.delete(event.key);
   resolved.add(event.key);
 
   showMessage(
-    `SLIDE ${judgement.label} · ${Math.round(coverage * 100)}%`,
+    `LINK ${judgement.label} · ${Math.round(coverage * 100)}%`,
     judgement.color,
-    520
+    560
   );
 
-  successTone(760);
+  successTone(790);
 
-  if (navigator.vibrate) navigator.vibrate(9);
+  if (navigator.vibrate) {
+    navigator.vibrate([5, 20, 7]);
+  }
 
   updateHud();
+}
+
+function linkReceiver(side) {
+  const m = view();
+  return m.impact[side];
+}
+
+function linkNodePoint(event, beatOffset, side, songTime) {
+  const receiver = linkReceiver(side);
+  const nodeTime =
+    event.targetTime + beatToSeconds(beatOffset);
+
+  return {
+    x: receiver.x,
+    y:
+      receiver.y -
+      LINK.scrollSpeed * (nodeTime - songTime)
+  };
+}
+
+function drawLink(event, songTime) {
+  const beats = [];
+
+  for (
+    let beat = 0;
+    beat <= event.durationBeats + 0.001;
+    beat += 0.5
+  ) {
+    let side = event.segments[0].side;
+
+    for (const segment of event.segments) {
+      if (segment.beat <= beat) {
+        side = segment.side;
+      } else {
+        break;
+      }
+    }
+
+    beats.push({
+      beat,
+      side,
+      transition: event.segments.some(
+        (segment) => Math.abs(segment.beat - beat) < 0.001
+      )
+    });
+  }
+
+  const points = beats.map((node) => ({
+    ...node,
+    ...linkNodePoint(
+      event,
+      node.beat,
+      node.side,
+      songTime
+    )
+  }));
+
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const a = points[i];
+    const b = points[i + 1];
+
+    if (
+      (a.y < -80 && b.y < -80) ||
+      (a.y > DESIGN.height + 80 &&
+        b.y > DESIGN.height + 80)
+    ) {
+      continue;
+    }
+
+    const energized =
+      event.started &&
+      songTime >=
+        event.targetTime + beatToSeconds(a.beat);
+
+    ctx.strokeStyle = energized
+      ? a.side === "left"
+        ? "rgba(110,215,255,.94)"
+        : "rgba(216,139,255,.94)"
+      : a.side === "left"
+        ? "rgba(110,215,255,.32)"
+        : "rgba(216,139,255,.32)";
+
+    ctx.shadowBlur = energized ? 16 : 6;
+    ctx.shadowColor = ctx.strokeStyle;
+    ctx.lineWidth = energized ? 15 : 11;
+
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0;
+
+  for (const point of points) {
+    if (
+      point.y < -50 ||
+      point.y > DESIGN.height + 50
+    ) {
+      continue;
+    }
+
+    const isHead = point.beat === 0;
+    const isEnd =
+      Math.abs(
+        point.beat - event.durationBeats
+      ) < 0.001;
+
+    const energized =
+      event.started &&
+      songTime >=
+        event.targetTime +
+          beatToSeconds(point.beat);
+
+    ctx.fillStyle = energized
+      ? "#fff1a9"
+      : point.side === "left"
+        ? "#6ed7ff"
+        : "#d88bff";
+
+    ctx.beginPath();
+    ctx.arc(
+      point.x,
+      point.y,
+      point.transition || isHead || isEnd ? 12 : 7,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    if (point.transition && point.beat > 0) {
+      ctx.strokeStyle = "rgba(255,255,255,.78)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(
+        point.x,
+        point.y,
+        18,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+    }
+  }
+
+  const expected = expectedLinkSide(
+    event,
+    Math.max(songTime, event.targetTime)
+  );
+
+  const next = nextLinkSegment(event, songTime);
+  const nextIn =
+    next
+      ? linkSegmentTime(event, next) - songTime
+      : null;
+
+  ctx.fillStyle = "rgba(238,248,255,.82)";
+  ctx.font = "900 14px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  let instruction;
+
+  if (!event.started) {
+    instruction =
+      `PULSA Y MANTÉN ${event.segments[0].side === "left" ? "A" : "D"}`;
+  } else if (
+    next &&
+    nextIn <= 0.80 &&
+    nextIn >= -0.05
+  ) {
+    instruction =
+      `CONECTA ${next.side === "left" ? "A" : "D"}`;
+  } else if (songTime >= event.endTime - 0.65) {
+    instruction =
+      `SUELTA ${event.segments.at(-1).side === "left" ? "A" : "D"} AL FINAL`;
+  } else {
+    instruction =
+      `MANTÉN ${expected === "left" ? "A" : "D"}`;
+  }
+
+  ctx.fillText(
+    instruction,
+    DESIGN.width / 2,
+    660
+  );
+
+  ctx.restore();
 }
 
 function drawTemplate(symbol) {
@@ -1420,17 +1675,8 @@ function updateEvents(dt, songTime) {
       continue;
     }
 
-    if (event.type === "slide") {
-      updateSlideTracking(event, dt, songTime);
-
-      if (
-        songTime > event.endTime + SLIDE.endGrace &&
-        active.has(event.key)
-      ) {
-        if (slidePointer?.key === event.key) slidePointer = null;
-        failEvent(event, "SLIDE MISS");
-      }
-
+    if (event.type === "link") {
+      updateLink(event, dt, songTime);
       continue;
     }
 
@@ -1563,8 +1809,8 @@ function drawTap(note) {
 
 function controlButtonCenter(side) {
   return side === "left"
-    ? { x: 62, y: 862 }
-    : { x: 478, y: 862 };
+    ? { x: 60, y: 892 }
+    : { x: 480, y: 892 };
 }
 
 function drawControlButton(side, songTime) {
@@ -1699,110 +1945,6 @@ function drawFlipper(side, songTime) {
     Math.PI * 2
   );
   ctx.fill();
-
-  ctx.restore();
-}
-
-function drawSlide(event, songTime) {
-  const path = event.pathObject;
-
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  ctx.strokeStyle = "rgba(155,217,255,.19)";
-  ctx.lineWidth = 46;
-  ctx.beginPath();
-
-  path.points.forEach((point, index) => {
-    if (index === 0) ctx.moveTo(point.x, point.y);
-    else ctx.lineTo(point.x, point.y);
-  });
-
-  ctx.stroke();
-
-  ctx.strokeStyle = "rgba(215,244,255,.82)";
-  ctx.lineWidth = 9;
-  ctx.beginPath();
-
-  path.points.forEach((point, index) => {
-    if (index === 0) ctx.moveTo(point.x, point.y);
-    else ctx.lineTo(point.x, point.y);
-  });
-
-  ctx.stroke();
-
-  for (const fraction of [0, 0.25, 0.5, 0.75, 1]) {
-    const star = pointAtDistance(path, path.length * fraction);
-    const activeStar =
-      slidePointer?.key === event.key &&
-      Math.abs(
-        fraction -
-        clamp(
-          (songTime - event.targetTime) /
-          Math.max(0.001, event.endTime - event.targetTime),
-          0,
-          1
-        )
-      ) < 0.12;
-
-    ctx.fillStyle =
-      activeStar
-        ? "#fff1a9"
-        : "rgba(205,239,255,.72)";
-
-    ctx.beginPath();
-    ctx.arc(star.x, star.y, activeStar ? 14 : 9, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  const progress = clamp(
-    (songTime - event.targetTime) /
-    Math.max(0.001, event.endTime - event.targetTime),
-    0,
-    1
-  );
-
-  const head = pointAtDistance(path, path.length * progress);
-
-  ctx.shadowBlur = 18;
-  ctx.shadowColor = "#fff1a9";
-  ctx.fillStyle = "#fff1a9";
-  ctx.beginPath();
-  ctx.arc(head.x, head.y, 16, 0, Math.PI * 2);
-  ctx.fill();
-
-  if (slidePointer?.key === event.key) {
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle =
-      event.lastDistance <= SLIDE.radius
-        ? "rgba(126,255,192,.80)"
-        : "rgba(255,113,132,.80)";
-
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(
-      slidePointer.x,
-      slidePointer.y,
-      28,
-      0,
-      Math.PI * 2
-    );
-    ctx.stroke();
-  }
-
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(235,248,255,.74)";
-  ctx.font = "800 13px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(
-    slidePointer?.key === event.key
-      ? "MANTÉN Y SIGUE"
-      : "TOCA EL INICIO",
-    DESIGN.width / 2,
-    692
-  );
 
   ctx.restore();
 }
@@ -1966,11 +2108,11 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.12 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.13 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap P±45 G±90 GOOD±160ms · draw P±200 G±400 GOOD±850ms`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
-    `slide ${slidePointer ? "ACTIVO" : "—"} · draw ${drawGesture ? "ACTIVO" : "—"}`,
+    `link L:${holdState.left.held ? "ON" : "off"} R:${holdState.right.held ? "ON" : "off"} · draw ${drawGesture ? "ACTIVO" : "—"}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`
   ];
@@ -1994,8 +2136,8 @@ function render(songTime) {
   drawBackground();
 
   for (const event of active.values()) {
-    if (event.type === "slide") {
-      drawSlide(event, songTime);
+    if (event.type === "link") {
+      drawLink(event, songTime);
     }
   }
 
@@ -2061,6 +2203,9 @@ function bindButton(button, side) {
     button.setPointerCapture?.(event.pointerId);
     pressVisual(button, true);
 
+    const songTime = eventSongTime(event.timeStamp);
+    setHeldSide(side, true, songTime);
+
     triggerFlipper(
       side,
       event.timeStamp,
@@ -2071,6 +2216,12 @@ function bindButton(button, side) {
   const release = (event) => {
     event?.preventDefault?.();
     pressVisual(button, false);
+
+    const songTime = event
+      ? eventSongTime(event.timeStamp)
+      : clock.songTime;
+
+    setHeldSide(side, false, songTime);
   };
 
   button.addEventListener("pointerup", release);
@@ -2088,14 +2239,6 @@ canvas.addEventListener("pointerdown", (event) => {
 
   const point = eventToDesign(event);
   const songTime = eventSongTime(event.timeStamp);
-
-  const slide = activeSlideCandidate(songTime, point);
-
-  if (slide) {
-    beginSlide(slide, event.pointerId, point);
-    return;
-  }
-
   const draw = activeDrawCandidate(songTime);
 
   if (draw) {
@@ -2104,73 +2247,46 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  const point = eventToDesign(event);
-
   if (
-    slidePointer &&
-    slidePointer.pointerId === event.pointerId
+    !drawGesture ||
+    drawGesture.pointerId !== event.pointerId
   ) {
-    slidePointer.x = point.x;
-    slidePointer.y = point.y;
     return;
   }
 
-  if (
-    drawGesture &&
-    drawGesture.pointerId === event.pointerId
-  ) {
-    const last = drawGesture.points.at(-1);
+  const point = eventToDesign(event);
+  const last = drawGesture.points.at(-1);
 
-    if (
-      !last ||
-      Math.hypot(point.x - last.x, point.y - last.y) >= 4
-    ) {
-      drawGesture.points.push(point);
-    }
+  if (
+    !last ||
+    Math.hypot(
+      point.x - last.x,
+      point.y - last.y
+    ) >= 4
+  ) {
+    drawGesture.points.push(point);
   }
 });
 
 canvas.addEventListener("pointerup", (event) => {
-  const point = eventToDesign(event);
-  const songTime = eventSongTime(event.timeStamp);
-
   if (
-    slidePointer &&
-    slidePointer.pointerId === event.pointerId
+    !drawGesture ||
+    drawGesture.pointerId !== event.pointerId
   ) {
-    const activeSlide = active.get(slidePointer.key);
-
-    if (activeSlide) {
-      finishSlide(activeSlide, songTime, point);
-    } else {
-      slidePointer = null;
-    }
-
     return;
   }
 
-  if (
-    drawGesture &&
-    drawGesture.pointerId === event.pointerId
-  ) {
-    const activeDraw = active.get(drawGesture.key);
+  const songTime = eventSongTime(event.timeStamp);
+  const activeDraw = active.get(drawGesture.key);
 
-    if (activeDraw) {
-      finishDraw(activeDraw, songTime);
-    } else {
-      drawGesture = null;
-    }
+  if (activeDraw) {
+    finishDraw(activeDraw, songTime);
+  } else {
+    drawGesture = null;
   }
 });
 
 canvas.addEventListener("pointercancel", (event) => {
-  if (
-    slidePointer &&
-    slidePointer.pointerId === event.pointerId
-  ) {
-    slidePointer = null;
-  }
-
   if (
     drawGesture &&
     drawGesture.pointerId === event.pointerId
@@ -2223,11 +2339,21 @@ window.addEventListener("keydown", (event) => {
 
   if (key === "a" || event.key === "ArrowLeft") {
     pressVisual(leftButton, true);
+    setHeldSide(
+      "left",
+      true,
+      eventSongTime(event.timeStamp)
+    );
     triggerFlipper("left", event.timeStamp, "keyboard");
   }
 
   if (key === "d" || event.key === "ArrowRight") {
     pressVisual(rightButton, true);
+    setHeldSide(
+      "right",
+      true,
+      eventSongTime(event.timeStamp)
+    );
     triggerFlipper("right", event.timeStamp, "keyboard");
   }
 });
@@ -2237,10 +2363,20 @@ window.addEventListener("keyup", (event) => {
 
   if (key === "a" || event.key === "ArrowLeft") {
     pressVisual(leftButton, false);
+    setHeldSide(
+      "left",
+      false,
+      eventSongTime(event.timeStamp)
+    );
   }
 
   if (key === "d" || event.key === "ArrowRight") {
     pressVisual(rightButton, false);
+    setHeldSide(
+      "right",
+      false,
+      eventSongTime(event.timeStamp)
+    );
   }
 });
 
@@ -2262,8 +2398,13 @@ startButton.addEventListener("click", async () => {
   resolved.clear();
   explosions = [];
   impactFlashes = [];
-  slidePointer = null;
   drawGesture = null;
+
+  for (const side of ["left", "right"]) {
+    holdState[side].held = false;
+    holdState[side].pressedAt = -Infinity;
+    holdState[side].releasedAt = -Infinity;
+  }
 
   flippers.left.startTime = -Infinity;
   flippers.left.hitThisSwing = false;
@@ -2289,7 +2430,7 @@ startButton.addEventListener("click", async () => {
 window.addEventListener("resize", () => {
   resizeCanvas();
 
-  if (routes && slidePaths) {
+  if (routes) {
     buildPaths();
   }
 
