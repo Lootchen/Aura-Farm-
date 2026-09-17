@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.13";
+import { loadGameChart } from "./chart.js?v=0.14";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -52,13 +52,13 @@ const FLIPPER = {
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
 const LINK = {
-  leadSeconds: 2.05,
-  scrollSpeed: 205,
-  startEarly: 0.22,
-  startLate: 0.22,
-  handoffGrace: 0.24,
-  releaseGrace: 0.30,
-  minCoverage: 0.72
+  leadSeconds: 2.25,
+  scrollSpeed: 175,
+  startEarly: 0.25,
+  startLate: 0.25,
+  handoffGrace: 0.30,
+  releaseGrace: 0.34,
+  minCoverage: 0.68
 };
 
 const DRAW = {
@@ -326,7 +326,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.13", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.14", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -625,7 +625,8 @@ function spawnReady(songTime) {
           startDelta: null,
           releaseDelta: null,
           handoffDone: event.segments.map((segment, index) => index === 0),
-          handoffDelta: event.segments.map(() => null)
+          handoffDelta: event.segments.map(() => null),
+          handoffFlashed: event.segments.map((segment, index) => index === 0)
         });
       }
 
@@ -1125,6 +1126,58 @@ function nextLinkSegment(event, songTime) {
   ) ?? null;
 }
 
+function activeLinkAt(songTime) {
+  return [...active.values()]
+    .filter((event) => event.type === "link")
+    .filter(
+      (event) =>
+        songTime >= event.targetTime - LINK.leadSeconds &&
+        songTime <= event.endTime + LINK.releaseGrace
+    )
+    .sort(
+      (a, b) =>
+        Math.abs(a.targetTime - songTime) -
+        Math.abs(b.targetTime - songTime)
+    )[0] ?? null;
+}
+
+function linkVisualState(side, songTime) {
+  const event = activeLinkAt(songTime);
+
+  if (!event) {
+    return {
+      active: false,
+      expected: false,
+      next: false,
+      connected: false
+    };
+  }
+
+  const expected = expectedLinkSide(
+    event,
+    Math.max(songTime, event.targetTime)
+  );
+
+  const next = nextLinkSegment(event, songTime);
+  const nextTime = next
+    ? linkSegmentTime(event, next)
+    : Infinity;
+
+  return {
+    active: true,
+    expected: event.started && expected === side,
+    next:
+      Boolean(next) &&
+      next.side === side &&
+      nextTime - songTime <= 0.85 &&
+      nextTime - songTime >= -0.06,
+    connected:
+      event.started &&
+      expected === side &&
+      holdState[side].held
+  };
+}
+
 function updateLink(event, dt, songTime) {
   const first = event.segments[0];
   const firstSide = first.side;
@@ -1132,6 +1185,7 @@ function updateLink(event, dt, songTime) {
 
   if (!event.started) {
     const startDelta = firstPress - event.targetTime;
+
     const validPress =
       holdState[firstSide].held &&
       startDelta >= -LINK.startEarly &&
@@ -1140,15 +1194,28 @@ function updateLink(event, dt, songTime) {
     if (validPress) {
       event.started = true;
       event.startDelta = startDelta;
-      lastInputType = "link";
-      showMessage(
-        `LINK · MANTÉN ${firstSide === "left" ? "A" : "D"}`,
-        "#9edcff",
-        380
+      lastInputType = "slide";
+
+      const receiver = linkReceiver(firstSide);
+      createImpactFlash(
+        receiver.x,
+        receiver.y,
+        JUDGEMENTS.great
       );
+
+      showMessage(
+        `SLIDE · AGARRADO ${firstSide === "left" ? "A" : "D"}`,
+        "#9edcff",
+        420
+      );
+
       successTone(590);
+
+      if (navigator.vibrate) {
+        navigator.vibrate(6);
+      }
     } else if (songTime > event.targetTime + LINK.startLate) {
-      failEvent(event, "LINK MISS");
+      failEvent(event, "SLIDE MISS");
     }
 
     return;
@@ -1158,25 +1225,52 @@ function updateLink(event, dt, songTime) {
     if (event.handoffDone[i]) continue;
 
     const segment = event.segments[i];
+    const previous = event.segments[i - 1];
     const segmentTime = linkSegmentTime(event, segment);
-    const delta = holdState[segment.side].pressedAt - segmentTime;
 
-    if (Math.abs(delta) <= LINK.handoffGrace) {
+    const pressDelta =
+      holdState[segment.side].pressedAt - segmentTime;
+
+    const overlap =
+      holdState[previous.side].held ||
+      holdState[previous.side].releasedAt >=
+        segmentTime - 0.06;
+
+    if (
+      Math.abs(pressDelta) <= LINK.handoffGrace &&
+      overlap
+    ) {
       event.handoffDone[i] = true;
-      event.handoffDelta[i] = delta;
+      event.handoffDelta[i] = pressDelta;
 
-      showMessage(
-        `CONECTADO · ${segment.side === "left" ? "A" : "D"}`,
-        "#b8ffd9",
-        280
+      const receiver = linkReceiver(segment.side);
+
+      createImpactFlash(
+        receiver.x,
+        receiver.y,
+        JUDGEMENTS.perfect
       );
 
-      successTone(680);
+      showMessage(
+        `TRANSFERENCIA · ${segment.side === "left" ? "A" : "D"}`,
+        "#b8ffd9",
+        340
+      );
+
+      successTone(690);
+
+      if (navigator.vibrate) {
+        navigator.vibrate([4, 20, 4]);
+      }
     }
   }
 
-  if (songTime >= event.targetTime && songTime <= event.endTime) {
-    const expectedSide = expectedLinkSide(event, songTime);
+  if (
+    songTime >= event.targetTime &&
+    songTime <= event.endTime
+  ) {
+    const expectedSide =
+      expectedLinkSide(event, songTime);
 
     event.trackingTime += dt;
 
@@ -1187,8 +1281,7 @@ function updateLink(event, dt, songTime) {
 
   if (songTime < event.endTime) return;
 
-  const lastSegment = event.segments.at(-1);
-  const lastSide = lastSegment.side;
+  const lastSide = event.segments.at(-1).side;
   const releaseAt = holdState[lastSide].releasedAt;
   const releaseDelta = releaseAt - event.endTime;
 
@@ -1202,8 +1295,38 @@ function updateLink(event, dt, songTime) {
   }
 
   if (songTime > event.endTime + LINK.releaseGrace) {
-    failEvent(event, "LINK MISS");
+    failEvent(event, "SLIDE MISS");
   }
+}
+
+function spawnSlideProjectile(side) {
+  const receiver = linkReceiver(side);
+  const direction = side === "left" ? 1 : -1;
+  const vertical = -1;
+  const length = Math.hypot(direction, vertical) || 1;
+
+  const key =
+    `slidefx:${performance.now().toFixed(3)}:${Math.random().toString(36).slice(2)}`;
+
+  active.set(key, {
+    key,
+    type: "tap",
+    side,
+    symbol: "★",
+    launched: true,
+    x: receiver.x,
+    y: receiver.y,
+    prevX: receiver.x,
+    prevY: receiver.y,
+    vx:
+      (direction / length) *
+      POST_HIT_SPEED *
+      1.08,
+    vy:
+      (vertical / length) *
+      POST_HIT_SPEED *
+      1.08
+  });
 }
 
 function finishLink(event, releaseDelta) {
@@ -1221,7 +1344,7 @@ function finishLink(event, releaseDelta) {
     Math.abs(releaseDelta) <= LINK.releaseGrace;
 
   if (!success) {
-    failEvent(event, "LINK FALLÓ");
+    failEvent(event, "SLIDE FALLÓ");
     return;
   }
 
@@ -1237,38 +1360,57 @@ function finishLink(event, releaseDelta) {
 
   let judgement = JUDGEMENTS.good;
 
-  if (coverage >= 0.94 && worstTiming <= 0.10) {
+  if (
+    coverage >= 0.94 &&
+    worstTiming <= 0.11
+  ) {
     judgement = JUDGEMENTS.perfect;
-  } else if (coverage >= 0.84 && worstTiming <= 0.19) {
+  } else if (
+    coverage >= 0.83 &&
+    worstTiming <= 0.20
+  ) {
     judgement = JUDGEMENTS.great;
   }
 
   combo += 1;
-  score += (judgement.points + 180) * comboMultiplier(combo);
-  lastJudgement = `LINK ${judgement.label}`;
+  score +=
+    (judgement.points + 180) *
+    comboMultiplier(combo);
+
+  lastJudgement = `SLIDE ${judgement.label}`;
   lastDeltaMs = Math.round(releaseDelta * 1000);
 
   active.delete(event.key);
   resolved.add(event.key);
 
-  showMessage(
-    `LINK ${judgement.label} · ${Math.round(coverage * 100)}%`,
-    judgement.color,
-    560
+  const finalSide = event.segments.at(-1).side;
+  const receiver = linkReceiver(finalSide);
+
+  createImpactFlash(
+    receiver.x,
+    receiver.y,
+    judgement
   );
 
-  successTone(790);
+  spawnSlideProjectile(finalSide);
+
+  showMessage(
+    `SLIDE ${judgement.label} · ${Math.round(coverage * 100)}%`,
+    judgement.color,
+    580
+  );
+
+  successTone(810);
 
   if (navigator.vibrate) {
-    navigator.vibrate([5, 20, 7]);
+    navigator.vibrate([6, 22, 8]);
   }
 
   updateHud();
 }
 
 function linkReceiver(side) {
-  const m = view();
-  return m.impact[side];
+  return view().impact[side];
 }
 
 function linkNodePoint(event, beatOffset, side, songTime) {
@@ -1280,17 +1422,56 @@ function linkNodePoint(event, beatOffset, side, songTime) {
     x: receiver.x,
     y:
       receiver.y -
-      LINK.scrollSpeed * (nodeTime - songTime)
+      LINK.scrollSpeed *
+      (nodeTime - songTime)
   };
 }
 
+function drawSlideOrb(x, y, side, radius, alpha = 1, energized = false) {
+  ctx.save();
+
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = energized ? 22 : 8;
+  ctx.shadowColor =
+    energized
+      ? "#fff1a9"
+      : side === "left"
+        ? "#6ed7ff"
+        : "#d88bff";
+
+  ctx.fillStyle =
+    energized
+      ? "#fff1a9"
+      : side === "left"
+        ? "#6ed7ff"
+        : "#d88bff";
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = energized
+    ? "#171411"
+    : "#08101d";
+
+  ctx.font =
+    `900 ${Math.max(12, radius)}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("♪", x, y + 1);
+
+  ctx.restore();
+}
+
 function drawLink(event, songTime) {
-  const beats = [];
+  const halfBeat = 0.5;
+  const nodes = [];
 
   for (
     let beat = 0;
     beat <= event.durationBeats + 0.001;
-    beat += 0.5
+    beat += halfBeat
   ) {
     let side = event.segments[0].side;
 
@@ -1302,57 +1483,58 @@ function drawLink(event, songTime) {
       }
     }
 
-    beats.push({
+    const segmentChange = event.segments.find(
+      (segment) =>
+        Math.abs(segment.beat - beat) < 0.001
+    );
+
+    nodes.push({
       beat,
       side,
-      transition: event.segments.some(
-        (segment) => Math.abs(segment.beat - beat) < 0.001
+      transition:
+        Boolean(segmentChange) &&
+        beat > 0,
+      ...linkNodePoint(
+        event,
+        beat,
+        side,
+        songTime
       )
     });
   }
 
-  const points = beats.map((node) => ({
-    ...node,
-    ...linkNodePoint(
-      event,
-      node.beat,
-      node.side,
-      songTime
-    )
-  }));
+  const visible = nodes.filter(
+    (node) =>
+      node.y >= -70 &&
+      node.y <= DESIGN.height + 50
+  );
 
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const a = points[i];
-    const b = points[i + 1];
+  for (let i = 0; i < visible.length - 1; i += 1) {
+    const a = visible[i];
+    const b = visible[i + 1];
 
-    if (
-      (a.y < -80 && b.y < -80) ||
-      (a.y > DESIGN.height + 80 &&
-        b.y > DESIGN.height + 80)
-    ) {
-      continue;
-    }
+    const segmentTime =
+      event.targetTime +
+      beatToSeconds(a.beat);
 
     const energized =
       event.started &&
-      songTime >=
-        event.targetTime + beatToSeconds(a.beat);
+      songTime >= segmentTime;
 
-    ctx.strokeStyle = energized
-      ? a.side === "left"
-        ? "rgba(110,215,255,.94)"
-        : "rgba(216,139,255,.94)"
-      : a.side === "left"
-        ? "rgba(110,215,255,.32)"
-        : "rgba(216,139,255,.32)";
+    ctx.strokeStyle =
+      energized
+        ? "rgba(255,238,153,.72)"
+        : a.side === "left"
+          ? "rgba(110,215,255,.38)"
+          : "rgba(216,139,255,.38)";
 
     ctx.shadowBlur = energized ? 16 : 6;
     ctx.shadowColor = ctx.strokeStyle;
-    ctx.lineWidth = energized ? 15 : 11;
+    ctx.lineWidth = energized ? 12 : 8;
 
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
@@ -1362,50 +1544,33 @@ function drawLink(event, songTime) {
 
   ctx.shadowBlur = 0;
 
-  for (const point of points) {
-    if (
-      point.y < -50 ||
-      point.y > DESIGN.height + 50
-    ) {
-      continue;
-    }
-
-    const isHead = point.beat === 0;
-    const isEnd =
-      Math.abs(
-        point.beat - event.durationBeats
-      ) < 0.001;
+  for (const node of visible) {
+    const nodeTime =
+      event.targetTime +
+      beatToSeconds(node.beat);
 
     const energized =
       event.started &&
-      songTime >=
-        event.targetTime +
-          beatToSeconds(point.beat);
+      songTime >= nodeTime;
 
-    ctx.fillStyle = energized
-      ? "#fff1a9"
-      : point.side === "left"
-        ? "#6ed7ff"
-        : "#d88bff";
-
-    ctx.beginPath();
-    ctx.arc(
-      point.x,
-      point.y,
-      point.transition || isHead || isEnd ? 12 : 7,
-      0,
-      Math.PI * 2
+    drawSlideOrb(
+      node.x,
+      node.y,
+      node.side,
+      node.transition ? 18 : 12,
+      energized ? 1 : 0.82,
+      energized
     );
-    ctx.fill();
 
-    if (point.transition && point.beat > 0) {
-      ctx.strokeStyle = "rgba(255,255,255,.78)";
+    if (node.transition) {
+      ctx.strokeStyle =
+        "rgba(255,255,255,.86)";
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(
-        point.x,
-        point.y,
-        18,
+        node.x,
+        node.y,
+        25,
         0,
         Math.PI * 2
       );
@@ -1413,18 +1578,54 @@ function drawLink(event, songTime) {
     }
   }
 
-  const expected = expectedLinkSide(
-    event,
-    Math.max(songTime, event.targetTime)
-  );
+  if (event.started) {
+    const expected =
+      expectedLinkSide(
+        event,
+        Math.max(songTime, event.targetTime)
+      );
+
+    const receiver = linkReceiver(expected);
+
+    ctx.shadowBlur = 26;
+    ctx.shadowColor = "#fff1a9";
+    ctx.strokeStyle =
+      holdState[expected].held
+        ? "#fff1a9"
+        : "#ff7184";
+
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(
+      receiver.x,
+      receiver.y,
+      24,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+
+    if (holdState[expected].held) {
+      drawSlideOrb(
+        receiver.x,
+        receiver.y,
+        expected,
+        18,
+        1,
+        true
+      );
+    }
+  }
 
   const next = nextLinkSegment(event, songTime);
-  const nextIn =
-    next
-      ? linkSegmentTime(event, next) - songTime
-      : null;
+  const nextIn = next
+    ? linkSegmentTime(event, next) - songTime
+    : Infinity;
 
-  ctx.fillStyle = "rgba(238,248,255,.82)";
+  ctx.fillStyle =
+    "rgba(238,248,255,.84)";
   ctx.font = "900 14px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -1433,26 +1634,28 @@ function drawLink(event, songTime) {
 
   if (!event.started) {
     instruction =
-      `PULSA Y MANTÉN ${event.segments[0].side === "left" ? "A" : "D"}`;
+      `ATRAPA Y MANTÉN ${event.segments[0].side === "left" ? "A" : "D"}`;
   } else if (
     next &&
-    nextIn <= 0.80 &&
-    nextIn >= -0.05
+    nextIn <= 0.9 &&
+    nextIn >= -0.08
   ) {
     instruction =
-      `CONECTA ${next.side === "left" ? "A" : "D"}`;
-  } else if (songTime >= event.endTime - 0.65) {
+      `CONECTA ${next.side === "left" ? "A" : "D"} SIN SOLTAR`;
+  } else if (
+    songTime >=
+    event.endTime - 0.72
+  ) {
     instruction =
-      `SUELTA ${event.segments.at(-1).side === "left" ? "A" : "D"} AL FINAL`;
+      `SUELTA ${event.segments.at(-1).side === "left" ? "A" : "D"} EN EL ÚLTIMO ORBE`;
   } else {
-    instruction =
-      `MANTÉN ${expected === "left" ? "A" : "D"}`;
+    instruction = "MANTÉN LA CADENA";
   }
 
   ctx.fillText(
     instruction,
     DESIGN.width / 2,
-    660
+    650
   );
 
   ctx.restore();
@@ -1818,51 +2021,104 @@ function drawControlButton(side, songTime) {
   const m = view();
   const pivot = m.pivot[side];
   const phase = flipperPhase(side, songTime);
+  const slideState = linkVisualState(side, songTime);
   const left = side === "left";
+
+  const highlighted =
+    phase.active ||
+    slideState.expected ||
+    slideState.next;
 
   ctx.save();
 
   ctx.strokeStyle = left
     ? "rgba(122,211,255,.26)"
     : "rgba(211,166,255,.25)";
-  ctx.lineWidth = 11;
+
+  ctx.lineWidth =
+    slideState.connected ? 15 : 10;
   ctx.lineCap = "round";
+
   ctx.beginPath();
-  ctx.moveTo(center.x + (left ? 24 : -24), center.y - 20);
+  ctx.moveTo(
+    center.x + (left ? 24 : -24),
+    center.y - 20
+  );
+
   ctx.quadraticCurveTo(
-    left ? 102 : 438,
-    825,
+    left ? 106 : 434,
+    846,
     pivot.x,
     pivot.y + 5
   );
+
   ctx.stroke();
 
-  ctx.shadowBlur = phase.active ? 24 : 10;
-  ctx.shadowColor = left
-    ? "rgba(92,204,255,.55)"
-    : "rgba(204,139,255,.52)";
+  ctx.shadowBlur =
+    highlighted ? 28 : 10;
 
-  ctx.fillStyle = phase.active
-    ? "#fff0a3"
-    : left
-      ? "#153e5d"
-      : "#34264f";
+  ctx.shadowColor =
+    slideState.next
+      ? "#fff1a9"
+      : left
+        ? "rgba(92,204,255,.58)"
+        : "rgba(204,139,255,.56)";
 
-  ctx.strokeStyle = phase.active
-    ? "#fff7c7"
-    : left
-      ? "rgba(142,222,255,.75)"
-      : "rgba(224,188,255,.72)";
+  ctx.fillStyle =
+    slideState.next
+      ? "#5b522d"
+      : highlighted
+        ? "#fff0a3"
+        : left
+          ? "#153e5d"
+          : "#34264f";
 
-  ctx.lineWidth = phase.active ? 4 : 2.5;
+  ctx.strokeStyle =
+    slideState.next
+      ? "#fff1a9"
+      : highlighted
+        ? "#fff7c7"
+        : left
+          ? "rgba(142,222,255,.75)"
+          : "rgba(224,188,255,.72)";
+
+  ctx.lineWidth =
+    highlighted ? 4 : 2.5;
+
   ctx.beginPath();
-  ctx.arc(center.x, center.y, 36, 0, Math.PI * 2);
+  ctx.arc(
+    center.x,
+    center.y,
+    slideState.expected ? 40 : 36,
+    0,
+    Math.PI * 2
+  );
   ctx.fill();
   ctx.stroke();
 
+  if (slideState.next) {
+    const pulse =
+      4 +
+      (Math.sin(performance.now() / 95) + 1) * 3;
+
+    ctx.strokeStyle =
+      "rgba(255,241,169,.78)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(
+      center.x,
+      center.y,
+      43 + pulse,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+  }
+
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = phase.active
-    ? "rgba(32,42,48,.76)"
+
+  ctx.strokeStyle = highlighted
+    ? "rgba(32,42,48,.72)"
     : left
       ? "rgba(170,232,255,.58)"
       : "rgba(235,210,255,.56)";
@@ -1882,37 +2138,73 @@ function drawControlButton(side, songTime) {
     ctx.stroke();
   }
 
-  ctx.fillStyle = phase.active
+  ctx.fillStyle = highlighted
     ? "#101723"
     : "rgba(244,250,255,.84)";
-  ctx.font = "900 12px system-ui, sans-serif";
+
+  ctx.font =
+    "900 12px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(left ? "A" : "D", center.x, center.y + 15);
+  ctx.fillText(
+    left ? "A" : "D",
+    center.x,
+    center.y + 15
+  );
 
   ctx.restore();
 }
 
 function drawFlipper(side, songTime) {
-  const segment = flipperSegment(side, songTime);
+  let segment = flipperSegment(side, songTime);
   const phase = segment.phase;
+  const slideState = linkVisualState(side, songTime);
+
+  if (slideState.connected) {
+    const m = view();
+    const gripAngle = lerp(
+      m.restAngle[side],
+      m.strikeAngle[side],
+      0.66
+    );
+
+    segment = {
+      ...segment,
+      tip: {
+        x:
+          segment.pivot.x +
+          Math.cos(gripAngle) *
+          FLIPPER.length,
+        y:
+          segment.pivot.y +
+          Math.sin(gripAngle) *
+          FLIPPER.length
+      }
+    };
+  }
 
   drawControlButton(side, songTime);
 
   ctx.save();
 
-  ctx.shadowBlur = phase.attack ? 22 : 6;
-  ctx.shadowColor = phase.attack ? "#fff0a3" : "#79cfff";
+  ctx.shadowBlur =
+    phase.attack || slideState.connected
+      ? 22
+      : 6;
+  ctx.shadowColor =
+    phase.attack || slideState.connected
+      ? "#fff0a3"
+      : "#79cfff";
 
   ctx.strokeStyle =
-    phase.attack
+    phase.attack || slideState.connected
       ? "#fff0a3"
       : phase.active
         ? "#f2fbff"
         : "#cfe9ff";
 
   ctx.lineWidth =
-    phase.attack
+    phase.attack || slideState.connected
       ? FLIPPER.width + 5
       : FLIPPER.width;
 
@@ -2108,7 +2400,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.13 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.14 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap P±45 G±90 GOOD±160ms · draw P±200 G±400 GOOD±850ms`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
