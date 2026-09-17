@@ -1,0 +1,80 @@
+{
+  "name": "Tap Lab Groove 01",
+  "bpm": 120,
+  "loopBeats": 16,
+  "countInBeats": 4,
+  "events": [
+    {
+      "beat": 0,
+      "side": "left",
+      "route": 0,
+      "symbol": "♩"
+    },
+    {
+      "beat": 1,
+      "side": "right",
+      "route": 0,
+      "symbol": "♪"
+    },
+    {
+      "beat": 2,
+      "side": "left",
+      "route": 1,
+      "symbol": "♪"
+    },
+    {
+      "beat": 3,
+      "side": "right",
+      "route": 1,
+      "symbol": "♩"
+    },
+    {
+      "beat": 4,
+      "side": "left",
+      "route": 2,
+      "symbol": "♬"
+    },
+    {
+      "beat": 5.5,
+      "side": "right",
+      "route": 2,
+      "symbol": "♪"
+    },
+    {
+      "beat": 7,
+      "side": "left",
+      "route": 0,
+      "symbol": "♩"
+    },
+    {
+      "beat": 8,
+      "side": "right",
+      "route": 0,
+      "symbol": "♪"
+    },
+    {
+      "beat": 9.5,
+      "side": "left",
+      "route": 1,
+      "symbol": "♪"
+    },
+    {
+      "beat": 11,
+      "side": "right",
+      "route": 1,
+      "symbol": "♩"
+    },
+    {
+      "beat": 12.5,
+      "side": "left",
+      "route": 2,
+      "symbol": "♬"
+    },
+    {
+      "beat": 14,
+      "side": "right",
+      "route": 2,
+      "symbol": "♪"
+    }
+  ]
+}
