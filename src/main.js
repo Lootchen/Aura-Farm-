@@ -1,4 +1,4 @@
-import { loadTapChart } from "./chart.js?v=0.9";
+import { loadTapChart } from "./chart.js?v=0.10";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -135,6 +135,7 @@ let hitCount = 0;
 let missCount = 0;
 let whiffCount = 0;
 let collisionCount = 0;
+let chainCount = 0;
 let wallExplosionCount = 0;
 let impactFlashes = [];
 let showDebug = false;
@@ -167,7 +168,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.9", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.10", import.meta.url);
   const chart = await loadTapChart(chartUrl);
 
   BPM = chart.bpm;
@@ -183,13 +184,13 @@ function comboMultiplier(value = combo) {
 }
 
 function view() {
-  const leftPivot = { x: 154, y: 802 };
-  const rightPivot = { x: 386, y: 802 };
+  const leftPivot = { x: 118, y: 768 };
+  const rightPivot = { x: 422, y: 768 };
 
-  const leftRest = -0.30;
-  const leftStrike = -1.14;
-  const rightRest = Math.PI + 0.30;
-  const rightStrike = Math.PI + 1.14;
+  const leftRest = -0.22;
+  const leftStrike = -1.12;
+  const rightRest = Math.PI + 0.22;
+  const rightStrike = Math.PI + 1.12;
 
   const leftImpactAngle = (leftRest + leftStrike) / 2;
   const rightImpactAngle = (rightRest + rightStrike) / 2;
@@ -678,6 +679,9 @@ function updateNotes(dt, songTime) {
       continue;
     }
 
+    note.prevX = note.x;
+    note.prevY = note.y;
+
     note.pathDistance =
       note.path.length - NOTE_SPEED * (note.targetTime - songTime);
 
@@ -796,25 +800,43 @@ function sweptProjectileHit(a, b) {
 }
 
 function resolveProjectileCollisions() {
-  const launched = [...active.values()].filter((note) => note.launched);
+  const projectiles = [...active.values()].filter((note) => note.launched);
+  const checkedPairs = new Set();
 
-  for (let i = 0; i < launched.length; i += 1) {
-    const a = launched[i];
-    if (!active.has(a.key)) continue;
+  for (const projectile of projectiles) {
+    if (!active.has(projectile.key)) continue;
 
-    for (let j = i + 1; j < launched.length; j += 1) {
-      const b = launched[j];
-      if (!active.has(b.key)) continue;
+    for (const other of [...active.values()]) {
+      if (other.key === projectile.key || !active.has(other.key)) continue;
 
-      const collision = sweptProjectileHit(a, b);
+      const pairKey =
+        projectile.key < other.key
+          ? `${projectile.key}|${other.key}`
+          : `${other.key}|${projectile.key}`;
+
+      if (checkedPairs.has(pairKey)) continue;
+      checkedPairs.add(pairKey);
+
+      const collision = sweptProjectileHit(projectile, other);
       if (!collision) continue;
 
-      active.delete(a.key);
-      active.delete(b.key);
-      collisionCount += 1;
-      score += 50 * comboMultiplier(combo);
+      const chain = !other.launched;
+
+      active.delete(projectile.key);
+      active.delete(other.key);
+
+      if (chain) {
+        resolved.add(other.key);
+        chainCount += 1;
+        score += 100 * comboMultiplier(combo);
+        showMessage("CHAIN +100", "#ffe985", 300);
+      } else {
+        collisionCount += 1;
+        score += 50 * comboMultiplier(combo);
+        showMessage("COLISIÓN +50", "#ffffff", 260);
+      }
+
       createExplosion(collision.x, collision.y);
-      showMessage("COLISIÓN +50", "#ffffff", 260);
       updateHud();
       break;
     }
@@ -940,36 +962,149 @@ function drawNote(note) {
   ctx.restore();
 }
 
-function drawControlLink(side) {
-  const m = view();
-  const pivot = m.pivot[side];
-  const padAnchor = {
-    x: side === "left" ? 135 : 405,
-    y: 855
-  };
+function roundedRectPath(x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
 
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawFingerprint(cx, cy, side, activeState) {
   ctx.save();
+  ctx.translate(cx, cy);
+
   ctx.strokeStyle =
     side === "left"
-      ? "rgba(126,214,255,.30)"
-      : "rgba(213,166,255,.28)";
-  ctx.lineWidth = 11;
+      ? `rgba(156,226,255,${activeState ? .88 : .48})`
+      : `rgba(224,190,255,${activeState ? .88 : .48})`;
+  ctx.lineWidth = activeState ? 3 : 2;
   ctx.lineCap = "round";
+
+  const rings = [
+    { rx: 34, ry: 45, start: Math.PI * .17, end: Math.PI * .83 },
+    { rx: 26, ry: 36, start: Math.PI * .13, end: Math.PI * .87 },
+    { rx: 18, ry: 27, start: Math.PI * .10, end: Math.PI * .90 },
+    { rx: 10, ry: 17, start: Math.PI * .08, end: Math.PI * .92 }
+  ];
+
+  for (const ring of rings) {
+    ctx.beginPath();
+    ctx.ellipse(0, 4, ring.rx, ring.ry, 0, ring.start, ring.end);
+    ctx.stroke();
+  }
+
   ctx.beginPath();
-  ctx.moveTo(pivot.x, pivot.y + 4);
-  ctx.lineTo(
-    lerp(pivot.x, padAnchor.x, 0.62),
-    lerp(pivot.y, padAnchor.y, 0.62)
-  );
-  ctx.lineTo(padAnchor.x, padAnchor.y);
+  ctx.moveTo(-29, 23);
+  ctx.quadraticCurveTo(-8, 49, 0, 50);
+  ctx.quadraticCurveTo(8, 49, 29, 23);
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(235,247,255,.16)";
-  ctx.lineWidth = 3;
+  ctx.restore();
+}
+
+function drawControlModule(side, songTime) {
+  const m = view();
+  const pivot = m.pivot[side];
+  const phase = flipperPhase(side, songTime);
+  const left = side === "left";
+
+  const pad = left
+    ? { x: 18, y: 812, w: 205, h: 140 }
+    : { x: 317, y: 812, w: 205, h: 140 };
+
+  const neckOuterX = left ? 96 : 444;
+  const neckInnerX = left ? 140 : 400;
+  const neckTopY = pivot.y + 8;
+  const neckBottomY = 840;
+
+  ctx.save();
+
+  ctx.shadowBlur = phase.active ? 24 : 10;
+  ctx.shadowColor = left
+    ? "rgba(92,198,255,.38)"
+    : "rgba(196,121,255,.34)";
+
   ctx.beginPath();
-  ctx.moveTo(pivot.x, pivot.y + 4);
-  ctx.lineTo(padAnchor.x, padAnchor.y);
+
+  if (left) {
+    ctx.moveTo(neckOuterX, neckTopY);
+    ctx.quadraticCurveTo(96, 794, 82, 812);
+    ctx.lineTo(54, 812);
+    ctx.quadraticCurveTo(18, 812, 18, 848);
+    ctx.lineTo(18, 916);
+    ctx.quadraticCurveTo(18, 952, 54, 952);
+    ctx.lineTo(187, 952);
+    ctx.quadraticCurveTo(223, 952, 223, 916);
+    ctx.lineTo(223, 858);
+    ctx.quadraticCurveTo(223, 828, 194, 820);
+    ctx.lineTo(neckInnerX, neckBottomY);
+    ctx.lineTo(neckInnerX, neckTopY);
+    ctx.closePath();
+  } else {
+    ctx.moveTo(neckInnerX, neckTopY);
+    ctx.lineTo(neckInnerX, neckBottomY);
+    ctx.lineTo(346, 820);
+    ctx.quadraticCurveTo(317, 828, 317, 858);
+    ctx.lineTo(317, 916);
+    ctx.quadraticCurveTo(317, 952, 353, 952);
+    ctx.lineTo(486, 952);
+    ctx.quadraticCurveTo(522, 952, 522, 916);
+    ctx.lineTo(522, 848);
+    ctx.quadraticCurveTo(522, 812, 486, 812);
+    ctx.lineTo(458, 812);
+    ctx.quadraticCurveTo(444, 794, neckOuterX, neckTopY);
+    ctx.closePath();
+  }
+
+  const fill = ctx.createLinearGradient(0, neckTopY, 0, 952);
+
+  if (left) {
+    fill.addColorStop(0, phase.active ? "rgba(55,123,162,.98)" : "rgba(23,63,91,.94)");
+    fill.addColorStop(1, "rgba(10,27,45,.98)");
+    ctx.strokeStyle = phase.active
+      ? "rgba(183,237,255,.88)"
+      : "rgba(120,210,255,.46)";
+  } else {
+    fill.addColorStop(0, phase.active ? "rgba(98,70,134,.98)" : "rgba(53,39,83,.94)");
+    fill.addColorStop(1, "rgba(25,20,51,.98)");
+    ctx.strokeStyle = phase.active
+      ? "rgba(236,213,255,.88)"
+      : "rgba(211,166,255,.44)";
+  }
+
+  ctx.fillStyle = fill;
+  ctx.lineWidth = phase.active ? 3 : 2;
+  ctx.fill();
   ctx.stroke();
+
+  ctx.globalAlpha = phase.active ? .95 : .72;
+  drawFingerprint(
+    left ? pad.x + 103 : pad.x + 102,
+    pad.y + 63,
+    side,
+    phase.active
+  );
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = phase.active
+    ? "#fff2ad"
+    : left
+      ? "rgba(224,247,255,.78)"
+      : "rgba(245,229,255,.78)";
+  ctx.font = "900 13px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(left ? "A" : "D", pad.x + pad.w / 2, 927);
+
   ctx.restore();
 }
 
@@ -977,17 +1112,17 @@ function drawFlipper(side, songTime) {
   const segment = flipperSegment(side, songTime);
   const phase = segment.phase;
 
-  drawControlLink(side);
+  drawControlModule(side, songTime);
 
   ctx.save();
 
-  ctx.shadowBlur = phase.attack ? 20 : 5;
+  ctx.shadowBlur = phase.attack ? 22 : 6;
   ctx.shadowColor = phase.attack ? "#fff0a3" : "#79cfff";
   ctx.strokeStyle =
     phase.attack
       ? "#fff0a3"
       : phase.active
-        ? "#e7f6ff"
+        ? "#f2fbff"
         : "#cfe9ff";
 
   ctx.lineWidth = phase.attack ? FLIPPER.width + 5 : FLIPPER.width;
@@ -998,9 +1133,9 @@ function drawFlipper(side, songTime) {
   ctx.stroke();
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "#132238";
+  ctx.fillStyle = phase.active ? "#243a51" : "#132238";
   ctx.beginPath();
-  ctx.arc(segment.pivot.x, segment.pivot.y, 10, 0, Math.PI * 2);
+  ctx.arc(segment.pivot.x, segment.pivot.y, 11, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.shadowBlur = phase.attack ? 22 : 8;
@@ -1084,12 +1219,12 @@ function drawDebug(songTime) {
   const rightPhase = flipperPhase("right", songTime);
 
   const lines = [
-    `TAP v0.9   ${chartName}   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
+    `TAP v0.10   ${chartName}   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
     `nota ${NOTE_SPEED}px/s CONSTANTE   post-hit ${POST_HIT_SPEED}px/s`,
     `P ±45  G ±90  GOOD ±160ms`,
     `último Δ ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}`,
     `L ${leftPhase.active ? "OCUPADA" : "LISTA"}   R ${rightPhase.active ? "OCUPADA" : "LISTA"}`,
-    `hits ${hitCount} miss ${missCount} vacío ${whiffCount} choque ${collisionCount} pared ${wallExplosionCount}`,
+    `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `input ${lastInputType}   offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)}   multi x${comboMultiplier(combo)}`
   ];
@@ -1231,6 +1366,7 @@ startButton.addEventListener("click", async () => {
   missCount = 0;
   whiffCount = 0;
   collisionCount = 0;
+  chainCount = 0;
   wallExplosionCount = 0;
   lastDeltaMs = null;
   lastJudgement = "—";
