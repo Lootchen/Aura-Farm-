@@ -1,79 +1,85 @@
 {
-  "name": "Tap Lab Groove 01",
-  "bpm": 120,
-  "loopBeats": 16,
+  "name": "Mechanics Lab 01",
+  "bpm": 110,
+  "loopBeats": 24,
   "countInBeats": 4,
   "events": [
     {
+      "type": "tap",
       "beat": 0,
       "side": "left",
       "route": 0,
       "symbol": "♩"
     },
     {
+      "type": "tap",
       "beat": 1,
       "side": "right",
       "route": 0,
       "symbol": "♪"
     },
     {
+      "type": "tap",
       "beat": 2,
       "side": "left",
       "route": 1,
       "symbol": "♪"
     },
     {
+      "type": "tap",
       "beat": 3,
       "side": "right",
       "route": 1,
       "symbol": "♩"
     },
     {
+      "type": "slide",
       "beat": 4,
-      "side": "left",
-      "route": 2,
-      "symbol": "♬"
+      "durationBeats": 3,
+      "path": "arc-left"
     },
     {
-      "beat": 5.5,
-      "side": "right",
-      "route": 2,
-      "symbol": "♪"
+      "type": "draw",
+      "beat": 8.5,
+      "symbol": "u"
     },
     {
-      "beat": 7,
-      "side": "left",
-      "route": 0,
-      "symbol": "♩"
-    },
-    {
-      "beat": 8,
-      "side": "right",
-      "route": 0,
-      "symbol": "♪"
-    },
-    {
-      "beat": 9.5,
-      "side": "left",
-      "route": 1,
-      "symbol": "♪"
-    },
-    {
+      "type": "tap",
       "beat": 11,
-      "side": "right",
-      "route": 1,
-      "symbol": "♩"
-    },
-    {
-      "beat": 12.5,
       "side": "left",
       "route": 2,
       "symbol": "♬"
     },
     {
-      "beat": 14,
+      "type": "tap",
+      "beat": 12,
       "side": "right",
       "route": 2,
+      "symbol": "♪"
+    },
+    {
+      "type": "slide",
+      "beat": 13.5,
+      "durationBeats": 2.5,
+      "path": "arc-right"
+    },
+    {
+      "type": "draw",
+      "beat": 17.5,
+      "symbol": "z"
+    },
+    {
+      "type": "tap",
+      "beat": 20,
+      "side": "left",
+      "route": 0,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 21,
+      "side": "right",
+      "route": 1,
       "symbol": "♪"
     }
   ]
