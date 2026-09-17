@@ -84,9 +84,9 @@ button { font: inherit; }
 
 .controls button {
   position: absolute;
-  bottom: max(28px, calc(env(safe-area-inset-bottom) + 18px));
-  width: 112px;
-  height: 112px;
+  bottom: max(6px, env(safe-area-inset-bottom));
+  width: 132px;
+  height: 132px;
   padding: 0;
   border: 0;
   outline: 0;
