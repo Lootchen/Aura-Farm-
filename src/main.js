@@ -14,12 +14,12 @@ const LOOP_BEATS = 16;
 const COUNT_IN_BEATS = 4;
 const NOTE_LEAD_SECONDS = 1.55;
 const APPROACH_SECONDS = 0.48;
-const MISS_AFTER_SECONDS = 0.24;
+const MISS_AFTER_SECONDS = 0.18;
 
 const WINDOWS = {
-  perfect: 0.070,
-  great: 0.140,
-  good: 0.220
+  perfect: 0.055,
+  great: 0.105,
+  good: 0.160
 };
 
 const JUDGEMENTS = {
@@ -132,6 +132,10 @@ let messageUntil = 0;
 let hitCount = 0;
 let totalAbsDeltaMs = 0;
 let totalSignedDeltaMs = 0;
+let calibrationOffsetMs = 0;
+let lastInputType = "—";
+let lastProcessingDelayMs = 0;
+let mistakeCount = 0;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const smoothstep = (value) => {
@@ -252,7 +256,7 @@ function candidateFor(side, now) {
     .filter((note) => !note.launched && note.side === side)
     .map((note) => ({ note, delta: now - note.targetTime }))
     .filter(({ delta }) => Math.abs(delta) <= WINDOWS.good)
-    .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))[0] ?? null;
+    .sort((a, b) => a.note.targetTime - b.note.targetTime)[0] ?? null;
 }
 
 function oppositeCandidate(side, now) {
@@ -260,19 +264,64 @@ function oppositeCandidate(side, now) {
   return candidateFor(opposite, now);
 }
 
-function hit(side) {
+function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
+  if (!clock.context) return;
+  const oscillator = clock.context.createOscillator();
+  const gain = clock.context.createGain();
+  const now = clock.context.currentTime;
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, now);
+  gain.gain.setValueAtTime(Math.max(0.0001, volume), now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  oscillator.connect(gain);
+  gain.connect(clock.context.destination);
+  oscillator.start(now);
+  oscillator.stop(now + duration + 0.01);
+}
+
+function playHitSound(side, judgement) {
+  const base = side === "left" ? 310 : 390;
+  const bonus = judgement === JUDGEMENTS.perfect ? 150 : judgement === JUDGEMENTS.great ? 80 : 20;
+  playTone(base + bonus, 0.055, judgement === JUDGEMENTS.perfect ? 0.075 : 0.055, "triangle");
+}
+
+function playErrorSound() {
+  playTone(145, 0.07, 0.045, "square");
+}
+
+function eventSongTime(eventTimestamp) {
+  const timestamp = Number(eventTimestamp);
+  const processingDelayMs = Number.isFinite(timestamp)
+    ? clamp(performance.now() - timestamp, 0, 100)
+    : 0;
+  lastProcessingDelayMs = processingDelayMs;
+  return clock.songTime - processingDelayMs / 1000 + calibrationOffsetMs / 1000;
+}
+
+function hit(side, eventTimestamp = null, inputType = "unknown") {
   if (!running) return;
   flash[side] = performance.now() + 120;
+  lastInputType = inputType;
 
-  const now = clock.songTime;
+  const now = eventSongTime(eventTimestamp);
   const candidate = candidateFor(side, now);
 
   if (!candidate) {
     const opposite = oppositeCandidate(side, now);
-    lastJudgement = opposite ? "LADO" : "VACÍO";
+    lastJudgement = opposite ? "ERROR" : "VACÍO";
     lastDeltaMs = null;
-    message = opposite ? "LADO CONTRARIO" : "SIN NOTA";
-    messageColor = opposite ? "#ff9da9" : "rgba(235,244,255,.72)";
+
+    if (opposite) {
+      combo = 0;
+      mistakeCount += 1;
+      message = "LADO CONTRARIO";
+      messageColor = "#ff9da9";
+      playErrorSound();
+    } else {
+      message = "SIN NOTA";
+      messageColor = "rgba(235,244,255,.72)";
+    }
+
     messageUntil = performance.now() + 300;
     updateHud();
     return;
@@ -302,12 +351,14 @@ function hit(side) {
   note.y = view().contact[side].y;
   resolved.add(note.key);
 
+  playHitSound(side, judgement);
   if (navigator.vibrate) navigator.vibrate(judgement === JUDGEMENTS.perfect ? 8 : 5);
   updateHud();
 }
 
 function miss(note) {
   combo = 0;
+  mistakeCount += 1;
   lastDeltaMs = Math.round((clock.songTime - note.targetTime) * 1000);
   lastJudgement = "MISS";
   message = "MISS";
@@ -500,16 +551,19 @@ function drawDebug(songTime) {
   const loopBeat = ((beat % LOOP_BEATS) + LOOP_BEATS) % LOOP_BEATS;
   const avgAbs = hitCount ? totalAbsDeltaMs / hitCount : 0;
   const bias = hitCount ? totalSignedDeltaMs / hitCount : 0;
+  const suggestedOffset = hitCount ? -bias : 0;
   const lines = [
-    `TAP v0.2   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
+    `TAP v0.3   BPM ${BPM}   beat ${loopBeat.toFixed(2)}`,
     `time ${songTime.toFixed(3)}s   FPS ${fps.toFixed(0)}`,
     `P ±${Math.round(WINDOWS.perfect * 1000)}  G ±${Math.round(WINDOWS.great * 1000)}  OK ±${Math.round(WINDOWS.good * 1000)} ms`,
     `delta ${lastDeltaMs === null ? "—" : `${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`}   avg |Δ| ${hitCount ? avgAbs.toFixed(0) : "—"}ms`,
-    `bias ${hitCount ? `${bias >= 0 ? "+" : ""}${bias.toFixed(0)}ms` : "—"}   hits ${hitCount}`
+    `bias ${hitCount ? `${bias >= 0 ? "+" : ""}${bias.toFixed(0)}ms` : "—"}   sugerido ${hitCount ? `${suggestedOffset >= 0 ? "+" : ""}${suggestedOffset.toFixed(0)}ms` : "—"}`,
+    `offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms   input ${lastInputType}   cola ${lastProcessingDelayMs.toFixed(1)}ms`,
+    `hits ${hitCount}   errores ${mistakeCount}   [ / ] ajusta offset`
   ];
 
   ctx.fillStyle = "rgba(0,0,0,.52)";
-  ctx.fillRect(12, 92, 310, 87);
+  ctx.fillRect(12, 92, 370, 118);
   ctx.fillStyle = "rgba(235,244,255,.78)";
   ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
   ctx.textAlign = "left";
@@ -578,7 +632,7 @@ function bindButton(button, side) {
     event.preventDefault();
     button.setPointerCapture?.(event.pointerId);
     pressVisual(button, true);
-    hit(side);
+    hit(side, event.timeStamp, event.pointerType || "touch");
   });
 
   const release = (event) => {
@@ -597,20 +651,38 @@ bindButton(rightButton, "right");
 window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
   const key = event.key.toLowerCase();
+
+  if (key === "[") {
+    calibrationOffsetMs = clamp(calibrationOffsetMs - 5, -200, 200);
+    message = `OFFSET ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`;
+    messageColor = "#79d8ff";
+    messageUntil = performance.now() + 500;
+    return;
+  }
+
+  if (key === "]") {
+    calibrationOffsetMs = clamp(calibrationOffsetMs + 5, -200, 200);
+    message = `OFFSET ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`;
+    messageColor = "#79d8ff";
+    messageUntil = performance.now() + 500;
+    return;
+  }
+
   if (key === "a" || event.key === "ArrowLeft") {
     pressVisual(leftButton, true);
-    hit("left");
+    hit("left", event.timeStamp, "keyboard");
   }
-  if (key === "l" || event.key === "ArrowRight") {
+
+  if (key === "d" || key === "l" || event.key === "ArrowRight") {
     pressVisual(rightButton, true);
-    hit("right");
+    hit("right", event.timeStamp, "keyboard");
   }
 });
 
 window.addEventListener("keyup", (event) => {
   const key = event.key.toLowerCase();
   if (key === "a" || event.key === "ArrowLeft") pressVisual(leftButton, false);
-  if (key === "l" || event.key === "ArrowRight") pressVisual(rightButton, false);
+  if (key === "d" || key === "l" || event.key === "ArrowRight") pressVisual(rightButton, false);
 });
 
 startButton.addEventListener("click", async () => {
@@ -622,6 +694,9 @@ startButton.addEventListener("click", async () => {
   hitCount = 0;
   totalAbsDeltaMs = 0;
   totalSignedDeltaMs = 0;
+  lastInputType = "—";
+  lastProcessingDelayMs = 0;
+  mistakeCount = 0;
   active.clear();
   resolved.clear();
   updateHud();
