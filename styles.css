@@ -3697,3 +3697,671 @@ button { font: inherit; }
       transparent 46%
     );
 }
+
+
+/* v0.41 — mobile presentation pass, researched card hierarchy */
+.start-panel {
+  background:
+    radial-gradient(
+      circle at 52% 22%,
+      rgba(var(--machine-secondary),.075),
+      transparent 32%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(4,7,13,.70),
+      rgba(4,7,13,.94) 56%,
+      rgba(4,7,13,.99)
+    );
+}
+
+.start-panel::before {
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0 48%,
+      rgba(255,255,255,.018) 48% 48.3%,
+      transparent 48.3% 100%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 54px,
+      rgba(var(--machine-secondary),.018) 54px 55px
+    ),
+    radial-gradient(
+      circle at 75% 18%,
+      rgba(var(--machine-secondary),.13),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 20% 32%,
+      rgba(var(--machine-accent),.11),
+      transparent 30%
+    );
+}
+
+.menu-shell {
+  width: min(100%, 500px);
+  gap: 14px;
+}
+
+.menu-hero {
+  min-height: 278px;
+  padding: 20px;
+  align-content: end;
+  border-color:
+    rgba(var(--machine-secondary),.13);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(8,15,24,.48),
+      rgba(7,12,20,.88)
+    ),
+    radial-gradient(
+      circle at 74% 36%,
+      rgba(var(--machine-secondary),.11),
+      transparent 34%
+    );
+  box-shadow:
+    0 22px 58px rgba(0,0,0,.34),
+    inset 0 1px 0 rgba(255,255,255,.04),
+    inset 0 -1px 0 rgba(var(--machine-accent),.06);
+}
+
+.menu-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0 20%,
+      rgba(255,255,255,.025) 20.1% 20.3%,
+      transparent 20.4% 79%,
+      rgba(255,255,255,.018) 79.1% 79.3%,
+      transparent 79.4%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0 72%,
+      rgba(var(--machine-accent),.035)
+    );
+}
+
+.menu-reactor {
+  position: absolute;
+  top: 20px;
+  right: 5px;
+  width: 240px;
+  height: 214px;
+  pointer-events: none;
+  filter:
+    drop-shadow(
+      0 22px 34px rgba(0,0,0,.34)
+    );
+}
+
+.menu-reactor-halo {
+  position: absolute;
+  inset: 22px 14px 8px 32px;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      rgba(var(--machine-secondary),.20),
+      rgba(var(--machine-accent),.07) 42%,
+      transparent 70%
+    );
+  filter: blur(4px);
+  animation:
+    menuReactorBreathe 3.2s ease-in-out infinite;
+}
+
+.menu-reactor-ring {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  border:
+    1px solid rgba(var(--machine-secondary),.20);
+  border-radius: 50%;
+  transform: translate(-50%,-50%);
+}
+
+.menu-reactor-ring.ring-a {
+  width: 146px;
+  height: 146px;
+  box-shadow:
+    0 0 0 18px rgba(var(--machine-secondary),.018),
+    0 0 28px rgba(var(--machine-secondary),.08);
+  animation:
+    menuReactorSpin 13s linear infinite;
+}
+
+.menu-reactor-ring.ring-b {
+  width: 104px;
+  height: 104px;
+  border-style: dashed;
+  border-color:
+    rgba(var(--machine-accent),.26);
+  animation:
+    menuReactorSpinReverse 9s linear infinite;
+}
+
+.menu-reactor-core {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 78px;
+  height: 78px;
+  transform: translate(-50%,-50%);
+  display: grid;
+  place-items: center;
+  border:
+    1px solid rgba(var(--machine-secondary),.32);
+  border-radius: 28px;
+  background:
+    radial-gradient(
+      circle at 40% 32%,
+      rgba(255,255,255,.10),
+      transparent 22%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(21,35,50,.95),
+      rgba(7,12,20,.96)
+    );
+  box-shadow:
+    0 0 28px rgba(var(--machine-secondary),.16),
+    inset 0 0 24px rgba(var(--machine-accent),.07);
+}
+
+.menu-reactor-core img {
+  width: 48px;
+  height: 48px;
+  filter:
+    drop-shadow(
+      0 0 10px rgba(var(--machine-secondary),.38)
+    );
+}
+
+.menu-reactor-petal {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 48px;
+  height: 98px;
+  transform-origin: 50% 100%;
+  border:
+    1px solid rgba(var(--machine-secondary),.12);
+  border-radius: 55% 55% 42% 42%;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(var(--machine-secondary),.08),
+      rgba(var(--machine-accent),.02)
+    );
+}
+
+.menu-reactor-petal.petal-a {
+  transform:
+    translate(-50%,-100%)
+    rotate(-54deg)
+    translateY(-38px);
+}
+
+.menu-reactor-petal.petal-b {
+  transform:
+    translate(-50%,-100%)
+    rotate(0deg)
+    translateY(-54px);
+}
+
+.menu-reactor-petal.petal-c {
+  transform:
+    translate(-50%,-100%)
+    rotate(54deg)
+    translateY(-38px);
+}
+
+.menu-title {
+  max-width: 74%;
+}
+
+.menu-title h1 {
+  text-shadow:
+    0 4px 20px rgba(0,0,0,.52);
+}
+
+.menu-title p {
+  max-width: 32ch;
+  font-size: .76rem;
+}
+
+.run-card {
+  min-height: 104px;
+  border-radius: 21px !important;
+  box-shadow:
+    0 16px 38px rgba(var(--machine-accent),.16),
+    0 0 0 1px rgba(var(--machine-accent),.16),
+    inset 0 1px rgba(255,255,255,.32);
+}
+
+.mode-card {
+  min-height: 74px;
+  border-radius: 17px !important;
+  background:
+    linear-gradient(
+      160deg,
+      rgba(var(--machine-secondary),.07),
+      rgba(9,15,24,.94) 44%
+    ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 10px 24px rgba(0,0,0,.20);
+}
+
+/* Dedicated decision state: gameplay remains context, cards own the screen. */
+.upgrade-panel {
+  background:
+    radial-gradient(
+      circle at 50% 36%,
+      rgba(var(--machine-secondary),.075),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(3,6,11,.70),
+      rgba(3,6,11,.975) 58%
+    );
+  backdrop-filter: blur(12px) saturate(.76);
+}
+
+.upgrade-shell {
+  gap: 10px;
+}
+
+.upgrade-kicker {
+  font-size: .64rem;
+  opacity: .74;
+}
+
+.upgrade-shell h2 {
+  font-size: 1.24rem;
+  letter-spacing: .06em;
+}
+
+.upgrade-cards {
+  gap: 11px;
+}
+
+.upgrade-card {
+  position: relative;
+  display: grid;
+  grid-template-rows:
+    auto
+    118px
+    auto
+    72px !important;
+  gap: 8px;
+  height: 330px;
+  padding: 12px;
+  border:
+    1px solid rgba(var(--accent),.26);
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at 50% 18%,
+      rgba(var(--accent),.16),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(20,31,45,.98),
+      rgba(7,12,20,.99)
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    inset 0 -22px 54px rgba(0,0,0,.22),
+    0 18px 44px rgba(0,0,0,.38);
+  overflow: hidden;
+}
+
+.upgrade-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  width: auto;
+  height: 4px;
+  border: 0;
+  border-radius: 20px 20px 0 0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--accent)) 22% 78%,
+      transparent
+    );
+  opacity: .82;
+}
+
+.upgrade-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      120deg,
+      rgba(255,255,255,.045),
+      transparent 23%
+    );
+  opacity: .7;
+}
+
+.upgrade-card .module-head {
+  position: static;
+  width: 100%;
+  min-height: 24px;
+  display: flex !important;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.upgrade-card .module-head > span {
+  max-width: 92%;
+  padding: 5px 8px;
+  border:
+    1px solid rgba(var(--accent),.16);
+  border-radius: 999px;
+  background:
+    rgba(5,9,15,.58);
+  color:
+    rgba(255,255,255,.75);
+  font:
+    900 .48rem/1
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: .06em;
+}
+
+.upgrade-card.is-synergy .module-head > span {
+  color: #ffe56d;
+  border-color:
+    rgba(255,229,109,.30);
+  background:
+    rgba(48,38,8,.48);
+}
+
+.upgrade-card-art {
+  position: relative;
+  min-height: 118px;
+  display: grid;
+  place-items: center;
+}
+
+.upgrade-card-orbit {
+  position: absolute;
+  width: 94px;
+  height: 94px;
+  border:
+    1px solid rgba(var(--accent),.30);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 12px rgba(var(--accent),.025),
+    0 0 30px rgba(var(--accent),.12);
+}
+
+.upgrade-card-orbit::before,
+.upgrade-card-orbit::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border:
+    1px dashed rgba(var(--accent),.24);
+  border-radius: 50%;
+}
+
+.upgrade-card-orbit::after {
+  inset: 31px -8px;
+  border-style: solid;
+  opacity: .42;
+  transform: rotate(58deg);
+}
+
+.upgrade-card-icon {
+  position: relative;
+  z-index: 1;
+  display: grid !important;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border:
+    1px solid rgba(var(--accent),.38);
+  border-radius: 24px;
+  background:
+    radial-gradient(
+      circle at 38% 30%,
+      rgba(255,255,255,.12),
+      transparent 24%
+    ),
+    rgba(7,13,22,.92);
+  color:
+    rgb(var(--accent));
+  font:
+    950 2.55rem/1
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow:
+    0 0 26px rgba(var(--accent),.16),
+    inset 0 0 22px rgba(var(--accent),.055);
+}
+
+.upgrade-card-stars {
+  position: absolute;
+  bottom: 0;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background:
+    rgba(5,9,15,.72);
+  color:
+    rgb(var(--accent));
+  font:
+    900 .55rem/1
+    system-ui, sans-serif;
+  letter-spacing: .12em;
+}
+
+.upgrade-card-copy {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.upgrade-family {
+  color:
+    rgba(var(--accent),.82);
+  font:
+    900 .48rem/1
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: .16em;
+}
+
+.upgrade-card-copy > strong {
+  font-size: 1rem;
+  line-height: 1;
+  letter-spacing: .025em;
+}
+
+.upgrade-effect {
+  display: inline-flex !important;
+  min-width: 0;
+  max-width: 100%;
+  padding: 5px 8px;
+  border:
+    1px solid rgba(var(--accent),.16);
+  border-radius: 999px;
+  background:
+    rgba(var(--accent),.085);
+  color:
+    rgb(var(--accent));
+  font:
+    900 .58rem/1
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: .045em;
+}
+
+.upgrade-desc {
+  max-width: 31ch;
+  color:
+    rgba(255,255,255,.68);
+  font-size: .63rem;
+  line-height: 1.32;
+}
+
+.upgrade-preview-strip {
+  position: relative;
+  width: 100%;
+  height: 72px;
+  overflow: hidden;
+  border:
+    1px solid rgba(255,255,255,.055);
+  border-radius: 11px;
+  background: #060b12;
+}
+
+.upgrade-preview-strip > span {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  left: 7px;
+  padding: 3px 5px;
+  border-radius: 999px;
+  background:
+    rgba(3,7,12,.68);
+  color:
+    rgba(255,255,255,.42);
+  font:
+    900 .40rem/1
+    system-ui, sans-serif;
+  letter-spacing: .08em;
+}
+
+.upgrade-preview-strip .module-preview-canvas {
+  width: 100%;
+  height: 72px;
+  border: 0;
+  border-radius: 0;
+  opacity: .88;
+}
+
+@media (max-width: 520px) {
+  .upgrade-cards {
+    scroll-padding-inline: 11vw;
+    padding:
+      6px 11vw
+      16px;
+  }
+
+  .upgrade-card {
+    flex:
+      0 0
+      min(78vw, 336px);
+    width:
+      min(78vw, 336px);
+    height: 346px;
+    padding: 13px;
+    grid-template-rows:
+      auto
+      126px
+      auto
+      76px !important;
+    gap: 8px;
+  }
+
+  .upgrade-card-art {
+    min-height: 126px;
+  }
+
+  .upgrade-card-icon {
+    width: 78px;
+    height: 78px;
+    font-size: 2.8rem;
+  }
+
+  .upgrade-card-orbit {
+    width: 102px;
+    height: 102px;
+  }
+
+  .upgrade-card-copy > strong {
+    font-size: 1.08rem;
+  }
+
+  .upgrade-effect {
+    font-size: .62rem;
+  }
+
+  .upgrade-desc {
+    font-size: .66rem;
+  }
+
+  .upgrade-preview-strip,
+  .upgrade-preview-strip .module-preview-canvas {
+    height: 76px;
+  }
+}
+
+@media (max-width: 390px) {
+  .menu-hero {
+    min-height: 260px;
+    padding: 17px;
+  }
+
+  .menu-reactor {
+    right: -14px;
+    width: 220px;
+    transform: scale(.90);
+    transform-origin: top right;
+  }
+
+  .menu-title {
+    max-width: 82%;
+  }
+
+  .menu-title h1 {
+    font-size:
+      clamp(2.05rem, 11vw, 2.75rem);
+  }
+
+  .upgrade-card {
+    flex-basis: 80vw;
+    width: 80vw;
+  }
+}
+
+@keyframes menuReactorBreathe {
+  0%, 100% {
+    transform: scale(.96);
+    opacity: .74;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes menuReactorSpin {
+  to {
+    transform:
+      translate(-50%,-50%)
+      rotate(360deg);
+  }
+}
+
+@keyframes menuReactorSpinReverse {
+  to {
+    transform:
+      translate(-50%,-50%)
+      rotate(-360deg);
+  }
+}
