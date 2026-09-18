@@ -33,6 +33,10 @@ const synergyBadge = document.querySelector("#synergyBadge");
 const currentBuildList = document.querySelector("#currentBuildList");
 const currentSynergy = document.querySelector("#currentSynergy");
 const pausePanel = document.querySelector("#pausePanel");
+const pauseButton = document.querySelector("#pauseButton");
+const pauseBuildList = document.querySelector("#pauseBuildList");
+const pauseSynergy = document.querySelector("#pauseSynergy");
+const abandonButton = document.querySelector("#abandonButton");
 const resumeButton = document.querySelector("#resumeButton");
 const summaryPanel = document.querySelector("#summaryPanel");
 const summaryTitle = document.querySelector("#summaryTitle");
@@ -8282,6 +8286,7 @@ function completeRun() {
   running = false;
   runPaused = false;
   awaitingUpgrade = false;
+  pauseButton.disabled = true;
   clock.stopScheduler();
 
   const practice =
@@ -8968,6 +8973,7 @@ async function startRun(mode = "standard") {
 
   startPanel.hidden = true;
   buildDock.hidden = false;
+  pauseButton.disabled = false;
 
   await beginAct();
 
@@ -9362,6 +9368,123 @@ window.addEventListener("resize", () => {
   render(clock.songTime);
 });
 
+function renderPauseBuild() {
+  const counts =
+    buildCounts();
+
+  pauseBuildList.innerHTML = "";
+
+  if (counts.size === 0) {
+    const empty =
+      document.createElement("span");
+    empty.className =
+      "build-empty";
+    empty.textContent =
+      "SIN MÓDULOS INSTALADOS";
+    pauseBuildList.append(
+      empty
+    );
+  } else {
+    for (const [id, count] of counts) {
+      const upgrade =
+        upgradeById(id);
+
+      if (!upgrade) continue;
+
+      const item =
+        document.createElement("div");
+      item.className =
+        `pause-build-item family-${upgrade.family}`;
+      item.innerHTML =
+        `<i>${upgrade.icon}</i><strong>${upgrade.title}${count > 1 ? ` ×${count}` : ""}</strong><small>${upgrade.desc}</small>`;
+      pauseBuildList.append(
+        item
+      );
+    }
+  }
+
+  const synergies =
+    activeBuildSynergies();
+
+  pauseSynergy.textContent =
+    synergies.length
+      ? `SYNERGY · ${synergies.map((item) => item.title).join(" · ")}`
+      : "SIN SINERGIA COMPLETA";
+}
+
+async function pauseRun() {
+  if (
+    !running ||
+    awaitingUpgrade
+  ) {
+    return;
+  }
+
+  running = false;
+  runPaused = true;
+  await clock.pause();
+  renderPauseBuild();
+  render(clock.songTime);
+  pausePanel.hidden = false;
+}
+
+async function resumeRun() {
+  if (!runPaused) return;
+
+  resumeButton.disabled = true;
+  resumeButton.textContent =
+    "REANUDANDO…";
+
+  await clock.resumePaused();
+
+  runPaused = false;
+  pausePanel.hidden = true;
+  running = true;
+  lastFrame =
+    performance.now();
+
+  resumeButton.disabled = false;
+  resumeButton.textContent =
+    "CONTINUAR";
+
+  requestAnimationFrame(frame);
+}
+
+function abandonRun() {
+  if (
+    !runPaused &&
+    !running
+  ) {
+    return;
+  }
+
+  running = false;
+  runPaused = false;
+  awaitingUpgrade = false;
+  clock.stopScheduler();
+
+  active.clear();
+  resolved.clear();
+  explosions = [];
+  impactFlashes = [];
+
+  pausePanel.hidden = true;
+  upgradePanel.hidden = true;
+  summaryPanel.hidden = true;
+  buildDock.hidden = true;
+  startPanel.hidden = false;
+
+  score = 0;
+  combo = 0;
+  updateHud();
+  render(clock.songTime);
+}
+
+pauseButton.addEventListener(
+  "click",
+  () => pauseRun()
+);
+
 document.addEventListener(
   "visibilitychange",
   async () => {
@@ -9369,10 +9492,7 @@ document.addEventListener(
       document.hidden &&
       running
     ) {
-      running = false;
-      runPaused = true;
-      await clock.pause();
-      pausePanel.hidden = false;
+      await pauseRun();
       return;
     }
 
@@ -9380,6 +9500,7 @@ document.addEventListener(
       !document.hidden &&
       runPaused
     ) {
+      renderPauseBuild();
       pausePanel.hidden = false;
     }
   }
@@ -9387,29 +9508,16 @@ document.addEventListener(
 
 resumeButton.addEventListener(
   "click",
-  async () => {
-    if (!runPaused) return;
+  () => resumeRun()
+);
 
-    resumeButton.disabled = true;
-    resumeButton.textContent =
-      "REANUDANDO…";
-
-    await clock.resumePaused();
-
-    runPaused = false;
-    pausePanel.hidden = true;
-    running = true;
-    lastFrame = performance.now();
-
-    resumeButton.disabled = false;
-    resumeButton.textContent =
-      "CONTINUAR";
-
-    requestAnimationFrame(frame);
-  }
+abandonButton.addEventListener(
+  "click",
+  () => abandonRun()
 );
 
 refreshMachineOptions();
+pauseButton.disabled = true;
 buildDock.hidden = true;
 renderBuildVisibility();
 setCalibration(
