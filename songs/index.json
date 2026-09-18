@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "defaultSong": "glasshouse-circuit",
+  "songs": [
+    {
+      "id": "glasshouse-circuit",
+      "file": "glasshouse-circuit.json"
+    }
+  ]
+}
