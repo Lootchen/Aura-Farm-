@@ -2289,6 +2289,42 @@ function moduleSlotElement(
   return button;
 }
 
+function moduleLevelEffect(
+  upgrade,
+  level
+) {
+  switch (upgrade.id) {
+    case "twin-shot":
+      return `${1 + level} ORBS POR PERFECT`;
+    case "ricochet":
+      return `${level} REBOTE${level === 1 ? "" : "S"} POR PROYECTIL`;
+    case "pierce":
+      return `ATRAVIESA ${level} BLANCO${level === 1 ? "" : "S"}`;
+    case "fragments":
+      return `${1 + level * 2} FRAGMENTOS POR EXPLOSIÓN`;
+    case "bumper":
+      return `${Math.min(level, BUMPER_LAYOUT.length)} BUMPER${level === 1 ? "" : "S"} ACTIVOS`;
+    case "nova":
+      return `${1 + level * 2} POWER ORBS AL CERRAR SLIDE`;
+    case "mirror-slide":
+      return `${Math.min(3, level)} ORB${level === 1 ? "" : "S"} ESPEJO`;
+    case "chain-relay":
+      return `${Math.min(3, level)} RELEVO${level === 1 ? "" : "S"} TRAS CHAIN`;
+    case "shockwave":
+      return `RADIO SHOCK ${48 * level}px`;
+    case "fusion":
+      return `FUSIÓN LV${level} · EXPLOSIÓN MAYOR`;
+    case "wall-charge":
+      return "IMPACTO DE PARED DETONA POWER";
+    case "bumper-split":
+      return "PRIMER BUMPER DUPLICA EL PROYECTIL";
+    case "combo-shield":
+      return `${level} CARGA${level === 1 ? "" : "S"} DE SHIELD`;
+    default:
+      return upgrade.effect;
+  }
+}
+
 function renderBuildManager() {
   activeModuleSlots.innerHTML =
     "";
@@ -2363,7 +2399,7 @@ function renderBuildManager() {
     document.createElement("button");
 
   buildManagerDetail.innerHTML =
-    `<strong>${upgrade.icon} ${upgrade.title} · LV${level}${atMax ? " MAX" : ""}</strong><span>${upgrade.desc}</span><small>${active ? "ACTIVO · modifica física, sinergias y música." : "RESERVA · no modifica la run hasta equiparlo."}</small>`;
+    `<canvas class="build-detail-preview module-preview-canvas" width="260" height="110" data-module="${upgrade.id}" aria-hidden="true"></canvas><strong>${upgrade.icon} ${upgrade.title} · LV${level}${atMax ? " MAX" : ""}</strong><span>${upgrade.desc}</span><small class="build-level-effect">${moduleLevelEffect(upgrade, level)}</small><small>${active ? "ACTIVO · modifica física, sinergias y música." : "RESERVA · no modifica la run hasta equiparlo."}</small>`;
 
   if (!buildManagerEditable()) {
     const hint =
@@ -2430,6 +2466,8 @@ function renderBuildManager() {
       hint
     );
   }
+
+  startModulePreviewLoop();
 }
 
 async function openBuildManager(
@@ -10770,15 +10808,18 @@ function startModulePreviewLoop() {
   }
 
   const tick = (now) => {
-    if (!awaitingUpgrade) {
+    if (
+      !awaitingUpgrade &&
+      buildPanel.hidden
+    ) {
       modulePreviewFrame = null;
       return;
     }
 
     for (
       const canvas of
-      upgradeCards.querySelectorAll(
-        ".module-preview-canvas"
+      document.querySelectorAll(
+        "#upgradeCards .module-preview-canvas, #buildManagerDetail .module-preview-canvas"
       )
     ) {
       const upgrade =
