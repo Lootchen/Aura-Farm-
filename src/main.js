@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.38";
+import { loadGameChart } from "./chart.js?v=0.38.1";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.38";
+} from "./music.js?v=0.38.1";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.38";
+const GAME_VERSION = "0.38.1";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.38";
+  "./assets/world/glasshouse-far.svg?v=0.38.1";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.38";
+  "./assets/world/growth-bays.svg?v=0.38.1";
 
 function drawWorldAsset(
   image,
@@ -3122,7 +3122,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.38", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.38.1", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -4273,50 +4273,6 @@ function noteShieldIntact(note) {
   );
 }
 
-function drawShieldCellPath(
-  context,
-  x,
-  y,
-  radius,
-  rotation = 0
-) {
-  context.beginPath();
-
-  for (
-    let index = 0;
-    index < 6;
-    index += 1
-  ) {
-    const angle =
-      rotation -
-      Math.PI / 2 +
-      index *
-        Math.PI / 3;
-    const px =
-      x +
-      Math.cos(angle) *
-        radius;
-    const py =
-      y +
-      Math.sin(angle) *
-        radius;
-
-    if (index === 0) {
-      context.moveTo(
-        px,
-        py
-      );
-    } else {
-      context.lineTo(
-        px,
-        py
-      );
-    }
-  }
-
-  context.closePath();
-}
-
 function drawShieldMembrane(
   context,
   x,
@@ -4327,117 +4283,128 @@ function drawShieldMembrane(
     pulse = 0
   } = {}
 ) {
-  const outer =
-    radius + 20 + pulse * 3;
-  const rotation =
-    performance.now() /
-    3400;
-  const halo =
+  const shellRadius =
+    radius + 10 + pulse * 1.6;
+  const ringRadius =
+    radius + 8 + pulse * 1.1;
+
+  const glow =
     context.createRadialGradient(
       x,
       y,
-      radius * 0.15,
+      radius * 0.35,
       x,
       y,
-      outer * 1.06
+      shellRadius + 8
     );
 
-  halo.addColorStop(
+  glow.addColorStop(
     0,
-    `rgba(210,249,255,${0.18 * alpha})`
+    `rgba(205,245,255,${0.08 * alpha})`
   );
-  halo.addColorStop(
-    0.52,
-    `rgba(111,215,255,${0.18 * alpha})`
+  glow.addColorStop(
+    0.58,
+    `rgba(145,224,255,${0.14 * alpha})`
   );
-  halo.addColorStop(
-    0.83,
-    `rgba(192,236,255,${0.32 * alpha})`
+  glow.addColorStop(
+    0.88,
+    `rgba(190,240,255,${0.18 * alpha})`
   );
-  halo.addColorStop(
+  glow.addColorStop(
     1,
-    "rgba(192,236,255,0)"
+    "rgba(190,240,255,0)"
   );
 
   context.save();
 
-  context.fillStyle = halo;
+  context.fillStyle = glow;
   context.beginPath();
   context.arc(
     x,
     y,
-    outer * 1.08,
+    shellRadius + 6,
+    0,
+    Math.PI * 2
+  );
+  context.fill();
+
+  context.fillStyle =
+    `rgba(120,210,240,${0.10 * alpha})`;
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    shellRadius,
     0,
     Math.PI * 2
   );
   context.fill();
 
   context.shadowBlur =
-    12 + pulse * 8;
+    10 + pulse * 5;
   context.shadowColor =
-    "rgba(184,241,255,.86)";
-  context.fillStyle =
-    `rgba(89,194,230,${0.105 * alpha})`;
+    "rgba(205,247,255,.60)";
   context.strokeStyle =
-    `rgba(221,250,255,${0.92 * alpha})`;
-  context.lineWidth =
-    3.7 + pulse * 0.8;
-  context.lineJoin = "round";
+    `rgba(232,250,255,${0.88 * alpha})`;
+  context.lineWidth = 3.2;
+  context.lineCap = "round";
 
-  drawShieldCellPath(
-    context,
-    x,
-    y,
-    outer - 3,
-    rotation
-  );
-  context.fill();
-  context.stroke();
+  const arcs = [
+    [-2.30, -1.18],
+    [-0.14, 1.02],
+    [2.00, 3.12]
+  ];
 
-  context.shadowBlur = 0;
-  context.strokeStyle =
-    `rgba(151,220,246,${0.46 * alpha})`;
-  context.lineWidth = 1.5;
-
-  drawShieldCellPath(
-    context,
-    x,
-    y,
-    radius + 9,
-    -rotation * 0.65
-  );
-  context.stroke();
-
-  for (
-    let index = 0;
-    index < 6;
-    index += 1
-  ) {
-    const angle =
-      rotation -
-      Math.PI / 2 +
-      index *
-        Math.PI / 3;
-    const nodeRadius =
-      outer - 3;
-    const nx =
-      x +
-      Math.cos(angle) *
-        nodeRadius;
-    const ny =
-      y +
-      Math.sin(angle) *
-        nodeRadius;
-
-    context.fillStyle =
-      index % 2 === 0
-        ? `rgba(230,253,255,${0.94 * alpha})`
-        : `rgba(211,139,255,${0.72 * alpha})`;
+  for (const [a0, a1] of arcs) {
     context.beginPath();
     context.arc(
-      nx,
-      ny,
-      2.8 + pulse * 0.6,
+      x,
+      y,
+      ringRadius,
+      a0,
+      a1
+    );
+    context.stroke();
+  }
+
+  context.shadowBlur = 0;
+
+  context.strokeStyle =
+    `rgba(155,222,246,${0.34 * alpha})`;
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    radius + 4,
+    0,
+    Math.PI * 2
+  );
+  context.stroke();
+
+  const studs = [
+    -Math.PI / 2,
+    Math.PI * 0.18,
+    Math.PI * 0.82
+  ];
+
+  for (const angle of studs) {
+    const sx =
+      x +
+      Math.cos(angle) *
+        ringRadius;
+    const sy =
+      y +
+      Math.sin(angle) *
+        ringRadius;
+
+    context.fillStyle =
+      `rgba(236,252,255,${0.92 * alpha})`;
+    context.beginPath();
+    context.arc(
+      sx,
+      sy,
+      2.1 + pulse * 0.35,
       0,
       Math.PI * 2
     );
@@ -4460,7 +4427,7 @@ function drawShieldBreakEcho(
 
   const age =
     performance.now() - breakAt;
-  const duration = 760;
+  const duration = 420;
 
   if (age < 0 || age > duration) {
     return;
@@ -4468,119 +4435,86 @@ function drawShieldBreakEcho(
 
   const t =
     clamp(age / duration, 0, 1);
+
+  context.save();
+
   const burstT =
-    clamp(t / 0.48, 0, 1);
+    clamp(t / 0.42, 0, 1);
   const burstAlpha =
     (1 - burstT) *
     (1 - burstT);
+
+  context.strokeStyle =
+    `rgba(235,252,255,${0.92 * burstAlpha})`;
+  context.lineWidth =
+    Math.max(
+      1,
+      3.6 * (1 - burstT)
+    );
+  context.lineCap = "round";
+
+  for (const angle of [
+    -Math.PI / 2,
+    Math.PI * 0.18,
+    Math.PI * 0.82
+  ]) {
+    const r0 =
+      radius + 9 +
+      burstT * 3;
+    const r1 =
+      radius + 18 +
+      burstT * 10;
+
+    context.beginPath();
+    context.moveTo(
+      x +
+        Math.cos(angle) * r0,
+      y +
+        Math.sin(angle) * r0
+    );
+    context.lineTo(
+      x +
+        Math.cos(angle) * r1,
+      y +
+        Math.sin(angle) * r1
+    );
+    context.stroke();
+  }
+
   const exposedAlpha =
     clamp(
       1 -
       Math.max(
         0,
-        (t - 0.22) / 0.78
+        (t - 0.10) / 0.90
       ),
       0,
       1
     );
-  const rotation =
-    breakAt / 900;
-
-  context.save();
 
   context.strokeStyle =
-    `rgba(232,253,255,${0.92 * burstAlpha})`;
-  context.lineWidth =
-    Math.max(
-      1,
-      4.4 *
-        (1 - burstT)
-    );
-  context.lineCap = "round";
+    `rgba(255,230,140,${0.70 * exposedAlpha})`;
+  context.lineWidth = 2.4;
 
-  for (
-    let index = 0;
-    index < 6;
-    index += 1
-  ) {
-    const angle =
-      rotation +
-      index *
-        Math.PI / 3;
-    const startRadius =
-      radius + 15 +
-      burstT * 7;
-    const endRadius =
-      radius + 28 +
-      burstT * 20;
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    radius + 6,
+    Math.PI * 0.62,
+    Math.PI * 1.08
+  );
+  context.stroke();
 
-    context.beginPath();
-    context.moveTo(
-      x +
-        Math.cos(angle) *
-          startRadius,
-      y +
-        Math.sin(angle) *
-          startRadius
-    );
-    context.lineTo(
-      x +
-        Math.cos(angle) *
-          endRadius,
-      y +
-        Math.sin(angle) *
-          endRadius
-    );
-    context.stroke();
-  }
-
-  context.shadowBlur =
-    10 *
-    exposedAlpha;
-  context.shadowColor =
-    "rgba(255,241,169,.68)";
-  context.strokeStyle =
-    `rgba(255,241,169,${0.70 * exposedAlpha})`;
-  context.lineWidth = 2.8;
-
-  for (const side of [-1, 1]) {
-    context.beginPath();
-    context.arc(
-      x,
-      y,
-      radius + 8,
-      side < 0
-        ? Math.PI * 0.62
-        : -Math.PI * 0.38,
-      side < 0
-        ? Math.PI * 1.10
-        : Math.PI * 0.10
-    );
-    context.stroke();
-  }
-
-  context.shadowBlur = 0;
-  context.fillStyle =
-    `rgba(255,249,218,${0.82 * exposedAlpha})`;
-
-  for (const angle of [
-    -Math.PI * 0.42,
-    Math.PI * 0.58
-  ]) {
-    context.beginPath();
-    context.arc(
-      x +
-        Math.cos(angle) *
-          (radius + 8),
-      y +
-        Math.sin(angle) *
-          (radius + 8),
-      2.4,
-      0,
-      Math.PI * 2
-    );
-    context.fill();
-  }
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    radius + 6,
+    -Math.PI * 0.08,
+    Math.PI * 0.38
+  );
+  context.stroke();
 
   context.restore();
 }
