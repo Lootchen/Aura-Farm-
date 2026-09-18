@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.34";
+import { loadGameChart } from "./chart.js?v=0.35";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.34";
+} from "./music.js?v=0.35";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -88,9 +88,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.34";
+  "./assets/world/glasshouse-far.svg?v=0.35";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.34";
+  "./assets/world/growth-bays.svg?v=0.35";
 
 function drawWorldAsset(
   image,
@@ -3112,7 +3112,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.34", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.35", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -3804,6 +3804,9 @@ function configureLaunchedProjectile(
   } = {}
 ) {
   note.launched = true;
+  note.launchedAt =
+    performance.now();
+  note.ricochetAt = -Infinity;
   note.prevX = note.x;
   note.prevY = note.y;
   note.vx = Math.cos(angle) * speed;
@@ -4475,8 +4478,20 @@ function breakNoteShield(
   setOperatorMood(
     chain
       ? "chain"
-      : "hit",
-    chain ? 0.72 : 0.48
+      : "shield",
+    chain ? 0.82 : 0.62
+  );
+  setOperatorLean(
+    projectile?.side ??
+      note.side,
+    chain ? 0.90 : 0.68
+  );
+
+  playTone(
+    chain ? 1480 : 1240,
+    0.026,
+    chain ? 0.024 : 0.018,
+    "sine"
   );
 
   if (navigator.vibrate) {
@@ -5165,6 +5180,13 @@ function resolveBumperCollisions() {
         bumper.y + ny * (limit + 1);
       projectile.prevX = projectile.x;
       projectile.prevY = projectile.y;
+      projectile.ricochetAt =
+        performance.now();
+
+      bumpFeedback(
+        0.75,
+        0.014
+      );
 
       createImpactFlash(
         projectile.x,
@@ -5334,6 +5356,17 @@ function updateTap(note, dt, songTime) {
         );
         note.prevX = note.x;
         note.prevY = note.y;
+        note.ricochetAt =
+          performance.now();
+
+        bumpFeedback(
+          0.9,
+          0.018
+        );
+        setOperatorLean(
+          note.side,
+          0.34
+        );
 
         createImpactFlash(
           note.x,
@@ -7675,6 +7708,31 @@ function drawOperatorSocket(songTime) {
       ctx.stroke();
     }
   } else if (
+    mood === "shield"
+  ) {
+    for (const sign of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(
+        sign * 8,
+        -9
+      );
+      ctx.lineTo(
+        sign * 3,
+        -7
+      );
+      ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      -8,
+      1.6,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  } else if (
     mood === "chain" ||
     mood === "victory"
   ) {
@@ -8699,6 +8757,97 @@ function drawTap(note) {
 
   if (
     note.launched &&
+    Number.isFinite(
+      note.launchedAt
+    )
+  ) {
+    const launchAge =
+      performance.now() -
+      note.launchedAt;
+
+    if (
+      launchAge >= 0 &&
+      launchAge < 180
+    ) {
+      const t =
+        launchAge / 180;
+      const alpha =
+        (1 - t) * 0.72;
+
+      ctx.save();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle =
+        note.power
+          ? `rgba(255,241,169,${alpha})`
+          : note.side === "left"
+            ? `rgba(110,215,255,${alpha})`
+            : `rgba(216,139,255,${alpha})`;
+      ctx.lineWidth =
+        3.2 * (1 - t) + 0.8;
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        0,
+        radius +
+          5 +
+          t * 15,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  if (
+    note.launched &&
+    Number.isFinite(
+      note.ricochetAt
+    )
+  ) {
+    const ricochetAge =
+      performance.now() -
+      note.ricochetAt;
+
+    if (
+      ricochetAge >= 0 &&
+      ricochetAge < 150
+    ) {
+      const t =
+        ricochetAge / 150;
+      const alpha =
+        (1 - t) * 0.88;
+      const angle =
+        Math.atan2(
+          note.vy,
+          note.vx
+        );
+
+      ctx.save();
+      ctx.rotate(
+        angle +
+        Math.PI / 2
+      );
+      ctx.strokeStyle =
+        `rgba(94,226,215,${alpha})`;
+      ctx.lineWidth =
+        4.2 - t * 2.4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        0,
+        radius + 8 + t * 8,
+        -0.82,
+        0.82
+      );
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  if (
+    note.launched &&
     Number(
       note.ricochetsLeft || 0
     ) > 0
@@ -9414,7 +9563,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.34 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.35 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE directo · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
