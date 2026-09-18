@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.27";
+import { loadGameChart } from "./chart.js?v=0.28";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.27";
+} from "./music.js?v=0.28";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -1870,7 +1870,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.27", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.28", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -6101,6 +6101,201 @@ function drawOperatorSocket(songTime) {
   );
 }
 
+function currentStemLevels(songTime) {
+  const beat =
+    Math.max(
+      0,
+      songTime /
+        (60 / BPM)
+    );
+  const frame =
+    songFrameAtBeat(beat);
+  const actEnergy =
+    clamp(
+      (wave - 1) /
+        Math.max(
+          1,
+          RUN_ACTS - 1
+        ),
+      0,
+      1
+    );
+  const slideEnergy =
+    clamp(
+      (
+        runMods.slideNova +
+        runMods.slideMirror
+      ) / 3,
+      0,
+      1
+    );
+  const auraEnergy =
+    clamp(
+      (
+        runMods.shockwave +
+        runMods.fusionBlast +
+        runMods.wallCharge +
+        runMods.fragmentCount *
+          0.25
+      ) / 4,
+      0,
+      1
+    );
+
+  return [
+    {
+      key: "D",
+      level:
+        frame.kick ||
+        frame.snare ||
+        frame.hat
+          ? 0.72 +
+            actEnergy * 0.28
+          : 0.18
+    },
+    {
+      key: "B",
+      level:
+        frame.bassMidi !== null
+          ? 0.70 +
+            actEnergy * 0.20
+          : 0.16
+    },
+    {
+      key: "H",
+      level:
+        frame.chordMidi
+          ? 0.70
+          : 0.24
+    },
+    {
+      key: "L",
+      level:
+        frame.leadMidi !== null
+          ? clamp(
+              0.28 +
+              actEnergy * 0.38 +
+              slideEnergy * 0.34,
+              0,
+              1
+            )
+          : 0.12
+    },
+    {
+      key: "A",
+      level:
+        frame.auraMidi !== null
+          ? clamp(
+              0.18 +
+              actEnergy * 0.25 +
+              auraEnergy * 0.50,
+              0,
+              1
+            )
+          : 0.08
+    },
+    {
+      key: "X",
+      level:
+        wave === FINAL_ACT
+          ? (
+              bossState.phase === 2
+                ? 1
+                : 0.76
+            )
+          : 0.04
+    }
+  ];
+}
+
+function drawStemRack(songTime) {
+  if (!running) return;
+
+  const palette =
+    machinePalette();
+  const levels =
+    currentStemLevels(
+      songTime
+    );
+  const x = 270;
+  const y = 924;
+  const spacing = 16;
+
+  ctx.save();
+
+  ctx.fillStyle =
+    "rgba(5,9,15,.74)";
+  ctx.strokeStyle =
+    "rgba(255,255,255,.065)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(
+    x - 58,
+    y - 13,
+    116,
+    26,
+    9
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  levels.forEach(
+    (stem, index) => {
+      const sx =
+        x +
+        (
+          index -
+          (levels.length - 1) / 2
+        ) *
+          spacing;
+
+      for (
+        let segment = 0;
+        segment < 3;
+        segment += 1
+      ) {
+        const threshold =
+          (segment + 1) / 3;
+        const lit =
+          stem.level >=
+          threshold;
+
+        ctx.fillStyle =
+          lit
+            ? (
+                stem.key === "A" ||
+                stem.key === "X"
+                  ? `rgba(${palette.accent.join(",")},.88)`
+                  : `rgba(${palette.secondary.join(",")},.78)`
+              )
+            : "rgba(255,255,255,.055)";
+
+        ctx.fillRect(
+          sx - 3,
+          y + 3 -
+            segment * 5,
+          6,
+          3
+        );
+      }
+
+      ctx.fillStyle =
+        "rgba(255,255,255,.34)";
+      ctx.font =
+        "900 6px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign =
+        "center";
+      ctx.fillText(
+        stem.key,
+        sx,
+        y + 10
+      );
+    }
+  );
+
+  ctx.restore();
+}
+
 function drawAuriFieldGuide(songTime) {
   if (
     profile.tutorialSeen ||
@@ -7185,7 +7380,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.27 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.28 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -7244,6 +7439,7 @@ function render(songTime) {
 
   drawFlipper("left", songTime);
   drawFlipper("right", songTime);
+  drawStemRack(songTime);
 
   drawImpactFlashes();
   drawExplosions();
