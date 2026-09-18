@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.35";
+import { loadGameChart } from "./chart.js?v=0.36";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.35";
+} from "./music.js?v=0.36";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -88,9 +88,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.35";
+  "./assets/world/glasshouse-far.svg?v=0.36";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.35";
+  "./assets/world/growth-bays.svg?v=0.36";
 
 function drawWorldAsset(
   image,
@@ -3112,7 +3112,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.35", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.36", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -6948,6 +6948,194 @@ function worldMusicResponse() {
   };
 }
 
+function drawGlasshouseDepth(
+  palette,
+  intensity,
+  musicResponse
+) {
+  const [ar, ag, ab] =
+    palette.accent;
+  const [sr, sg, sb] =
+    palette.secondary;
+  const time =
+    Math.max(
+      0,
+      clock.songTime
+    );
+  const buildEnergy =
+    clamp(
+      activeModulePower() / 8,
+      0,
+      1
+    );
+  const reactorEnergy =
+    clamp(
+      0.10 +
+      intensity * 0.34 +
+      buildEnergy * 0.24 +
+      musicResponse.lead * 0.14 +
+      musicResponse.aura * 0.18,
+      0,
+      1
+    );
+
+  ctx.save();
+
+  // Distant glasshouse ribs establish scale without competing with gameplay.
+  ctx.strokeStyle =
+    `rgba(220,238,246,${0.022 + intensity * 0.022})`;
+  ctx.lineWidth = 1.2;
+
+  for (
+    let rib = -3;
+    rib <= 3;
+    rib += 1
+  ) {
+    const topX =
+      DESIGN.width / 2 +
+      rib * 70;
+    const drift =
+      Math.sin(
+        time * 0.08 +
+        rib * 0.9
+      ) *
+      4;
+
+    ctx.beginPath();
+    ctx.moveTo(
+      topX + drift,
+      92
+    );
+    ctx.bezierCurveTo(
+      topX +
+        rib * 3 +
+        drift,
+      260,
+      topX -
+        rib * 8,
+      540,
+      topX -
+        rib * 12,
+      790
+    );
+    ctx.stroke();
+  }
+
+  // A buried reactor reads as world machinery, not as a gameplay target.
+  ctx.save();
+  ctx.translate(
+    DESIGN.width / 2,
+    430
+  );
+  ctx.rotate(
+    time * 0.022
+  );
+
+  for (
+    let ring = 0;
+    ring < 3;
+    ring += 1
+  ) {
+    const radius =
+      118 + ring * 31;
+    const segments =
+      10 + ring * 2;
+
+    for (
+      let segment = 0;
+      segment < segments;
+      segment += 1
+    ) {
+      const litThreshold =
+        reactorEnergy *
+        segments;
+      const lit =
+        segment <
+        litThreshold;
+      const start =
+        segment *
+          Math.PI *
+          2 /
+          segments +
+        ring * 0.11;
+      const end =
+        start +
+        Math.PI *
+          1.18 /
+          segments;
+
+      ctx.strokeStyle =
+        lit
+          ? `rgba(${ar},${ag},${ab},${0.030 + reactorEnergy * 0.045})`
+          : `rgba(${sr},${sg},${sb},.014)`;
+      ctx.lineWidth =
+        ring === 0
+          ? 2.2
+          : 1.4;
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        0,
+        radius,
+        start,
+        end
+      );
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+
+  // Sparse condensation stays at the edges so the central rhythm field remains clean.
+  const dropAlpha =
+    0.018 +
+    musicResponse.aura * 0.025;
+
+  for (
+    let drop = 0;
+    drop < 8;
+    drop += 1
+  ) {
+    const left =
+      drop % 2 === 0;
+    const x =
+      left
+        ? 48 +
+          (drop % 3) * 15
+        : DESIGN.width -
+          48 -
+          (drop % 3) * 15;
+    const base =
+      120 +
+      drop * 83;
+    const y =
+      100 +
+      (
+        base +
+        time *
+          (3.6 + drop * 0.18)
+      ) %
+        720;
+
+    ctx.strokeStyle =
+      `rgba(220,242,250,${dropAlpha})`;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(
+      x,
+      y
+    );
+    ctx.lineTo(
+      x +
+        (left ? 1.5 : -1.5),
+      y + 9
+    );
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 function drawBackground() {
   const palette =
     machinePalette();
@@ -7013,6 +7201,12 @@ function drawBackground() {
   drawWorldAsset(
     WORLD_ASSETS.mid,
     0.42
+  );
+
+  drawGlasshouseDepth(
+    palette,
+    intensity,
+    musicResponse
   );
 
   // Chassis rails.
@@ -7463,6 +7657,55 @@ function drawOperatorSocket(songTime) {
     )
   );
   ctx.scale(pulse, pulse);
+
+  // Quiet machine tethers make AURI feel physically wired into both control arms.
+  ctx.save();
+  ctx.strokeStyle =
+    `rgba(${palette.secondary.join(",")},${0.10 + operatorPulse * 0.10})`;
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+
+  for (const sign of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(
+      sign * 28,
+      7
+    );
+    ctx.bezierCurveTo(
+      sign * 48,
+      12,
+      sign * 68,
+      27,
+      sign * 102,
+      22
+    );
+    ctx.stroke();
+
+    const nodeX =
+      sign *
+      (
+        54 +
+        beat * 8
+      );
+    const nodeY =
+      16 +
+      beat * 5;
+
+    ctx.fillStyle =
+      `rgba(${palette.accent.join(",")},${0.18 + beat * 0.18})`;
+    ctx.beginPath();
+    ctx.arc(
+      nodeX,
+      nodeY,
+      2.4 +
+        operatorPulse * 1.2,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  ctx.restore();
 
   // Central cockpit: AURI lives between the two thumbs, outside the playfield.
   ctx.shadowBlur =
@@ -9563,7 +9806,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.35 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.36 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE directo · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
