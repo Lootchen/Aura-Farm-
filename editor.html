@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b12">
+  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.44" type="image/svg+xml">
+  <title>Aura Farm — Chart Lab</title>
+  <link rel="stylesheet" href="./editor.css?v=0.44">
+</head>
+<body>
+  <main class="editor-app">
+    <header class="editor-topbar">
+      <a class="editor-brand" href="./index.html">
+        <img src="./assets/ui/aura-mark.svg?v=0.44" alt="">
+        <span><strong>AURA FARM</strong><small>CHART LAB · v0.44</small></span>
+      </a>
+
+      <div class="transport" aria-label="Transporte">
+        <button id="playButton" class="primary" type="button">▶ PLAY</button>
+        <button id="stopButton" type="button">■ STOP</button>
+        <div class="transport-readout">
+          <span>BEAT</span>
+          <strong id="beatReadout">0.00</strong>
+        </div>
+        <div class="transport-readout">
+          <span>TIME</span>
+          <strong id="timeReadout">0:00.000</strong>
+        </div>
+      </div>
+
+      <div class="editor-actions">
+        <button id="undoButton" type="button" title="Ctrl/Cmd+Z">↶</button>
+        <button id="redoButton" type="button" title="Ctrl/Cmd+Shift+Z">↷</button>
+        <button id="importButton" type="button">IMPORTAR</button>
+        <button id="exportButton" class="primary" type="button">EXPORTAR JSON</button>
+        <input id="importInput" type="file" accept=".json,application/json" hidden>
+      </div>
+    </header>
+
+    <section class="editor-commandbar">
+      <label>
+        <span>CANCIÓN</span>
+        <select id="songSelect"></select>
+      </label>
+
+      <label>
+        <span>CHART</span>
+        <select id="chartSelect"></select>
+      </label>
+
+      <button id="newChartButton" type="button">+ CHART</button>
+
+      <label>
+        <span>SNAP</span>
+        <select id="snapSelect"></select>
+      </label>
+
+      <label>
+        <span>ZOOM</span>
+        <input id="zoomRange" type="range" min="36" max="116" step="4" value="72">
+      </label>
+
+      <div class="tool-group" role="group" aria-label="Herramienta de edición">
+        <button class="tool is-active" type="button" data-tool="select">SELECCIONAR</button>
+        <button class="tool cyan" type="button" data-tool="tap-left">TAP L</button>
+        <button class="tool violet" type="button" data-tool="tap-right">TAP R</button>
+        <button class="tool cyan" type="button" data-tool="trace-left">TRACE L</button>
+        <button class="tool violet" type="button" data-tool="trace-right">TRACE R</button>
+      </div>
+    </section>
+
+    <section class="song-strip">
+      <div>
+        <span id="songMeta">CARGANDO…</span>
+        <strong id="songTitle">—</strong>
+      </div>
+      <div class="song-strip-stat"><span>EVENTOS</span><strong id="eventCount">0</strong></div>
+      <div class="song-strip-stat"><span>SYNC</span><strong id="syncCount">0/0</strong></div>
+      <div class="song-strip-stat"><span>GRID</span><strong id="gridReadout">—</strong></div>
+      <div id="validationBadge" class="validation-badge" data-state="loading">VALIDANDO</div>
+    </section>
+
+    <section class="workspace">
+      <div class="timeline-panel">
+        <div class="timeline-head">
+          <div>
+            <span class="eyebrow">TIMELINE</span>
+            <strong>La música manda; el chart responde.</strong>
+          </div>
+          <div class="timeline-help">
+            Click en BEAT para mover el playhead · Click en una lane para colocar · DELETE elimina · ←/→ mueve por snap
+          </div>
+        </div>
+
+        <div class="timeline-shell">
+          <aside class="lane-labels" aria-hidden="true">
+            <div>BEAT</div>
+            <div>MUSIC</div>
+            <div class="cyan">TAP L</div>
+            <div class="violet">TAP R</div>
+            <div>TRACE</div>
+          </aside>
+          <div id="timelineViewport" class="timeline-viewport" tabindex="0" aria-label="Timeline de chart">
+            <canvas id="timelineCanvas" height="330"></canvas>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span><i class="dot drums"></i>DRUMS</span>
+          <span><i class="dot bass"></i>BASS</span>
+          <span><i class="dot lead"></i>LEAD</span>
+          <span><i class="dot aura"></i>AURA</span>
+          <span><i class="dot boss"></i>BOSS</span>
+          <span><i class="ring"></i>SHIELD</span>
+          <span class="legend-error">ROJO = desalineado / inválido</span>
+        </div>
+      </div>
+
+      <aside class="inspector-panel">
+        <div class="inspector-scroll">
+          <section class="panel-card">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">SONG</span>
+                <strong>Metadata</strong>
+              </div>
+            </div>
+
+            <div class="field-grid">
+              <label class="field span-2"><span>TÍTULO</span><input id="songTitleInput" type="text"></label>
+              <label class="field"><span>ARTISTA</span><input id="songArtistInput" type="text"></label>
+              <label class="field"><span>BPM</span><input id="songBpmInput" type="number" min="20" max="400" step="0.01"></label>
+              <label class="field"><span>COUNT-IN</span><input id="countInInput" type="number" min="0" max="16" step="1"></label>
+              <label class="field"><span>DIFICULTAD</span><input id="difficultyInput" type="text"></label>
+              <label class="field span-2"><span>DESCRIPCIÓN</span><textarea id="songDescriptionInput" rows="2"></textarea></label>
+            </div>
+          </section>
+
+          <section class="panel-card">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">EVENT</span>
+                <strong id="selectionTitle">Nada seleccionado</strong>
+              </div>
+              <div class="panel-heading-actions">
+                <button id="duplicateButton" type="button" disabled>DUPLICAR</button>
+                <button id="deleteButton" class="danger" type="button" disabled>ELIMINAR</button>
+              </div>
+            </div>
+
+            <div id="emptyInspector" class="empty-inspector">
+              Selecciona un evento del timeline o usa TAP/TRACE para crear uno.
+            </div>
+
+            <div id="eventInspector" hidden>
+              <div class="field-grid">
+                <label class="field"><span>BEAT</span><input id="eventBeatInput" type="number" min="0" step="0.5"></label>
+                <label class="field"><span>TIPO</span><input id="eventTypeInput" type="text" readonly></label>
+                <label class="field"><span>LADO</span>
+                  <select id="eventSideInput"><option value="left">LEFT</option><option value="right">RIGHT</option></select>
+                </label>
+                <label class="field"><span>ROUTE</span>
+                  <select id="eventRouteInput"><option value="0">0 · DIRECT</option><option value="1">1 · MID</option><option value="2">2 · WIDE</option></select>
+                </label>
+
+                <label id="shieldField" class="field check-field"><span>SHIELD</span><input id="eventShieldInput" type="checkbox"></label>
+                <label id="durationField" class="field"><span>DURACIÓN</span><input id="eventDurationInput" type="number" min="0.5" step="0.5"></label>
+
+                <label class="field"><span>MIN ACT</span><input id="eventMinActInput" type="number" min="1" max="7" step="1" placeholder="—"></label>
+                <label class="field"><span>CHAIN</span><input id="eventChainInput" type="text" placeholder="—"></label>
+
+                <label class="field"><span>STEM</span>
+                  <select id="eventStemInput">
+                    <option>drums</option><option>bass</option><option>harmony</option><option>lead</option><option>aura</option><option>boss</option>
+                  </select>
+                </label>
+                <label class="field"><span>INTENT</span>
+                  <select id="eventIntentInput">
+                    <option>pulse</option><option>backbeat</option><option>accent</option><option>syncopation</option><option>phrase</option><option>fill</option><option>response</option><option>pickup</option><option>resolve</option><option>climax</option>
+                  </select>
+                </label>
+
+                <label class="field"><span>ENERGY</span><input id="eventEnergyInput" type="number" min="0" max="1" step="0.01"></label>
+                <label class="field"><span>PHRASE</span><input id="eventPhraseInput" type="text"></label>
+
+                <label id="contourField" class="field check-field"><span>MUSIC CONTOUR</span><input id="eventContourInput" type="checkbox"></label>
+                <button id="autoMusicButton" class="span-2 secondary-wide" type="button">RECALCULAR SEMÁNTICA DESDE LA MÚSICA</button>
+
+                <label id="anchorsField" class="field span-2"><span>TRACE ANCHORS · JSON</span><textarea id="eventAnchorsInput" rows="7" spellcheck="false"></textarea></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel-card">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">VALIDATION</span>
+                <strong id="validationTitle">Esperando paquete…</strong>
+              </div>
+            </div>
+            <div id="validationList" class="validation-list"></div>
+          </section>
+
+          <section class="panel-card contract-card">
+            <span class="eyebrow">AURA CHART v1</span>
+            <p>Esta versión autoriza <strong>Tap</strong> y <strong>TRACE</strong>. Una mecánica nueva —por ejemplo Magic Touch— debe ampliar el schema explícitamente; el editor no la inventa como un Tap disfrazado.</p>
+          </section>
+        </div>
+      </aside>
+    </section>
+
+    <div id="toast" class="toast" hidden></div>
+  </main>
+
+  <script type="module" src="./src/editor.js?v=0.44"></script>
+</body>
+</html>
