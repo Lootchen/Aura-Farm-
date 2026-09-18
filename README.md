@@ -94,7 +94,7 @@ Al tocar **CONTINUAR**:
 
 ## AURA CORE
 
-Se mantiene el encuentro de dos fases de v0.25:
+Se mantiene el encuentro de dos fases:
 
 - tres nodos de armadura orbitantes;
 - Core protegido mientras quede armadura;
