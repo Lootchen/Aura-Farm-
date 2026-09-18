@@ -3566,3 +3566,72 @@ button { font: inherit; }
     width: min(94%, 410px);
   }
 }
+
+
+/* v0.39 — explicit active build + TRACE pre-catch */
+.build-dock {
+  width: min(96%, 500px);
+}
+
+.build-dock-items {
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.build-dock-items::-webkit-scrollbar {
+  display: none;
+}
+
+.build-chip {
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  gap: 5px;
+}
+
+.build-chip-icon {
+  font-size: .76rem;
+}
+
+.build-chip em {
+  max-width: 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.84);
+  font:
+    800 .52rem/1
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-style: normal;
+  letter-spacing: .025em;
+}
+
+.build-chip b {
+  font-size: .52rem;
+  color: rgb(var(--accent));
+  opacity: .92;
+}
+
+@media (max-width: 390px) {
+  .build-dock {
+    width: 97%;
+    gap: 5px;
+    padding-inline: 7px;
+  }
+
+  .build-dock-label {
+    display: none;
+  }
+
+  .build-chip {
+    height: 29px;
+    padding-inline: 7px;
+  }
+
+  .build-chip em {
+    max-width: 50px;
+    font-size: .49rem;
+  }
+}
