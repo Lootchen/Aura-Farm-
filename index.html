@@ -33,6 +33,7 @@
       <div class="hud-status">
         <span>ACT <strong id="act">1/7</strong></span>
         <small id="lastHit">—</small>
+        <button id="pauseButton" class="hud-pause" type="button" aria-label="Pausar run">Ⅱ</button>
       </div>
     </header>
 
@@ -121,10 +122,15 @@
 
     <section id="pausePanel" class="pause-panel" hidden>
       <div class="pause-shell">
-        <span class="eyebrow">RUN PAUSED</span>
+        <span class="eyebrow">AURI · DIAGNOSTIC BAY</span>
         <h2>MÁQUINA EN ESPERA</h2>
-        <p>El reloj musical está congelado. Continúa cuando vuelvas a estar listo.</p>
-        <button id="resumeButton" class="primary-action" type="button">CONTINUAR</button>
+        <p>El reloj musical está congelado. Revisa los módulos instalados antes de continuar.</p>
+        <div id="pauseBuildList" class="pause-build-list"></div>
+        <strong id="pauseSynergy" class="pause-synergy"></strong>
+        <div class="pause-actions">
+          <button id="resumeButton" class="primary-action" type="button">CONTINUAR</button>
+          <button id="abandonButton" class="secondary-action" type="button">ABANDONAR</button>
+        </div>
       </div>
     </section>
 
