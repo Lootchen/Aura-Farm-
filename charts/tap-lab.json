@@ -1,7 +1,7 @@
 {
-  "name": "Mechanics Lab 04 · Slide",
+  "name": "Mechanics Lab 05 · Interleave",
   "bpm": 110,
-  "loopBeats": 44,
+  "loopBeats": 48,
   "countInBeats": 4,
   "events": [
     {
@@ -35,7 +35,7 @@
     {
       "type": "link",
       "beat": 7,
-      "durationBeats": 4,
+      "durationBeats": 6,
       "segments": [
         {
           "beat": 0,
@@ -44,43 +44,101 @@
       ]
     },
     {
-      "type": "draw",
-      "beat": 17,
-      "symbol": "u"
+      "type": "tap",
+      "beat": 8.5,
+      "side": "right",
+      "route": 1,
+      "symbol": "♪"
     },
     {
       "type": "tap",
-      "beat": 24,
-      "side": "left",
+      "beat": 10.5,
+      "side": "right",
       "route": 2,
       "symbol": "♬"
     },
     {
+      "type": "draw",
+      "beat": 17,
+      "windowBeats": 4,
+      "symbol": "u"
+    },
+    {
       "type": "tap",
-      "beat": 25,
+      "beat": 23,
+      "side": "left",
+      "route": 2,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 24,
       "side": "right",
       "route": 2,
       "symbol": "♪"
     },
     {
       "type": "link",
-      "beat": 29,
-      "durationBeats": 4,
+      "beat": 27,
+      "durationBeats": 8,
       "segments": [
         {
           "beat": 0,
           "side": "left"
         },
         {
-          "beat": 2,
+          "beat": 4,
           "side": "right"
         }
       ]
     },
     {
+      "type": "tap",
+      "beat": 28.5,
+      "side": "right",
+      "route": 0,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 30,
+      "side": "right",
+      "route": 1,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 32.5,
+      "side": "left",
+      "route": 0,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 34,
+      "side": "left",
+      "route": 2,
+      "symbol": "♬"
+    },
+    {
       "type": "draw",
       "beat": 39,
+      "windowBeats": 4,
       "symbol": "z"
+    },
+    {
+      "type": "tap",
+      "beat": 45,
+      "side": "left",
+      "route": 1,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 46,
+      "side": "right",
+      "route": 1,
+      "symbol": "♩"
     }
   ]
 }
