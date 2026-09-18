@@ -299,51 +299,65 @@ const runMods = {
   fragmentCount: 0,
   bumperCount: 0,
   slideNova: 0,
+  slideMirror: 0,
+  chainRelay: 0,
+  shockwave: 0,
+  fusionBlast: 0,
   comboShieldCharges: 0
 };
 
 const UPGRADES = [
   {
     id: "twin-shot",
+    family: "shot",
     icon: "Ⅱ",
     title: "Gemela",
     effect: "+1 ORB",
+    desc: "Cada PERFECT dispara una bola extra.",
     apply: () => {
       runMods.twinShots += 1;
     }
   },
   {
     id: "ricochet",
+    family: "collision",
     icon: "↗",
     title: "Rebote",
     effect: "+1 REBOTE",
+    desc: "Tus proyectiles sobreviven a otra pared.",
     apply: () => {
       runMods.ricochetBounces += 1;
     }
   },
   {
     id: "pierce",
+    family: "collision",
     icon: "➞",
     title: "Perfora",
     effect: "+1 BLANCO",
+    desc: "Atraviesa una nota y sigue volando.",
     apply: () => {
       runMods.pierceHits += 1;
     }
   },
   {
     id: "fragments",
+    family: "explosion",
     icon: "✣",
     title: "Astillas",
     effect: "+FRAGMENTOS",
+    desc: "Las explosiones escupen nuevas bolas.",
     apply: () => {
       runMods.fragmentCount += runMods.fragmentCount === 0 ? 3 : 2;
     }
   },
   {
     id: "bumper",
+    family: "arena",
     icon: "◉",
     title: "Bumper",
     effect: "+OBSTÁCULO",
+    desc: "Añade un reflector físico al tablero.",
     available: () => runMods.bumperCount < BUMPER_LAYOUT.length,
     apply: () => {
       runMods.bumperCount = Math.min(
@@ -354,23 +368,71 @@ const UPGRADES = [
   },
   {
     id: "nova",
+    family: "slide",
     icon: "✹",
     title: "Nova",
     effect: "+2 POWER",
+    desc: "Cada Slide termina en una salva mayor.",
     apply: () => {
       runMods.slideNova += 1;
     }
   },
   {
-    id: "combo-shield",
+    id: "mirror-slide",
+    family: "slide",
     icon: "◇",
+    title: "Espejo",
+    effect: "DOBLE GARRA",
+    desc: "Un Slide también dispara desde la otra garra.",
+    apply: () => {
+      runMods.slideMirror += 1;
+    }
+  },
+  {
+    id: "chain-relay",
+    family: "chain",
+    icon: "↯",
+    title: "Relevo",
+    effect: "CHAIN → ORB",
+    desc: "Cada CHAIN continúa con un nuevo proyectil.",
+    apply: () => {
+      runMods.chainRelay += 1;
+    }
+  },
+  {
+    id: "shockwave",
+    family: "explosion",
+    icon: "◎",
+    title: "Shock",
+    effect: "POWER AOE",
+    desc: "Las explosiones Power barren notas cercanas.",
+    apply: () => {
+      runMods.shockwave += 1;
+    }
+  },
+  {
+    id: "fusion",
+    family: "collision",
+    icon: "✦",
+    title: "Fusión",
+    effect: "ORB × ORB",
+    desc: "Choques entre proyectiles detonan como Power.",
+    apply: () => {
+      runMods.fusionBlast += 1;
+    }
+  },
+  {
+    id: "combo-shield",
+    family: "defense",
+    icon: "▱",
     title: "Shield",
     effect: "SALVA 1",
+    desc: "El próximo MISS no rompe tu combo.",
     apply: () => {
       runMods.comboShieldCharges += 1;
     }
   }
-];
+]
 
 const slideControl = {
   left: {
@@ -433,7 +495,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.21", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.22", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -1153,6 +1215,39 @@ function createExplosion(
     playTone(105, 0.09, 0.045, "sine");
   }
 
+  if (scale > 1.2 && runMods.shockwave > 0) {
+    const shockRadius =
+      68 + runMods.shockwave * 24;
+
+    for (const target of [...active.values()]) {
+      if (
+        target.type !== "tap" ||
+        target.launched
+      ) {
+        continue;
+      }
+
+      const distance =
+        Math.hypot(
+          target.x - x,
+          target.y - y
+        );
+
+      if (distance > shockRadius) continue;
+
+      active.delete(target.key);
+      resolved.add(target.key);
+      chainCount += 1;
+      awardScore(75 * comboMultiplier(combo));
+
+      createImpactFlash(
+        target.x,
+        target.y,
+        JUDGEMENTS.perfect
+      );
+    }
+  }
+
   if (emitFragments && runMods.fragmentCount > 0) {
     for (let index = 0; index < runMods.fragmentCount; index += 1) {
       const angle =
@@ -1287,9 +1382,17 @@ function resolveProjectileCollisions() {
         active.delete(projectile.key);
       }
 
+      const projectileCollision =
+        projectile.launched &&
+        other.launched;
+      const fusion =
+        projectileCollision &&
+        runMods.fusionBlast > 0;
       const powerScale =
-        projectile.power || other.power
-          ? 1.65
+        projectile.power ||
+        other.power ||
+        fusion
+          ? 1.65 + (fusion ? 0.18 * runMods.fusionBlast : 0)
           : 1;
 
       createExplosion(
@@ -1303,6 +1406,33 @@ function resolveProjectileCollisions() {
           side: projectile.side
         }
       );
+
+      if (chain && runMods.chainRelay > 0) {
+        const relayAngle =
+          Math.atan2(
+            projectile.vy,
+            projectile.vx
+          );
+        const relayCount =
+          Math.min(3, runMods.chainRelay);
+
+        for (const angle of fanAngles(
+          relayAngle,
+          relayCount,
+          0.16
+        )) {
+          spawnLaunchedProjectile({
+            x: collision.x,
+            y: collision.y,
+            angle,
+            side: projectile.side,
+            symbol: "↯",
+            radiusScale: 0.72,
+            speed: POST_HIT_SPEED * 0.86,
+            inheritMods: false
+          });
+        }
+      }
 
       updateHud();
 
@@ -1793,6 +1923,41 @@ function spawnSlideProjectile(event) {
       radiusScale: POWER_ORB_BASE_SCALE,
       inheritMods: true
     });
+  }
+
+  if (runMods.slideMirror > 0) {
+    const mirrorSide =
+      event.side === "left"
+        ? "right"
+        : "left";
+    const mirrorVector = {
+      x: -finalVector.x,
+      y: finalVector.y
+    };
+    const mirrorSegment =
+      slideSegmentFromVector(
+        mirrorSide,
+        mirrorVector
+      );
+    const mirrorCount =
+      Math.min(3, runMods.slideMirror);
+
+    for (const angle of fanAngles(
+      mirrorSegment.angle,
+      mirrorCount,
+      0.15
+    )) {
+      spawnLaunchedProjectile({
+        x: mirrorSegment.tip.x,
+        y: mirrorSegment.tip.y,
+        angle,
+        side: mirrorSide,
+        symbol: "◇",
+        power: true,
+        radiusScale: POWER_ORB_BASE_SCALE * 0.88,
+        inheritMods: true
+      });
+    }
   }
 }
 
@@ -2727,7 +2892,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.21 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.22 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide riel físico · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -2785,6 +2950,10 @@ function resetRunMods() {
   runMods.fragmentCount = 0;
   runMods.bumperCount = 0;
   runMods.slideNova = 0;
+  runMods.slideMirror = 0;
+  runMods.chainRelay = 0;
+  runMods.shockwave = 0;
+  runMods.fusionBlast = 0;
   runMods.comboShieldCharges = 0;
 }
 
@@ -2808,14 +2977,41 @@ function resetWaveState() {
 }
 
 function pickUpgradeChoices() {
-  const pool = UPGRADES.filter((upgrade) => !upgrade.available || upgrade.available());
+  const pool =
+    UPGRADES.filter(
+      (upgrade) =>
+        !upgrade.available ||
+        upgrade.available()
+    );
 
   for (let i = pool.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+    const j =
+      Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] =
+      [pool[j], pool[i]];
   }
 
-  return pool.slice(0, 3);
+  const choices = [];
+  const families = new Set();
+
+  for (const upgrade of pool) {
+    if (families.has(upgrade.family)) continue;
+
+    choices.push(upgrade);
+    families.add(upgrade.family);
+
+    if (choices.length === 3) {
+      return choices;
+    }
+  }
+
+  for (const upgrade of pool) {
+    if (choices.includes(upgrade)) continue;
+    choices.push(upgrade);
+    if (choices.length === 3) break;
+  }
+
+  return choices;
 }
 
 function renderUpgradeChoices() {
@@ -2828,7 +3024,7 @@ function renderUpgradeChoices() {
     button.type = "button";
     button.className = "upgrade-card";
     button.innerHTML =
-      `<span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span>`;
+      `<span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span>`;
 
     button.addEventListener("click", async () => {
       if (!awaitingUpgrade) return;
