@@ -2800,6 +2800,25 @@ button { font: inherit; }
   opacity: .42;
 }
 
+.menu-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-version {
+  padding: 6px 8px;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 999px;
+  background: rgba(255,255,255,.025);
+  color: rgba(255,255,255,.44);
+  font:
+    900 .46rem/1
+    ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
 .menu-icon-button {
   min-width: 38px !important;
   width: 38px;
