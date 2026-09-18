@@ -2777,6 +2777,95 @@ function eventMusicEnergy(event) {
   );
 }
 
+function musicalRouteForEvent(event) {
+  if (
+    !event ||
+    event.type !== "tap"
+  ) {
+    return Number(
+      event?.route ?? 0
+    );
+  }
+
+  const stem =
+    event.music?.stem;
+  const intent =
+    event.music?.intent;
+  const energy =
+    eventMusicEnergy(event);
+
+  if (
+    [
+      "fill",
+      "climax"
+    ].includes(intent)
+  ) {
+    return 2;
+  }
+
+  if (
+    intent ===
+    "syncopation"
+  ) {
+    return energy >= 0.72
+      ? 2
+      : 1;
+  }
+
+  if (
+    [
+      "response",
+      "pickup",
+      "resolve"
+    ].includes(intent)
+  ) {
+    return 1;
+  }
+
+  if (stem === "drums") {
+    return 0;
+  }
+
+  if (stem === "bass") {
+    return energy >= 0.72
+      ? 1
+      : 0;
+  }
+
+  if (
+    stem === "lead" ||
+    stem === "aura"
+  ) {
+    const pitch =
+      stemMidiNearBeat(
+        event.beat,
+        stem
+      );
+
+    if (
+      Number.isFinite(pitch)
+    ) {
+      if (pitch >= 72) {
+        return 2;
+      }
+
+      if (pitch >= 62) {
+        return 1;
+      }
+
+      return 0;
+    }
+  }
+
+  if (stem === "boss") {
+    return 2;
+  }
+
+  return Number(
+    event.route ?? 0
+  );
+}
+
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
@@ -2807,6 +2896,18 @@ async function ensureChartLoaded() {
             ...event,
             anchors:
               buildMusicalSlideAnchors(
+                event
+              )
+          };
+        }
+
+        if (
+          event.type === "tap"
+        ) {
+          return {
+            ...event,
+            route:
+              musicalRouteForEvent(
                 event
               )
           };
@@ -6227,6 +6328,57 @@ function updateLiveHud(songTime) {
   }
 }
 
+function worldMusicResponse() {
+  const beat =
+    Math.max(
+      0,
+      clock.songTime /
+        beatToSeconds(1)
+    );
+  const step =
+    Math.round(
+      beat * 2
+    ) / 2;
+  const distance =
+    Math.abs(
+      beat - step
+    );
+  const envelope =
+    clamp(
+      1 -
+        distance / 0.18,
+      0,
+      1
+    );
+  const frame =
+    songFrameAtBeat(
+      step
+    );
+
+  return {
+    kick:
+      frame.kick
+        ? envelope
+        : 0,
+    snare:
+      frame.snare
+        ? envelope
+        : 0,
+    lead:
+      Number.isFinite(
+        frame.leadMidi
+      )
+        ? envelope
+        : 0,
+    aura:
+      Number.isFinite(
+        frame.auraMidi
+      )
+        ? envelope
+        : 0
+  };
+}
+
 function drawBackground() {
   const palette =
     machinePalette();
@@ -6245,6 +6397,8 @@ function drawBackground() {
       beatPhase,
       1 - beatPhase
     ) * 2;
+  const musicResponse =
+    worldMusicResponse();
 
   ctx.fillStyle = "#070b13";
   ctx.fillRect(
@@ -6265,7 +6419,7 @@ function drawBackground() {
     );
   glow.addColorStop(
     0,
-    `rgba(${ar},${ag},${ab},${0.035 + intensity * 0.055 + pulse * 0.025})`
+    `rgba(${ar},${ag},${ab},${0.030 + intensity * 0.050 + pulse * 0.014 + musicResponse.kick * 0.038})`
   );
   glow.addColorStop(
     0.52,
@@ -6294,7 +6448,7 @@ function drawBackground() {
 
   // Chassis rails.
   ctx.strokeStyle =
-    `rgba(${ar},${ag},${ab},${0.09 + intensity * 0.11})`;
+    `rgba(${ar},${ag},${ab},${0.08 + intensity * 0.10 + musicResponse.kick * 0.12 + musicResponse.snare * 0.05})`;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(28, 105);
@@ -6344,7 +6498,7 @@ function drawBackground() {
   // More circuitry wakes up as the run escalates.
   ctx.save();
   ctx.strokeStyle =
-    `rgba(${sr},${sg},${sb},${0.035 + intensity * 0.10})`;
+    `rgba(${sr},${sg},${sb},${0.030 + intensity * 0.085 + musicResponse.lead * 0.07})`;
   ctx.lineWidth = 1.5;
   ctx.lineCap = "round";
 
@@ -6411,7 +6565,7 @@ function drawBackground() {
       side < 0 ? 54 : 486;
 
     ctx.strokeStyle =
-      `rgba(${ar},${ag},${ab},${0.13 + intensity * 0.10})`;
+      `rgba(${ar},${ag},${ab},${0.11 + intensity * 0.09 + musicResponse.aura * 0.12})`;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(x, y + 12);
@@ -6424,7 +6578,7 @@ function drawBackground() {
     ctx.stroke();
 
     ctx.fillStyle =
-      `rgba(${ar},${ag},${ab},${0.18 + intensity * 0.14})`;
+      `rgba(${ar},${ag},${ab},${0.15 + intensity * 0.12 + musicResponse.aura * 0.18})`;
     ctx.beginPath();
     ctx.ellipse(
       x - side * 10,
