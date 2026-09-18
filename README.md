@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.43
+# Aura Farm — Vertical Slice v0.44
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,95 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.44 — Chart Lab / Song Authoring Pipeline
+
+Aura Farm now ships an internal browser-based authoring tool at `editor.html`.
+
+### Timeline
+
+Chart Lab renders the song on an explicit beat grid with dedicated lanes for:
+
+- musical activity;
+- left Tap;
+- right Tap;
+- TRACE.
+
+Bar lines, beat lines and sub-beat snapping are derived from the active song package instead of being hardcoded.
+
+### Authoring tools
+
+The toolbar can:
+
+- select events;
+- place left/right Tap;
+- place left/right TRACE;
+- choose a legal snap resolution from the song's `stepsPerBeat`;
+- zoom the timeline;
+- create additional charts/difficulties inside the same song package.
+
+New events receive musical semantics from what is actually audible at that beat. TRACE placement refuses a position with no audible Lead/Aura source instead of generating a knowingly invalid event.
+
+### Event inspector
+
+Selected events expose:
+
+- beat;
+- side;
+- route;
+- Shield;
+- duration for TRACE;
+- `minAct`;
+- CHAIN group;
+- stem;
+- intent;
+- energy;
+- phrase;
+- music contour;
+- TRACE anchors.
+
+The inspector can recalculate semantic metadata directly from the active song.
+
+### Sync audit
+
+The editor runs the same production validators used by the game.
+
+Invalid events are highlighted and the validation panel reports authoring errors before export. Song/chart stem alignment is therefore visible while editing rather than discovered during gameplay.
+
+### Playback
+
+Chart Lab includes a lightweight Web Audio audition transport driven by the same song JSON and the same beat grid:
+
+- play/pause from the current playhead;
+- stop;
+- click the ruler to seek;
+- automatic timeline following;
+- stem-aware procedural preview.
+
+The audition focuses on timing/phrasing rather than replacing the final in-game mix.
+
+### Production workflow
+
+- `Ctrl/Cmd+S`: export song JSON;
+- `Ctrl/Cmd+O`: import song JSON;
+- `Ctrl/Cmd+Z`: undo;
+- `Ctrl/Cmd+Shift+Z`: redo;
+- `Delete/Backspace`: delete selected event;
+- arrow keys: move the selected event by the active snap;
+- Space: play/pause.
+
+The tool exports the same `songs/*.json` package consumed by the game. There is no translation layer between editor data and runtime data.
+
+### Schema discipline
+
+Chart Lab v1 authors only mechanics currently implemented by the game:
+
+- Tap;
+- TRACE.
+
+A future mechanic such as Magic Touch should extend the chart schema/runtime explicitly instead of being encoded as a fake Tap variant.
+
+The editor is linked from **Ajustes → CHART LAB** in the main menu.
 
 ## v0.43 — Modular Song Package / Chart Sync Contract
 
