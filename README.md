@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.39
+# Aura Farm — Vertical Slice v0.39.1
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,26 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.39.1 — TRACE armed-state hotfix
+
+v0.39 mixed pre-catch and active tracking into the same `started` state. That made early grabs visually convenient but input behavior fragile.
+
+TRACE now has an explicit pre-start state:
+
+- `incoming` — the head approaches the claw;
+- `armed` — touching/holding the visible head before the beat reserves the same pointer without starting judgement;
+- `tracing` — at the authored target beat, an armed held pointer automatically starts the rail.
+
+Additional fixes:
+
+- pre-start hit testing now follows the actual visible incoming head instead of always testing the future rail origin;
+- releasing before the beat cleanly disarms the TRACE;
+- holding through the beat requires no second tap;
+- moving before the beat cannot pull the judged vector away from the rail origin;
+- late pickup after the beat still starts TRACE directly.
+
+The musical target time and rail geometry are unchanged.
 
 ## v0.39 — Visible Build / TRACE Pre-Catch
 
