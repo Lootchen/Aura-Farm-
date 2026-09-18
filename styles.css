@@ -840,3 +840,45 @@ button { font: inherit; }
   display: block;
   min-height: 1.35em;
 }
+
+
+.pause-panel {
+  position: absolute;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(var(--machine-accent),.10), transparent 30%),
+    rgba(4,7,13,.94);
+  backdrop-filter: blur(10px);
+}
+
+.pause-panel[hidden] {
+  display: none;
+}
+
+.pause-shell {
+  width: min(100%, 330px);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+}
+
+.pause-shell h2,
+.pause-shell p {
+  margin: 0;
+}
+
+.pause-shell h2 {
+  font-size: 1.25rem;
+}
+
+.pause-shell p {
+  max-width: 30ch;
+  font-size: .72rem;
+  line-height: 1.45;
+  opacity: .62;
+}
