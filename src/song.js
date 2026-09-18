@@ -994,7 +994,8 @@ export function songFrameFromData(
       Boolean(
         bar.fill &&
         step >=
-          stepsPerBar - 2
+          stepsPerBar -
+          timing.stepsPerBeat
       ),
     bossMidi:
       bar.root -
