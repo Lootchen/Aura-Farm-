@@ -1698,7 +1698,6 @@ function drawSlide(event, songTime) {
     });
     ctx.stroke();
 
-    drawSlidePadLegend(event, songTime);
 
     ctx.fillStyle =
       "rgba(240,248,255,.82)";
@@ -1847,7 +1846,6 @@ function drawSlide(event, songTime) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  drawSlidePadLegend(event, songTime);
 
   ctx.fillStyle =
     connected
@@ -2362,17 +2360,10 @@ function drawControlButton(side, songTime) {
   ctx.shadowBlur = 0;
 
   if (slide) {
-    ctx.fillStyle =
-      "rgba(255,255,255,.07)";
-    ctx.beginPath();
-    ctx.roundRect(
-      center.x - 31,
-      center.y - 8,
-      62,
-      16,
-      8
+    drawSlidePadLegend(
+      slide,
+      songTime
     );
-    ctx.fill();
   } else {
     ctx.strokeStyle = left
       ? "rgba(170,232,255,.58)"
