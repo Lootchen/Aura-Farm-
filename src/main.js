@@ -3478,6 +3478,52 @@ function drawBumpers() {
     );
     ctx.stroke();
 
+    if (runMods.bumperSplit > 0) {
+      const pulse =
+        0.5 +
+        0.5 *
+          Math.sin(
+            performance.now() /
+            150 +
+            bumper.x
+          );
+
+      ctx.strokeStyle =
+        `rgba(82,224,207,${0.48 + pulse * 0.30})`;
+      ctx.lineWidth = 2.5;
+
+      for (const sign of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(
+          bumper.x +
+            sign *
+              (
+                bumper.radius +
+                7
+              ),
+          bumper.y,
+          4 + pulse * 1.5,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+      }
+
+      ctx.fillStyle =
+        "rgba(82,224,207,.72)";
+      ctx.font =
+        "900 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        "×2",
+        bumper.x,
+        bumper.y +
+          bumper.radius +
+          13
+      );
+    }
+
     ctx.restore();
   }
 }
@@ -5748,6 +5794,56 @@ function drawOperatorSocket(songTime) {
   );
   ctx.fill();
   ctx.stroke();
+
+  if (runMods.comboShieldCharges > 0) {
+    const shieldPulse =
+      0.5 +
+      0.5 *
+        Math.sin(
+          songTime *
+          4.8
+        );
+    const charges =
+      Math.min(
+        4,
+        runMods.comboShieldCharges
+      );
+
+    ctx.shadowBlur =
+      12 + shieldPulse * 8;
+    ctx.shadowColor =
+      `rgb(${palette.secondary.join(",")})`;
+    ctx.strokeStyle =
+      `rgba(${palette.secondary.join(",")},${0.36 + shieldPulse * 0.25})`;
+    ctx.lineWidth = 2.2;
+
+    for (
+      let charge = 0;
+      charge < charges;
+      charge += 1
+    ) {
+      const start =
+        -Math.PI / 2 +
+        charge *
+          (Math.PI * 2 / charges);
+      const end =
+        start +
+        Math.PI * 1.22 /
+          charges;
+
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        -3,
+        39 + charge * 1.8,
+        start,
+        end
+      );
+      ctx.stroke();
+    }
+
+    ctx.shadowBlur = 0;
+  }
 
   // Side headset pods give AURI a stable readable silhouette.
   ctx.shadowBlur = 0;
