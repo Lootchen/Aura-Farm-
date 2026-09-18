@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
   <title>Aura Farm — Build the Beat</title>
-  <link rel="stylesheet" href="./styles.css?v=0.26">
+  <link rel="stylesheet" href="./styles.css?v=0.27">
 </head>
 <body>
   <main class="app" data-machine="forge">
@@ -37,6 +37,17 @@
       <h1>BUILD THE BEAT</h1>
       <p>Golpea notas, conviértelas en proyectiles y construye una máquina musical distinta en cada run.</p>
 
+      <div class="operator-intro" aria-label="Operadora AURI">
+        <span class="auri-badge" aria-hidden="true"><i></i></span>
+        <span><strong>AURI</strong><small>FIELD TECH · CULTIVA EL FLUJO, NO EL SCORE</small></span>
+      </div>
+
+      <div class="track-intro">
+        <span>TRACK 01</span>
+        <strong>GLASSHOUSE CIRCUIT</strong>
+        <small>6 STEMS · 110 BPM</small>
+      </div>
+
       <div class="machine-picker" aria-label="Máquina">
         <button class="machine-option is-selected" type="button" data-machine="forge">
           <span>01</span><strong>FORGE</strong><small>Impacto cálido</small>
@@ -66,7 +77,7 @@
 
     <section id="upgradePanel" class="upgrade-panel" hidden>
       <div class="upgrade-shell">
-        <span class="upgrade-kicker">AURA UPGRADE</span>
+        <span class="upgrade-kicker">AURA MODULE BAY</span>
         <h2 id="upgradeTitle">ELIGE 1 MEJORA</h2>
         <div class="current-build-block">
           <span>TU BUILD</span>
@@ -111,6 +122,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.26"></script>
+  <script type="module" src="./src/main.js?v=0.27"></script>
 </body>
 </html>
