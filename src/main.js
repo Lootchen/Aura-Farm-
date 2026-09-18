@@ -1,9 +1,12 @@
-import { loadGameChart } from "./chart.js?v=0.42";
 import {
-  AURA_SONG,
+  loadGameSong,
+  loadSongRegistry
+} from "./song.js?v=0.43";
+import {
+  configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.42";
+} from "./music.js?v=0.43";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -19,6 +22,9 @@ const menuSettings = document.querySelector("#menuSettings");
 const menuBestScore = document.querySelector("#menuBestScore");
 const menuRuns = document.querySelector("#menuRuns");
 const menuAuriLine = document.querySelector("#menuAuriLine");
+const menuTrackMeta = document.querySelector("#menuTrackMeta");
+const menuTrackTitle = document.querySelector("#menuTrackTitle");
+const menuTrackDescription = document.querySelector("#menuTrackDescription");
 const menuVersion = document.querySelector("#menuVersion");
 const rerunButton = document.querySelector("#rerunButton");
 const summaryDailyButton = document.querySelector("#summaryDailyButton");
@@ -60,6 +66,7 @@ const resumeButton = document.querySelector("#resumeButton");
 const summaryPanel = document.querySelector("#summaryPanel");
 const summaryTitle = document.querySelector("#summaryTitle");
 const summaryMachine = document.querySelector("#summaryMachine");
+const summaryTrack = document.querySelector("#summaryTrack");
 const summaryRankCard = document.querySelector("#summaryRankCard");
 const summaryRank = document.querySelector("#summaryRank");
 const summaryRankLabel = document.querySelector("#summaryRankLabel");
@@ -81,7 +88,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.42";
+const GAME_VERSION = "0.43";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +102,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.42";
+  "./assets/world/glasshouse-far.svg?v=0.43";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.42";
+  "./assets/world/growth-bays.svg?v=0.43";
 
 function drawWorldAsset(
   image,
@@ -123,9 +130,14 @@ function drawWorldAsset(
 }
 
 let BPM = 110;
-let LOOP_BEATS = 24;
+let LOOP_BEATS = 68;
 let COUNT_IN_BEATS = 4;
+let STEPS_PER_BEAT = 2;
 let CHART = [];
+let SONG = null;
+let songCatalog = null;
+let selectedSongId = null;
+let songAlignmentReport = null;
 let chartName = "cargando…";
 let chartLoaded = false;
 
@@ -610,7 +622,7 @@ class RhythmClock {
     this.delayNode =
       context.createDelay(0.8);
     this.delayNode.delayTime.value =
-      (60 / AURA_SONG.bpm) *
+      (60 / BPM) *
       0.75;
 
     this.delayFeedback =
@@ -884,7 +896,9 @@ class RhythmClock {
       0.10 +
       COUNT_IN_BEATS * beatDuration;
 
-    this.nextStep = -COUNT_IN_BEATS * 2;
+    this.nextStep =
+      -COUNT_IN_BEATS *
+      STEPS_PER_BEAT;
 
     this.stopScheduler();
     this.schedule();
@@ -939,10 +953,17 @@ class RhythmClock {
     const horizon = this.context.currentTime + 0.14;
 
     while (
-      this.startAt + (this.nextStep / 2) * beatDuration <
+      this.startAt +
+        (
+          this.nextStep /
+          STEPS_PER_BEAT
+        ) *
+          beatDuration <
       horizon
     ) {
-      const beat = this.nextStep / 2;
+      const beat =
+        this.nextStep /
+        STEPS_PER_BEAT;
       const time = this.startAt + beat * beatDuration;
 
       if (time >= this.context.currentTime) {
@@ -3121,24 +3142,112 @@ function musicalRouteForEvent(event) {
   );
 }
 
+async function ensureSongCatalog() {
+  if (songCatalog) {
+    return songCatalog;
+  }
+
+  const registryUrl =
+    new URL(
+      "../songs/index.json?v=0.43",
+      import.meta.url
+    );
+
+  songCatalog =
+    await loadSongRegistry(
+      registryUrl
+    );
+
+  selectedSongId ??=
+    songCatalog.defaultSong;
+
+  return songCatalog;
+}
+
+function applySongMetadataToUi(
+  song
+) {
+  const trackNumber =
+    String(
+      song.trackNumber ?? 1
+    ).padStart(2, "0");
+
+  if (menuTrackMeta) {
+    menuTrackMeta.textContent =
+      `TRACK ${trackNumber} · ${song.timing.bpm} BPM`;
+  }
+
+  if (menuTrackTitle) {
+    menuTrackTitle.textContent =
+      song.title;
+  }
+
+  if (
+    menuTrackDescription &&
+    song.description
+  ) {
+    menuTrackDescription.textContent =
+      song.description;
+  }
+
+  if (summaryTrack) {
+    summaryTrack.textContent =
+      `TRACK ${trackNumber} · ${song.title}`;
+  }
+}
+
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.42", import.meta.url);
-  const chart = await loadGameChart(chartUrl);
+  const catalog =
+    await ensureSongCatalog();
+  const entry =
+    catalog.songs.find(
+      (item) =>
+        item.id ===
+        selectedSongId
+    );
 
-  BPM = chart.bpm;
-  LOOP_BEATS = chart.loopBeats;
-  COUNT_IN_BEATS = chart.countInBeats;
-
-  if (
-    BPM !== AURA_SONG.bpm ||
-    LOOP_BEATS !== AURA_SONG.beats
-  ) {
+  if (!entry) {
     throw new Error(
-      `Track/chart mismatch: ${AURA_SONG.title} expects ${AURA_SONG.bpm} BPM / ${AURA_SONG.beats} beats.`
+      `No existe la canción seleccionada: ${selectedSongId}`
     );
   }
+
+  const songUrl =
+    new URL(
+      `../songs/${entry.file}?v=0.43`,
+      import.meta.url
+    );
+
+  const {
+    song,
+    chart,
+    alignment
+  } =
+    await loadGameSong(
+      songUrl,
+      {
+        chartId:
+          entry.chartId ??
+          null
+      }
+    );
+
+  SONG = song;
+  songAlignmentReport =
+    alignment;
+
+  configureSong(song);
+
+  BPM =
+    song.timing.bpm;
+  LOOP_BEATS =
+    song.timing.beats;
+  COUNT_IN_BEATS =
+    song.timing.countInBeats;
+  STEPS_PER_BEAT =
+    song.timing.stepsPerBeat;
 
   CHART =
     chart.events.map(
@@ -3171,9 +3280,41 @@ async function ensureChartLoaded() {
         return event;
       }
     );
+
   chartName =
-    `${chart.name || "Mechanics chart"} · ${AURA_SONG.title}`;
+    `${chart.name || chart.id} · ${song.title}`;
+
+  applySongMetadataToUi(
+    song
+  );
+
   chartLoaded = true;
+}
+
+async function preloadDefaultSong() {
+  try {
+    await ensureChartLoaded();
+
+    console.info(
+      `[Aura Farm] song OK · ${SONG.title} · ${songAlignmentReport.checked}/${CHART.length} events aligned`
+    );
+  } catch (error) {
+    console.error(
+      "[Aura Farm] song package error",
+      error
+    );
+
+    startButton.disabled = true;
+    dailyButton.disabled = true;
+    practiceButton.disabled = true;
+    startButtonLabel.textContent =
+      "ERROR DE CANCIÓN";
+
+    if (menuAuriLine) {
+      menuAuriLine.textContent =
+        `No puedo validar el chart: ${error.message}`;
+    }
+  }
 }
 
 function comboMultiplier(value = combo) {
@@ -11114,7 +11255,7 @@ function drawCountIn(songTime) {
   ctx.font =
     "800 9px system-ui, sans-serif";
   ctx.fillText(
-    AURA_SONG.title,
+    SONG?.title ?? "GLASSHOUSE CIRCUIT",
     x,
     y + 57
   );
@@ -11133,7 +11274,7 @@ function drawDebug(songTime) {
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE directo · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
-    "tap zonas L/R · slide trace directo en canvas",
+    `song ${SONG?.id ?? "loading"} · sync ${songAlignmentReport?.checked ?? 0}/${CHART.length}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`,
     `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0}`
@@ -15052,6 +15193,7 @@ abandonButton.addEventListener(
 
 refreshMachineOptions();
 refreshStartMenu();
+void preloadDefaultSong();
 pauseButton.disabled = true;
 buildDock.hidden = true;
 renderBuildVisibility();
