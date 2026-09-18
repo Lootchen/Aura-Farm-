@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
   <title>Aura Farm — Mechanics Lab</title>
-  <link rel="stylesheet" href="./styles.css?v=0.17">
+  <link rel="stylesheet" href="./styles.css?v=0.18">
 </head>
 <body>
   <main class="app">
@@ -24,12 +24,21 @@
 
     <section id="startPanel" class="start-panel">
       <h1>Aura Farm</h1>
-      <p>Lab v0.17: laboratorio Tap + Slide. Magic queda fuera por ahora para concentrarnos en que las pinzas y el Slide se entiendan visualmente.</p>
+      <p>Lab v0.18: Slide usa una palanca radial para apuntar la pinza. Completar un Slide dispara una Power Orb grande. Al terminar cada oleada eliges 1 de 3 mejoras.</p>
       <button id="startButton" type="button">INICIAR PRUEBA</button>
-      <small>Tap: contacto de pinza = PERFECT. Slide: toca la cabeza, mantén el pulgar en el control lateral y mueve izquierda/derecha para alinear la pinza real con la pinza fantasma y la marca amarilla.</small>
+      <small>Tap: contacto = PERFECT. Slide: toca la cabeza, mantén el pulgar y apunta con la palanca circular para seguir los nodos. Completa la oleada para elegir una carta.</small>
+    </section>
+
+    <section id="upgradePanel" class="upgrade-panel" hidden>
+      <div class="upgrade-shell">
+        <span class="upgrade-kicker">AURA UPGRADE</span>
+        <h2 id="upgradeTitle">ELIGE 1 MEJORA</h2>
+        <div id="upgradeCards" class="upgrade-cards"></div>
+        <small>La mejora se aplica al resto de la run.</small>
+      </div>
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.17"></script>
+  <script type="module" src="./src/main.js?v=0.18"></script>
 </body>
 </html>
