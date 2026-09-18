@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.18";
+import { loadGameChart } from "./chart.js?v=0.19";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -55,10 +55,11 @@ const SLIDE = {
   startEarly: 0.28,
   startLate: 0.28,
   scrollSpeed: 145,
-  positionTolerance: 0.28,
+  positionTolerance: 0.30,
   disconnectGrace: 0.14,
   minCoverage: 0.70,
-  joystickRadius: 27,
+  joystickRadius: 38,
+  aimSpan: 1.00,
   nodeBeats: 0.5
 };
 
@@ -315,72 +316,81 @@ const runMods = {
 const UPGRADES = [
   {
     id: "aim-assist",
-    title: "Mira Amplia",
-    description: "La zona válida del Slide crece.",
+    icon: "◎",
+    title: "Mira+",
+    effect: "+ zona Slide",
     apply: () => {
       runMods.slideToleranceBonus += 0.05;
     }
   },
   {
     id: "stable-stick",
-    title: "Palanca Estable",
-    description: "Más gracia si pierdes la ruta por un instante.",
+    icon: "◉",
+    title: "Grip",
+    effect: "+ gracia",
     apply: () => {
       runMods.slideGraceBonus += 0.04;
     }
   },
   {
     id: "wide-flipper",
-    title: "Pinza Ancha",
-    description: "Aumenta el área física de impacto del Tap.",
+    icon: "━",
+    title: "Pinza+",
+    effect: "+ impacto",
     apply: () => {
       runMods.flipperHitBonus += 3;
     }
   },
   {
     id: "big-core",
-    title: "Núcleo Gigante",
-    description: "Las Power Orbs salen más grandes.",
+    icon: "●",
+    title: "Core+",
+    effect: "+ tamaño",
     apply: () => {
       runMods.powerOrbScale *= 1.18;
     }
   },
   {
     id: "shockwave",
-    title: "Onda de Choque",
-    description: "Las explosiones de Power Orb crecen.",
+    icon: "✹",
+    title: "Shock",
+    effect: "+ explosión",
     apply: () => {
       runMods.powerExplosionScale *= 1.20;
     }
   },
   {
     id: "thruster",
-    title: "Propulsor",
-    description: "Las Power Orbs vuelan más rápido, siempre a velocidad constante.",
+    icon: "➤",
+    title: "Boost",
+    effect: "+ velocidad",
     apply: () => {
       runMods.powerOrbSpeed *= 1.10;
     }
   },
   {
     id: "aura-amp",
-    title: "Aura Amplificada",
-    description: "+15% de puntos a partir de ahora.",
+    icon: "✦",
+    title: "Aura+",
+    effect: "+15% score",
     apply: () => {
       runMods.scoreMultiplier *= 1.15;
     }
   },
   {
     id: "combo-shield",
-    title: "Escudo de Combo",
-    description: "Absorbe un MISS sin romper tu combo.",
+    icon: "◇",
+    title: "Shield",
+    effect: "1 MISS",
     apply: () => {
       runMods.comboShieldCharges += 1;
     }
   },
   {
     id: "tap-overload",
-    title: "Sobrecarga Tap",
-    description: "Cada pocos PERFECT, un Tap se convierte en Power Orb.",
+    icon: "⚡",
+    title: "Overload",
+    effect: "Tap → Power",
     apply: () => {
       runMods.tapPowerEvery =
         runMods.tapPowerEvery === 0
@@ -395,12 +405,16 @@ const slideControl = {
     held: false,
     pointerId: null,
     position: 0,
+    x: 0.42,
+    y: -0.91,
     releasedAt: -Infinity
   },
   right: {
     held: false,
     pointerId: null,
     position: 0,
+    x: -0.42,
+    y: -0.91,
     releasedAt: -Infinity
   }
 };
@@ -449,7 +463,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.18", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.19", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -1244,16 +1258,19 @@ function updateTap(note, dt, songTime) {
   }
 }
 
-function slideAngle(side, position) {
-  const m = view();
-  const center =
-    (m.restAngle[side] + m.strikeAngle[side]) / 2;
-  const span =
-    Math.abs(m.strikeAngle[side] - m.restAngle[side]) / 2;
-
-  return center + clamp(position, -1, 1) * span;
+function slideAimCenter(side) {
+  return side === "left"
+    ? -1.15
+    : -Math.PI + 1.15;
 }
 
+function slideAngle(side, position) {
+  return (
+    slideAimCenter(side) +
+    clamp(position, -1, 1) *
+      SLIDE.aimSpan
+  );
+}
 function slidePositionAtBeat(event, beatOffset) {
   const anchors = event.anchors;
 
@@ -1327,23 +1344,30 @@ function updateSlidePadPosition(side, event) {
   const center = controlButtonCenter(side);
   const dx = point.x - center.x;
   const dy = point.y - center.y;
+  const length = Math.hypot(dx, dy);
 
-  if (Math.hypot(dx, dy) < 5) return;
+  if (length < 4) return;
 
-  const pointerAngle = Math.atan2(dy, dx);
-  const m = view();
-  const centerAngle =
-    (m.restAngle[side] + m.strikeAngle[side]) / 2;
-  const span =
-    Math.abs(m.strikeAngle[side] - m.restAngle[side]) / 2;
+  const maxDistance = 54;
+  const scale =
+    Math.min(length, maxDistance) / length;
 
-  slideControl[side].position = clamp(
-    normalizeAngle(pointerAngle - centerAngle) / span,
+  const control = slideControl[side];
+  control.x = (dx * scale) / maxDistance;
+  control.y = (dy * scale) / maxDistance;
+
+  const pointerAngle =
+    Math.atan2(control.y, control.x);
+
+  control.position = clamp(
+    normalizeAngle(
+      pointerAngle -
+      slideAimCenter(side)
+    ) / SLIDE.aimSpan,
     -1,
     1
   );
 }
-
 function beginSlide(event, side, songTime) {
   if (!event.started) {
     event.started = true;
@@ -1537,7 +1561,11 @@ function finishSlide(event) {
     navigator.vibrate([6, 20, 7]);
   }
 
-  slideControl[event.side].position = 0;
+  const control = slideControl[event.side];
+  const neutralAngle = slideAimCenter(event.side);
+  control.position = 0;
+  control.x = Math.cos(neutralAngle);
+  control.y = Math.sin(neutralAngle);
 
   updateHud();
 }
@@ -1738,83 +1766,96 @@ function drawSlidePadLegend(event, songTime) {
       target,
       SLIDE.joystickRadius
     );
-  const playerPoint =
-    joystickPoint(
-      event.side,
-      control.position,
-      SLIDE.joystickRadius - 3
-    );
+  const playerPoint = {
+    x:
+      center.x +
+      control.x * SLIDE.joystickRadius,
+    y:
+      center.y +
+      control.y * SLIDE.joystickRadius
+  };
   const connected =
     slideVisualConnected(event, songTime);
-  const m = view();
-  const startAngle =
-    Math.min(
-      m.restAngle[event.side],
-      m.strikeAngle[event.side]
-    );
-  const endAngle =
-    Math.max(
-      m.restAngle[event.side],
-      m.strikeAngle[event.side]
-    );
 
   ctx.save();
 
-  ctx.fillStyle = "rgba(5,9,16,.54)";
-  ctx.strokeStyle = "rgba(255,255,255,.24)";
-  ctx.lineWidth = 2;
+  ctx.fillStyle = "rgba(5,9,16,.58)";
+  ctx.strokeStyle =
+    event.started
+      ? connected
+        ? "rgba(255,241,169,.66)"
+        : "rgba(255,113,132,.52)"
+      : "rgba(255,255,255,.28)";
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(
     center.x,
     center.y,
-    SLIDE.joystickRadius + 5,
+    SLIDE.joystickRadius + 7,
     0,
     Math.PI * 2
   );
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(255,255,255,.20)";
-  ctx.lineWidth = 5;
+  // Free joystick field.
+  ctx.strokeStyle = "rgba(255,255,255,.10)";
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.arc(
     center.x,
     center.y,
-    SLIDE.joystickRadius,
-    startAngle,
-    endAngle
+    SLIDE.joystickRadius * 0.55,
+    0,
+    Math.PI * 2
   );
   ctx.stroke();
 
+  ctx.beginPath();
+  ctx.moveTo(
+    center.x - SLIDE.joystickRadius,
+    center.y
+  );
+  ctx.lineTo(
+    center.x + SLIDE.joystickRadius,
+    center.y
+  );
+  ctx.moveTo(
+    center.x,
+    center.y - SLIDE.joystickRadius
+  );
+  ctx.lineTo(
+    center.x,
+    center.y + SLIDE.joystickRadius
+  );
+  ctx.stroke();
+
+  // Target aim.
+  ctx.shadowBlur = 14;
+  ctx.shadowColor =
+    connected ? "#fff1a9" : "#ff7184";
   ctx.strokeStyle =
     event.started
       ? connected
         ? "#fff1a9"
         : "#ff7184"
       : "#fff1a9";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(center.x, center.y);
-  ctx.lineTo(targetPoint.x, targetPoint.y);
-  ctx.stroke();
-
-  ctx.shadowBlur = 14;
-  ctx.shadowColor = ctx.strokeStyle;
-  ctx.fillStyle = ctx.strokeStyle;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(
     targetPoint.x,
     targetPoint.y,
-    5,
+    8,
     0,
     Math.PI * 2
   );
-  ctx.fill();
+  ctx.stroke();
 
-  ctx.shadowBlur = control.held ? 16 : 7;
+  // Player stick: it can travel freely over the whole circle.
+  ctx.shadowBlur = 16;
   ctx.shadowColor = "#eaf7ff";
-  ctx.strokeStyle = "rgba(234,247,255,.76)";
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(234,247,255,.72)";
+  ctx.lineWidth = 5;
   ctx.beginPath();
   ctx.moveTo(center.x, center.y);
   ctx.lineTo(playerPoint.x, playerPoint.y);
@@ -1828,18 +1869,22 @@ function drawSlidePadLegend(event, songTime) {
   ctx.arc(
     playerPoint.x,
     playerPoint.y,
-    8,
+    9,
     0,
     Math.PI * 2
   );
   ctx.fill();
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(255,255,255,.58)";
+  ctx.fillStyle = "rgba(255,255,255,.62)";
   ctx.font = "900 9px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("PALANCA", center.x, center.y + 22);
+  ctx.fillText(
+    "AIM",
+    center.x,
+    center.y + 2
+  );
 
   ctx.restore();
 }
@@ -1940,7 +1985,7 @@ function drawSlide(event, songTime) {
     ctx.fillStyle =
       "rgba(240,248,255,.55)";
     ctx.fillText(
-      "después apunta con la palanca",
+      "después mueve el joystick libremente",
       DESIGN.width / 2,
       661
     );
@@ -2092,7 +2137,7 @@ function drawSlide(event, songTime) {
   ctx.fillStyle =
     "rgba(240,248,255,.55)";
   ctx.fillText(
-    "palanca blanca = tú · marca amarilla = objetivo",
+    "stick blanco = tú · aro amarillo = objetivo",
     DESIGN.width / 2,
     661
   );
@@ -2923,9 +2968,9 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.18 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.19 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap: impacto = PERFECT · slide: palanca radial · wave ${wave} · cartas activas`,
+    `tap: impacto = PERFECT · slide: joystick libre + aim · wave ${wave} · 3 cartas`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `slide L:${slideControl.left.position.toFixed(2)} R:${slideControl.right.position.toFixed(2)} · draw ${drawGesture ? "ACTIVO" : "—"}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
@@ -3004,6 +3049,9 @@ function resetWaveState() {
     slideControl[side].held = false;
     slideControl[side].pointerId = null;
     slideControl[side].position = 0;
+    const neutralAngle = slideAimCenter(side);
+    slideControl[side].x = Math.cos(neutralAngle);
+    slideControl[side].y = Math.sin(neutralAngle);
     slideControl[side].releasedAt = -Infinity;
   }
 
@@ -3034,7 +3082,7 @@ function renderUpgradeChoices() {
     button.type = "button";
     button.className = "upgrade-card";
     button.innerHTML =
-      `<strong>${upgrade.title}</strong><span>${upgrade.description}</span>`;
+      `<span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span>`;
 
     button.addEventListener("click", async () => {
       if (!awaitingUpgrade) return;
