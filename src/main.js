@@ -2550,6 +2550,24 @@ function beginSlide(event, side, songTime) {
     songTime - event.targetTime;
   event.lastGoodTime = songTime;
 
+  const mode =
+    slideMode(event);
+
+  if (runStats) {
+    if (mode === "trace") {
+      runStats.traceAttempts += 1;
+    } else {
+      runStats.followAttempts += 1;
+    }
+  }
+
+  recordLifetimeMetric(
+    mode === "trace"
+      ? "traceAttempts"
+      : "followAttempts",
+    1
+  );
+
   if (!event.playerVector) {
     event.playerVector =
       slideVectorAtBeat(event, 0);
@@ -2770,6 +2788,24 @@ function finishSlide(event) {
     failEvent(event, "SLIDE MISS");
     return;
   }
+
+  const mode =
+    slideMode(event);
+
+  if (runStats) {
+    if (mode === "trace") {
+      runStats.traceSuccess += 1;
+    } else {
+      runStats.followSuccess += 1;
+    }
+  }
+
+  recordLifetimeMetric(
+    mode === "trace"
+      ? "traceSuccess"
+      : "followSuccess",
+    1
+  );
 
   combo += 1;
   awardScore(
@@ -4439,7 +4475,8 @@ function drawDebug(songTime) {
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `stick L:${slideControl.left.x.toFixed(2)},${slideControl.left.y.toFixed(2)} R:${slideControl.right.x.toFixed(2)},${slideControl.right.y.toFixed(2)}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
-    `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`
+    `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`,
+    `mode ${runMode} seed ${runSeed} · T ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} F ${runStats?.followSuccess ?? 0}/${runStats?.followAttempts ?? 0}`
   ];
 
   ctx.fillStyle = "rgba(0,0,0,.52)";
@@ -4532,7 +4569,7 @@ function pickUpgradeChoices() {
 
   for (let i = pool.length - 1; i > 0; i -= 1) {
     const j =
-      Math.floor(Math.random() * (i + 1));
+      Math.floor(runRandom() * (i + 1));
     [pool[i], pool[j]] =
       [pool[j], pool[i]];
   }
@@ -4561,43 +4598,83 @@ function pickUpgradeChoices() {
 }
 
 function renderUpgradeChoices() {
-  const choices = pickUpgradeChoices();
+  const choices =
+    pickUpgradeChoices();
 
   upgradeCards.innerHTML = "";
 
   for (const upgrade of choices) {
-    const button = document.createElement("button");
+    const button =
+      document.createElement("button");
     button.type = "button";
     button.className =
       `upgrade-card family-${upgrade.family}`;
     button.innerHTML =
       `<span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span>`;
 
-    button.addEventListener("click", async () => {
-      if (!awaitingUpgrade) return;
+    button.addEventListener(
+      "click",
+      async () => {
+        if (!awaitingUpgrade) return;
 
-      awaitingUpgrade = false;
-      upgrade.apply();
-      wave += 1;
+        awaitingUpgrade = false;
+        upgrade.apply();
 
-      upgradePanel.hidden = true;
-      resetWaveState();
+        buildHistory.push({
+          id: upgrade.id,
+          title: upgrade.title,
+          family: upgrade.family
+        });
 
-      showMessage(
-        `${upgrade.title.toUpperCase()} · OLEADA ${wave}`,
-        "#fff1a9",
-        800
-      );
+        if (runStats) {
+          runStats.chosenUpgrades.push(
+            upgrade.id
+          );
+        }
 
-      await clock.start();
+        wave += 1;
 
-      running = true;
-      lastFrame = performance.now();
-      requestAnimationFrame(frame);
-    });
+        upgradePanel.hidden = true;
+
+        await beginAct();
+      }
+    );
 
     upgradeCards.append(button);
   }
+}
+
+async function beginAct() {
+  resetWaveState();
+
+  bossState = {
+    active: wave === FINAL_ACT,
+    health: BOSS_MAX_HEALTH,
+    maxHealth: BOSS_MAX_HEALTH,
+    broken: false,
+    damage: 0,
+    hitFlash: 0
+  };
+
+  updateHud();
+
+  showMessage(
+    wave === FINAL_ACT
+      ? "ACTO 7 · AURA CORE"
+      : `ACTO ${wave} · BUILD THE BEAT`,
+    wave === FINAL_ACT
+      ? "#ffdf85"
+      : "#fff1a9",
+    wave === FINAL_ACT
+      ? 1100
+      : 700
+  );
+
+  await clock.start();
+
+  running = true;
+  lastFrame = performance.now();
+  requestAnimationFrame(frame);
 }
 
 function openUpgradePanel() {
@@ -4612,11 +4689,135 @@ function openUpgradePanel() {
   impactFlashes = [];
 
   upgradeTitle.textContent =
-    "ELIGE 1";
+    runMode === "daily"
+      ? `DAILY · ACTO ${wave}/${RUN_ACTS}`
+      : `ACTO ${wave}/${RUN_ACTS} · ELIGE 1`;
 
   render(clock.songTime);
   renderUpgradeChoices();
   upgradePanel.hidden = false;
+}
+
+function bossDamagePercent() {
+  return Math.round(
+    clamp(
+      bossState.damage /
+        bossState.maxHealth,
+      0,
+      1
+    ) * 100
+  );
+}
+
+function completeRun() {
+  if (!running) return;
+
+  running = false;
+  awaitingUpgrade = false;
+  clock.stopScheduler();
+
+  const completedBossDamage =
+    bossDamagePercent();
+  const previousRuns =
+    profile.runsCompleted;
+
+  profile.runsCompleted += 1;
+  profile.bestScore =
+    Math.max(
+      Number(profile.bestScore || 0),
+      score
+    );
+  profile.calibrationOffsetMs =
+    calibrationOffsetMs;
+
+  saveLocalJson(
+    PROFILE_KEY,
+    profile
+  );
+
+  recordLifetimeMetric(
+    "runsCompleted",
+    1
+  );
+
+  const elapsedMs =
+    performance.now() -
+    runStartedAt;
+
+  if (runStats) {
+    runStats.completedAt =
+      performance.now();
+    runStats.durationMs = elapsedMs;
+    runStats.score = score;
+    runStats.maxCombo = maxCombo;
+    runStats.chainCount = chainCount;
+    runStats.bossDamage =
+      completedBossDamage;
+  }
+
+  summaryScore.textContent =
+    String(score);
+  summaryHits.textContent =
+    String(hitCount);
+  summaryChains.textContent =
+    String(chainCount);
+  summaryMisses.textContent =
+    String(missCount);
+  summaryBoss.textContent =
+    `${completedBossDamage}%`;
+
+  summaryTitle.textContent =
+    bossState.broken
+      ? "AURA CORE ROTO"
+      : "MÁQUINA ESTABLE";
+
+  summaryBuild.innerHTML = "";
+
+  if (buildHistory.length === 0) {
+    const empty =
+      document.createElement("span");
+    empty.textContent = "SIN MODS";
+    summaryBuild.append(empty);
+  } else {
+    for (const upgrade of buildHistory) {
+      const chip =
+        document.createElement("span");
+      chip.textContent = upgrade.title;
+      chip.className =
+        `family-${upgrade.family}`;
+      summaryBuild.append(chip);
+    }
+  }
+
+  const unlocked =
+    Object.entries(MACHINES)
+      .filter(
+        ([, machine]) =>
+          machine.unlockRuns >
+            previousRuns &&
+          machine.unlockRuns <=
+            profile.runsCompleted
+      )
+      .map(
+        ([, machine]) =>
+          machine.name
+      );
+
+  summaryUnlock.textContent =
+    unlocked.length
+      ? `NUEVA MÁQUINA: ${unlocked.join(" · ")}`
+      : score >= profile.bestScore
+        ? "NUEVO MEJOR REGISTRO"
+        : "";
+
+  refreshMachineOptions();
+
+  active.clear();
+  explosions = [];
+  impactFlashes = [];
+  render(clock.songTime);
+
+  summaryPanel.hidden = false;
 }
 
 function frame(now) {
@@ -4631,10 +4832,12 @@ function frame(now) {
   lastFrame = now;
 
   if (dt > 0) {
-    fps += ((1 / dt) - fps) * 0.08;
+    fps +=
+      ((1 / dt) - fps) * 0.08;
   }
 
-  const songTime = clock.songTime;
+  const songTime =
+    clock.songTime;
 
   spawnReady(songTime);
   updateEvents(dt, songTime);
@@ -4646,7 +4849,11 @@ function frame(now) {
   render(songTime);
 
   if (clock.beat >= LOOP_BEATS) {
-    openUpgradePanel();
+    if (wave >= RUN_ACTS) {
+      completeRun();
+    } else {
+      openUpgradePanel();
+    }
     return;
   }
 
@@ -4971,10 +5178,8 @@ window.addEventListener("keydown", (event) => {
   }
 
   if (key === "[") {
-    calibrationOffsetMs = clamp(
-      calibrationOffsetMs - 5,
-      -200,
-      200
+    setCalibration(
+      calibrationOffsetMs - 5
     );
 
     showMessage(
@@ -4987,10 +5192,8 @@ window.addEventListener("keydown", (event) => {
   }
 
   if (key === "]") {
-    calibrationOffsetMs = clamp(
-      calibrationOffsetMs + 5,
-      -200,
-      200
+    setCalibration(
+      calibrationOffsetMs + 5
     );
 
     showMessage(
@@ -5043,9 +5246,19 @@ window.addEventListener("keyup", (event) => {
   }
 });
 
-startButton.addEventListener("click", async () => {
+async function startRun(mode = "standard") {
+  runMode = mode;
+  seedRunRng(
+    mode === "daily"
+      ? hashString(
+          `aura-farm-daily:${localDateKey()}`
+        )
+      : Date.now()
+  );
+
   score = 0;
   combo = 0;
+  maxCombo = 0;
   hitCount = 0;
   missCount = 0;
   chainCount = 0;
@@ -5053,6 +5266,9 @@ startButton.addEventListener("click", async () => {
   wallExplosionCount = 0;
   wave = 1;
   awaitingUpgrade = false;
+  buildHistory = [];
+  runStats = newRunStats();
+  runStartedAt = performance.now();
 
   lastDeltaMs = null;
   lastJudgement = "—";
@@ -5062,23 +5278,107 @@ startButton.addEventListener("click", async () => {
   resetRunMods();
   resetWaveState();
 
+  bossState = {
+    active: false,
+    health: BOSS_MAX_HEALTH,
+    maxHealth: BOSS_MAX_HEALTH,
+    broken: false,
+    damage: 0,
+    hitFlash: 0
+  };
+
   updateHud();
 
   startButton.disabled = true;
-  startButton.textContent = "INICIANDO…";
+  dailyButton.disabled = true;
+  startButton.textContent =
+    "INICIANDO…";
 
   upgradePanel.hidden = true;
+  summaryPanel.hidden = true;
 
   await ensureChartLoaded();
   buildPaths();
-  await clock.start();
 
-  running = true;
-  lastFrame = performance.now();
+  recordLifetimeMetric(
+    "runsStarted",
+    1
+  );
+
   startPanel.hidden = true;
 
-  requestAnimationFrame(frame);
-});
+  await beginAct();
+
+  startButton.disabled = false;
+  dailyButton.disabled = false;
+  startButton.textContent =
+    "RUN · 7 ACTOS";
+}
+
+startButton.addEventListener(
+  "click",
+  () => startRun("standard")
+);
+
+dailyButton.addEventListener(
+  "click",
+  () => startRun("daily")
+);
+
+rerunButton.addEventListener(
+  "click",
+  () => startRun("standard")
+);
+
+summaryDailyButton.addEventListener(
+  "click",
+  () => startRun("daily")
+);
+
+for (const option of machineOptions) {
+  option.addEventListener(
+    "click",
+    () => {
+      applyMachineSelection(
+        option.dataset.machine
+      );
+      render(clock.songTime);
+    }
+  );
+}
+
+function setCalibration(value) {
+  calibrationOffsetMs =
+    clamp(
+      value,
+      -250,
+      250
+    );
+  profile.calibrationOffsetMs =
+    calibrationOffsetMs;
+  saveLocalJson(
+    PROFILE_KEY,
+    profile
+  );
+  calibrationValue.textContent =
+    `${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`;
+}
+
+calibrationMinus.addEventListener(
+  "click",
+  () =>
+    setCalibration(
+      calibrationOffsetMs - 15
+    )
+);
+
+calibrationPlus.addEventListener(
+  "click",
+  () =>
+    setCalibration(
+      calibrationOffsetMs + 15
+    )
+);
 
 window.addEventListener("resize", () => {
   resizeCanvas();
@@ -5101,6 +5401,10 @@ document.addEventListener("visibilitychange", () => {
   startButton.textContent = "REINICIAR PRUEBA";
 });
 
+refreshMachineOptions();
+setCalibration(
+  calibrationOffsetMs
+);
 resizeCanvas();
 buildPaths();
 updateHud();
