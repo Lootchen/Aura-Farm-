@@ -1,160 +1,195 @@
-# Aura Farm — Vertical Slice v0.26
+# Aura Farm — Vertical Slice v0.27
 
 **BUILD THE BEAT.**
 
-v0.26 se centra en hacer que una run sea más legible como **build roguelite**, mejorar la continuidad móvil real y preparar el espacio del futuro personaje sin convertirlo todavía en arte final.
+v0.27 une tres frentes que ya estaban maduros: recompensa del Slide, primera identidad real del personaje/UI y una canción compuesta específicamente para la vertical slice.
 
-## Build visible durante gameplay
+## Slide Reward — POWER RETURN
 
-La build ya no desaparece después de elegir una carta.
+Completar un Slide ya no hereda ciegamente la dirección final de la garra.
 
-Existe un **Build Dock** persistente bajo el HUD:
+La Power Orb:
 
-- muestra el icono de cada mejora instalada;
-- agrupa stacks como `×2`, `×3`, etc.;
-- usa el color de familia;
-- muestra la sinergia principal activa.
+- sale a una velocidad constante propia;
+- apunta hacia arriba y hacia el interior del campo;
+- cruza de nuevo la zona jugable;
+- tiene **1 rebote de pared garantizado**;
+- suma además cualquier Rebote de la build;
+- Nova mantiene su abanico de Power Orbs;
+- Espejo crea la misma lógica desde la garra contraria.
 
-Durante la pantalla de elección aparece además **TU BUILD** con:
+La intención es que un Slide PERFECT siempre produzca una recompensa visible con continuidad, no una bola que desaparece inmediatamente contra una pared.
 
-- icono;
+## AURI — primer PJ de Aura Farm
+
+El antiguo Operator Socket deja de ser una cara placeholder.
+
+**AURI** es el primer lenguaje de personaje de la vertical slice:
+
+- pequeña field-tech que vive dentro de la cabina central;
+- casco/hood industrial;
+- visor expresivo;
+- pods laterales;
+- núcleo luminoso en el traje;
+- antena en forma de brote.
+
+El brote es el primer puente visual entre **Aura**, la máquina y la idea de **Farm/cultivar** sin convertir el juego en estética agrícola literal.
+
+### Posición
+
+AURI vive en la cabina inferior central, entre los dos joysticks.
+
+No se coloca dentro del centro jugable porque:
+
+- taparía trayectorias;
+- competiría con Tap/Slide/CHAIN;
+- dificultaría el boss;
+- convertiría al personaje en ruido visual.
+
+La intención futura es tratar al PJ como **HUD diegético**: busto/cara/gestos desde la cabina mientras las garras siguen siendo sus herramientas.
+
+AURI reacciona a:
+
+- PERFECT;
+- FLOW;
+- CHAIN;
+- MISS;
+- Slide;
+- Shield;
+- boss;
+- victoria.
+
+## Dirección artística
+
+La dirección se consolida como **bio-industrial music machine**:
+
+- máquina arcade/sintetizador/reactor;
+- chasis y actuadores físicos;
+- energía de Aura;
+- pequeños motivos de crecimiento/brote;
+- color funcional según familia;
+- personaje integrado en la máquina;
+- información presentada como hardware del mismo universo.
+
+El objetivo es abandonar progresivamente el aspecto de “UI de neón sobre fondo negro”.
+
+## AURA MODULES
+
+Las antiguas cartas se presentan ahora como **cartuchos/módulos insertables**.
+
+Cada módulo incluye:
+
+- código de serie `AF-XX`;
+- familia funcional;
+- ventana de simulación;
 - nombre;
-- stack;
-- descripción breve;
-- sinergias completadas.
+- efecto corto;
+- descripción;
+- posible sinergia;
+- conectores físicos en la parte inferior.
 
-El resumen final también agrupa stacks y sinergias.
+### Previews
 
-## Sinergias
+Las 13 mejoras tienen una mini-demostración animada de su comportamiento:
 
-v0.26 reconoce combinaciones de mejoras existentes. No añade porcentajes ocultos: las sinergias describen builds que ya emergen de las reglas físicas.
+- Gemela — dos proyectiles.
+- Rebote — bola rebotando entre paredes.
+- Perfora — proyectil atravesando objetivos.
+- Astillas — explosión que fragmenta.
+- Bumper — rebote físico.
+- Nova — expansión Power.
+- Espejo — disparos simétricos.
+- Relevo — nodos enlazados.
+- Shock — onda AOE.
+- Fusión — dos proyectiles que colisionan.
+- Carga — impacto de pared y detonación.
+- Duplicador — una bola se divide en dos.
+- Shield — campo protector.
 
-Ejemplos actuales:
+La build persistente, stacks y sinergias de v0.26 siguen visibles.
 
-- **PINBALL** — Bumper + Duplicador + Rebote.
-- **WALLSTORM** — Rebote + Carga + Shock.
-- **CHAIN REACTOR** — Relevo + Astillas + Fusión.
-- **TWIN NOVA** — Nova + Espejo.
-- **NEEDLE STORM** — Gemela + Perfora + Astillas.
-- **CORE BREAKER** — Perfora + Fusión + Shock.
+## Track 01 — GLASSHOUSE CIRCUIT
 
-Cuando una carta completaría una sinergia, la propia opción muestra una pista `→ NOMBRE` antes de elegirla.
+`src/music.js` contiene la primera composición original específica de Aura Farm.
 
-Al completar una sinergia:
+### Estructura
 
-- aparece feedback audiovisual;
-- el operador reacciona;
-- algunas sinergias añaden una pequeña capa musical extra;
-- no se modifica silenciosamente ninguna estadística.
+- 110 BPM.
+- 68 beats.
+- 17 compases de 4/4.
+- resolución interna de medio beat;
+- sincronía obligatoria con el chart.
 
-## Operator / futuro PJ
+Secciones escritas:
 
-La posición del operador se ha movido hacia abajo e integrado como una **cabina central entre los dos sticks**.
+**GERMINATE → SPROUT → CURRENT → RELAY → FRACTURE → OVERDRIVE → ASCENT → BLOOM → CORE**
 
-Esto es intencional:
+### Seis stems
 
-- no ocupa el centro del campo jugable;
-- no cruza rutas de Tap/Slide;
-- no vive debajo de ninguno de los pulgares;
-- funciona como HUD diegético;
-- permite que el futuro PJ sea un busto/cara/cabina reactiva en vez de un cuerpo entero flotando sobre las notas.
+1. **DRUMS** — patrones de kick/snare/hat escritos por sección.
+2. **BASS** — línea de bajo con patrones propios.
+3. **HARMONY** — tríadas/pads que sostienen la progresión.
+4. **LEAD** — frases melódicas escritas por sección.
+5. **AURA** — capa aguda/reactiva ligada a build y CHAIN.
+6. **BOSS** — ostinato grave activado en el acto final.
 
-El gráfico actual sigue siendo un placeholder reactivo. La arquitectura de estados emocionales queda preparada para sustituirlo por el personaje definitivo.
+La música ya no es un groove genérico que se transpone por acto.
 
-## Música / stems provisionales
+Cada acto reproduce la misma composición y modifica su **mezcla**:
 
-El sistema procedural se acerca un paso más al futuro enfoque por stems.
+- actos tempranos: drums/bass/harmony dominantes;
+- actos avanzados: el lead se revela;
+- builds de Slide elevan el lead;
+- builds de explosión/fusión/pared elevan Aura;
+- CHAIN aporta energía adicional;
+- acto 7 activa el stem Boss;
+- Phase 2 cambia el timbre del stem Boss.
 
-Cada acto tiene ahora una pequeña identidad armónica:
+Los clicks de build y SFX siguen siendo respuestas de gameplay por encima de los seis stems, no parte de la composición base.
 
-- bajo y lead se transpongan progresivamente con el acto;
-- entra un pad armónico al inicio de cada compás;
-- la energía de la mezcla sigue creciendo con actos y upgrades;
-- algunas sinergias añaden una respuesta melódica propia;
-- el boss mantiene su drone específico.
+## Sincronía música/chart
 
-Esto no sustituye una composición final. Sirve para validar la idea de que **la misma run debe sonar transformada por build + progreso** antes de producir un OST en stems.
+Al cargar la run se verifica que el chart tenga exactamente:
 
-## Mobile pause / resume
+- 110 BPM;
+- 68 beats.
 
-Cambiar de app, bloquear pantalla o entrar en background ya no destruye automáticamente la run.
+Si la composición y el chart dejan de coincidir, la slice falla explícitamente en vez de tocar música desincronizada.
 
-Cuando la app pierde visibilidad durante gameplay:
+## Run / boss / CHAIN
 
-- se detiene el scheduler;
-- se suspende el `AudioContext`;
-- `currentTime` del reloj queda congelado;
-- aparece una pantalla de pausa.
+Se mantienen los sistemas anteriores:
 
-Al tocar **CONTINUAR**:
-
-- se reanuda el mismo contexto;
-- se recupera el scheduler desde el mismo beat;
-- no se reinicia acto, build ni score.
-
-## AURA CORE
-
-Se mantiene el encuentro de dos fases:
-
-- tres nodos de armadura orbitantes;
-- Core protegido mientras quede armadura;
-- los impactos directos contra Core protegido rebotan conservando velocidad;
-- al 50% se recarga la armadura y empieza Phase 2;
-- CORE BREAK cierra la run.
-
-## CHAIN y firmas de build
-
-Siguen activos:
-
-- grupos CHAIN con dirección, líder y `CHAIN ×N`;
-- Rebote con firma turquesa;
-- Perfora con firma rosa;
-- Shock con radio AOE visible;
-- Fusión con detonación diferenciada;
-- Power/Nova/Espejo con lenguaje dorado.
-
-## Practice
-
-`PRACTICE · 1 ACTO` sigue siendo el modo rápido para evaluar:
-
-- Tap;
-- TRACE;
-- FOLLOW;
-- game feel.
-
-No altera unlocks ni récords de run.
-
-## Cartas
-
-Las cartas **todavía no han recibido su rediseño visual definitivo**.
-
-v0.26 sólo mejora su información:
-
-- build actual visible;
-- stacks;
-- pista de sinergia;
-- descripción.
-
-La próxima pasada visual de cartas debería tratarlas como objetos del universo del juego —módulos, chips, piezas o artefactos— y no como simples botones rectangulares.
+- 7 actos;
+- densidad de chart creciente;
+- grupos CHAIN legibles;
+- AURA CORE con armadura orbitante;
+- rebote del Core protegido;
+- Phase 2;
+- CORE BREAK;
+- Daily;
+- Practice;
+- progresión FORGE / PRISM / PULSE;
+- pausa/reanudación segura en móvil.
 
 ## Física
 
-Sigue siendo no negociable:
+Regla no negociable:
 
 **las notas y proyectiles se mueven a velocidad constante entre colisiones.**
 
-Shake, flashes, operator reactions y UI no alteran el reloj ni la simulación.
+La nueva Power Orb de Slide respeta esta regla: cambia dirección inicial y número de rebotes, no introduce aceleración.
 
-## Siguiente producción
+## Qué validar ahora
 
-Las siguientes áreas maduras para trabajo son:
-
-1. evaluar TRACE vs FOLLOW con Practice y telemetría local;
-2. definir dirección artística y personalidad del PJ definitivo;
-3. rediseñar completamente la selección de upgrades;
-4. producir una primera canción real en stems;
-5. continuar afinando oportunidades CHAIN y el boss;
-6. sólo después ampliar contenido/backend/live ops.
+1. ¿POWER RETURN hace que completar Slide se sienta realmente recompensado?
+2. ¿AURI suma vínculo sin robar atención al gameplay?
+3. ¿La cabina inferior es el lugar correcto para el PJ definitivo?
+4. ¿Los AURA MODULES se entienden más rápido que las antiguas cartas?
+5. ¿Puedes reconocer qué hace un módulo mirando sólo su preview?
+6. ¿GLASSHOUSE CIRCUIT se siente como una canción y no como un metrónomo adornado?
+7. ¿Notas cómo la build revela/modifica stems durante una run?
+8. ¿TRACE o FOLLOW sigue siendo el candidato claro a sobrevivir?
 
 ## GitHub Pages
 
