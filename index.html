@@ -11,12 +11,29 @@
   <main class="app" data-machine="forge">
     <canvas id="game" width="540" height="960" aria-label="Aura Farm"></canvas>
 
-    <div class="topbar" aria-live="polite">
-      <div><span>PUNTOS</span><strong id="score">0</strong></div>
-      <div><span>COMBO</span><strong id="combo">0</strong></div>
-      <div><span>ACTO</span><strong id="act">1/7</strong></div>
-      <div><span>ÚLTIMO</span><strong id="lastHit">—</strong></div>
-    </div>
+    <header class="topbar" aria-live="polite">
+      <div class="hud-score">
+        <span>SCORE</span>
+        <strong id="score">0</strong>
+      </div>
+
+      <div class="hud-core">
+        <span id="trackSection" class="hud-section">GERMINATE</span>
+        <div class="hud-combo-row">
+          <strong id="combo">0</strong>
+          <span id="comboMult">×1</span>
+        </div>
+        <em>COMBO</em>
+        <div class="hud-progress" aria-hidden="true">
+          <i id="trackProgress"></i>
+        </div>
+      </div>
+
+      <div class="hud-status">
+        <span>ACT <strong id="act">1/7</strong></span>
+        <small id="lastHit">—</small>
+      </div>
+    </header>
 
     <aside id="buildDock" class="build-dock" aria-label="Build actual">
       <span class="build-dock-label">BUILD</span>
