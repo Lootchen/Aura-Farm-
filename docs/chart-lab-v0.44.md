@@ -1,4 +1,4 @@
-# Aura Farm Chart Lab v0.44
+# Aura Farm Chart Lab v0.45
 
 Chart Lab is the internal authoring surface for Aura Farm song packages.
 
@@ -25,7 +25,7 @@ Click the BEAT ruler in the timeline to seek.
 
 ### Timeline lanes
 
-- **MUSIC** shows activity from the procedural stems.
+- **MUSIC** shows procedural stem activity or the decoded waveform for file-backed songs.
 - **TAP L** contains left Tap events.
 - **TAP R** contains right Tap events.
 - **TRACE** contains Slide/TRACE phrases.
@@ -57,7 +57,7 @@ Tap prefers:
 5. boss;
 6. harmony.
 
-TRACE requires Lead or Aura.
+TRACE requires Lead/Aura for procedural auto-contour. File-backed songs default to the semantic `mix` stem and keep authored TRACE anchors.
 
 The editor proposes stem, intent, energy and phrase metadata. These remain editable in the inspector.
 
@@ -108,8 +108,18 @@ This means the intended workflow is:
 - Delete/Backspace — delete selected event
 - Left/Right — move selected event by one active snap
 
-## Current limitation
+## File-backed audio in v0.45
 
-The v0.44 transport is a timing/phrasing audition synthesized from the package. It does not yet expose the full in-game six-bus mix graph or imported OGG/MP3 waveforms.
+Set `AUDIO MODE` to `FILE · OGG/WAV/MP3`, configure `AUDIO SRC`, BPM and offset, then use **ANALIZAR SRC**.
 
-That should be the next audio-tooling step when produced stems replace or complement the procedural prototype engine.
+Chart Lab will decode the deployed asset, render its waveform and store per-grid-step energy analysis.
+
+**ARCHIVO LOCAL** can analyze a file from your device without first deploying it. This does not upload or embed that file; it only powers local preview/analysis. The final package must still point at the licensed asset in `audio.src`.
+
+Validation states:
+
+- **SYNC VERIFIED** — procedural stem semantics checked;
+- **AUDIO ANALYZED** — external mix energy checked;
+- **GRID ONLY** — timing/chart structure valid but no decoded-audio analysis.
+
+The remaining future step is true multi-stem produced audio analysis/mixing. A stereo mix can show waveform/onsets, but it cannot reliably prove that a specific event follows “lead” vs “drums”.
