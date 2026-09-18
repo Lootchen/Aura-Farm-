@@ -6967,39 +6967,149 @@ function resetWaveState() {
   flippers.right.hitThisSwing = false;
 }
 
+function shuffledUpgrades(items) {
+  const copy =
+    [...items];
+
+  for (
+    let i = copy.length - 1;
+    i > 0;
+    i -= 1
+  ) {
+    const j =
+      Math.floor(
+        runRandom() *
+        (i + 1)
+      );
+    [copy[i], copy[j]] =
+      [copy[j], copy[i]];
+  }
+
+  return copy;
+}
+
 function pickUpgradeChoices() {
   const pool =
-    UPGRADES.filter(
-      (upgrade) =>
-        !upgrade.available ||
-        upgrade.available()
+    shuffledUpgrades(
+      UPGRADES.filter(
+        (upgrade) =>
+          !upgrade.available ||
+          upgrade.available()
+      )
+    );
+  const choices = [];
+  const usedFamilies =
+    new Set();
+  const ownedFamilies =
+    new Set(
+      buildHistory.map(
+        (item) => item.family
+      )
     );
 
-  for (let i = pool.length - 1; i > 0; i -= 1) {
-    const j =
-      Math.floor(runRandom() * (i + 1));
-    [pool[i], pool[j]] =
-      [pool[j], pool[i]];
-  }
-
-  const choices = [];
-  const families = new Set();
-
-  for (const upgrade of pool) {
-    if (families.has(upgrade.family)) continue;
-
-    choices.push(upgrade);
-    families.add(upgrade.family);
-
-    if (choices.length === 3) {
-      return choices;
+  const add = (
+    upgrade,
+    {
+      allowFamilyRepeat = false
+    } = {}
+  ) => {
+    if (
+      !upgrade ||
+      choices.includes(upgrade)
+    ) {
+      return false;
     }
+
+    if (
+      !allowFamilyRepeat &&
+      usedFamilies.has(
+        upgrade.family
+      )
+    ) {
+      return false;
+    }
+
+    choices.push(upgrade);
+    usedFamilies.add(
+      upgrade.family
+    );
+    return true;
+  };
+
+  // Slot 1: if the player is one module away from a synergy,
+  // offer one way to complete it. This makes builds steerable,
+  // without guaranteeing the same build every run.
+  const finishers =
+    pool.filter(
+      (upgrade) =>
+        synergyHintsForUpgrade(
+          upgrade
+        ).length > 0
+    );
+
+  if (finishers.length > 0) {
+    add(finishers[0]);
   }
 
+  // Slot 2: reinforce a family already being built.
+  if (
+    buildHistory.length > 0 &&
+    choices.length < 2
+  ) {
+    const continuation =
+      pool.find(
+        (upgrade) =>
+          ownedFamilies.has(
+            upgrade.family
+          ) &&
+          !choices.includes(
+            upgrade
+          )
+      );
+
+    add(
+      continuation,
+      {
+        allowFamilyRepeat:
+          choices.length === 0
+      }
+    );
+  }
+
+  // Slot 3: keep one door open to a new family.
+  if (choices.length < 3) {
+    const discovery =
+      pool.find(
+        (upgrade) =>
+          !ownedFamilies.has(
+            upgrade.family
+          ) &&
+          !choices.includes(
+            upgrade
+          ) &&
+          !usedFamilies.has(
+            upgrade.family
+          )
+      );
+
+    add(discovery);
+  }
+
+  // Fill remaining slots with distinct families when possible.
   for (const upgrade of pool) {
-    if (choices.includes(upgrade)) continue;
-    choices.push(upgrade);
-    if (choices.length === 3) break;
+    if (choices.length >= 3) break;
+    add(upgrade);
+  }
+
+  // Small pools can force a repeated family.
+  for (const upgrade of pool) {
+    if (choices.length >= 3) break;
+    add(
+      upgrade,
+      {
+        allowFamilyRepeat: true
+      }
+    );
   }
 
   return choices;
@@ -7082,11 +7192,33 @@ function renderUpgradeChoices() {
       hints.length
         ? `→ ${hints.map((item) => item.title).join(" / ")}`
         : "";
+    const ownedFamily =
+      buildHistory.some(
+        (item) =>
+          item.family ===
+          upgrade.family
+      );
+    const fitLabel =
+      hints.length
+        ? "COMPLETA SINERGIA"
+        : ownedFamily
+          ? "REFUERZA BUILD"
+          : "NUEVA RUTA";
+
+    button.classList.toggle(
+      "is-synergy",
+      hints.length > 0
+    );
+    button.classList.toggle(
+      "is-continuation",
+      !hints.length &&
+        ownedFamily
+    );
 
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"><span>${moduleSerial(upgrade)}</span><em>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em></span><span class="module-preview" data-module="${upgrade.id}" aria-hidden="true">${upgradePreviewMarkup(upgrade)}</span><strong>${upgrade.title}${owned > 0 ? ` ×${owned + 1}` : ""}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span><span class="upgrade-synergy"${hintText ? "" : " hidden"}>${hintText}</span><span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span>`;
+      `<span class="module-head"><span>${moduleSerial(upgrade)}</span><em>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em></span><span class="module-fit">${fitLabel}</span><span class="module-preview" data-module="${upgrade.id}" aria-hidden="true">${upgradePreviewMarkup(upgrade)}</span><strong>${upgrade.title}${owned > 0 ? ` ×${owned + 1}` : ""}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span><span class="upgrade-synergy"${hintText ? "" : " hidden"}>${hintText}</span><span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span>`;
 
     button.addEventListener(
       "click",
