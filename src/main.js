@@ -2440,8 +2440,13 @@ function drawTrail(note) {
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(note.x, note.y);
-    ctx.lineTo(note.x - ux * 30, note.y - uy * 30);
+    ctx.lineTo(
+      note.x - ux * (note.power ? 48 : 30),
+      note.y - uy * (note.power ? 48 : 30)
+    );
     ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = "transparent";
     return;
   }
 
