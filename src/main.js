@@ -1,12 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.44";
+} from "./song.js?v=0.45";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.44";
+} from "./music.js?v=0.45";
+import {
+  loadAudioBuffer,
+  resolveSongAssetUrl,
+  validateDecodedAudioDuration
+} from "./audio-file.js?v=0.45";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -88,7 +93,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.44";
+const GAME_VERSION = "0.45";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -102,9 +107,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.44";
+  "./assets/world/glasshouse-far.svg?v=0.45";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.44";
+  "./assets/world/growth-bays.svg?v=0.45";
 
 function drawWorldAsset(
   image,
@@ -135,6 +140,7 @@ let COUNT_IN_BEATS = 4;
 let STEPS_PER_BEAT = 2;
 let CHART = [];
 let SONG = null;
+let songSourceUrl = null;
 let songCatalog = null;
 let selectedSongId = null;
 let songAlignmentReport = null;
@@ -534,6 +540,182 @@ class RhythmClock {
     this.delayNode = null;
     this.delayFeedback = null;
     this.delayWet = null;
+    this.fileBuffer = null;
+    this.fileBufferUrl = null;
+    this.fileSource = null;
+    this.fileGain = null;
+  }
+
+  async prepareSongAudio(
+    song,
+    sourceUrl
+  ) {
+    if (
+      !song ||
+      song.audio?.mode !==
+        "file"
+    ) {
+      return;
+    }
+
+    if (!this.context) {
+      this.context =
+        new AudioContext();
+    }
+
+    const resolved =
+      resolveSongAssetUrl(
+        sourceUrl,
+        song.audio.src
+      );
+
+    if (!resolved) {
+      throw new Error(
+        "No se pudo resolver audio.src."
+      );
+    }
+
+    if (
+      this.fileBuffer &&
+      this.fileBufferUrl ===
+        resolved
+    ) {
+      return;
+    }
+
+    const buffer =
+      await loadAudioBuffer(
+        this.context,
+        resolved
+      );
+
+    validateDecodedAudioDuration(
+      song,
+      buffer
+    );
+
+    this.fileBuffer =
+      buffer;
+    this.fileBufferUrl =
+      resolved;
+  }
+
+  stopSongSource() {
+    if (this.fileSource) {
+      try {
+        this.fileSource.stop();
+      } catch {
+        // Source may already have ended.
+      }
+
+      this.fileSource.onended =
+        null;
+      this.fileSource =
+        null;
+    }
+
+    if (this.fileGain) {
+      try {
+        this.fileGain.disconnect();
+      } catch {
+        // Already disconnected.
+      }
+
+      this.fileGain = null;
+    }
+  }
+
+  startFileSong() {
+    if (
+      !this.context ||
+      !this.fileBuffer ||
+      SONG?.audio?.mode !==
+        "file"
+    ) {
+      return;
+    }
+
+    this.stopSongSource();
+
+    const source =
+      this.context
+        .createBufferSource();
+    const gain =
+      this.context
+        .createGain();
+
+    source.buffer =
+      this.fileBuffer;
+    gain.gain.value =
+      clamp(
+        Number(
+          SONG.audio.gain ??
+          1
+        ),
+        0,
+        2
+      );
+
+    source.connect(gain);
+    gain.connect(
+      this.masterBus ??
+      this.context.destination
+    );
+
+    const offsetSeconds =
+      Number(
+        SONG.timing.offsetMs ??
+        0
+      ) /
+      1000;
+    const idealStart =
+      this.startAt -
+      offsetSeconds;
+    const safeStart =
+      Math.max(
+        this.context.currentTime +
+          0.02,
+        idealStart
+      );
+    const fileOffset =
+      Math.max(
+        0,
+        safeStart -
+          idealStart
+      );
+
+    if (
+      fileOffset >=
+      this.fileBuffer.duration
+    ) {
+      throw new Error(
+        "El offset deja el audio fuera de su duración."
+      );
+    }
+
+    source.start(
+      safeStart,
+      fileOffset
+    );
+
+    source.onended =
+      () => {
+        if (
+          this.fileSource ===
+          source
+        ) {
+          this.fileSource =
+            null;
+        }
+      };
+
+    this.fileSource = source;
+    this.fileGain = gain;
+  }
+
+  stopMusic() {
+    this.stopScheduler();
+    this.stopSongSource();
   }
 
   ensureMixGraph() {
@@ -880,6 +1062,11 @@ class RhythmClock {
     this.ensureMixGraph();
     this.applyRunMix(0.08);
 
+    await this.prepareSongAudio(
+      SONG,
+      songSourceUrl
+    );
+
     if (!this.noiseBuffer) {
       const length = Math.floor(this.context.sampleRate * 0.12);
       this.noiseBuffer = this.context.createBuffer(1, length, this.context.sampleRate);
@@ -901,6 +1088,15 @@ class RhythmClock {
       STEPS_PER_BEAT;
 
     this.stopScheduler();
+    this.stopSongSource();
+
+    if (
+      SONG?.audio?.mode ===
+        "file"
+    ) {
+      this.startFileSong();
+    }
+
     this.schedule();
     this.timer = window.setInterval(() => this.schedule(), 25);
   }
@@ -969,7 +1165,10 @@ class RhythmClock {
       if (time >= this.context.currentTime) {
         if (beat < 0) {
           if (Number.isInteger(beat)) this.scheduleCountIn(time, beat);
-        } else {
+        } else if (
+          SONG?.audio?.mode ===
+            "procedural"
+        ) {
           this.scheduleGroove(time, beat);
         }
       }
@@ -3149,7 +3348,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.44",
+      "../songs/index.json?v=0.45",
       import.meta.url
     );
 
@@ -3216,14 +3415,15 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.44`,
+      `../songs/${entry.file}?v=0.45`,
       import.meta.url
     );
 
   const {
     song,
     chart,
-    alignment
+    alignment,
+    sourceUrl
   } =
     await loadGameSong(
       songUrl,
@@ -3235,6 +3435,8 @@ async function ensureChartLoaded() {
     );
 
   SONG = song;
+  songSourceUrl =
+    sourceUrl;
   songAlignmentReport =
     alignment;
 
@@ -3253,6 +3455,8 @@ async function ensureChartLoaded() {
     chart.events.map(
       (event) => {
         if (
+          song.audio.mode ===
+            "procedural" &&
           event.type === "slide" &&
           event.music?.contour
         ) {
@@ -3266,6 +3470,8 @@ async function ensureChartLoaded() {
         }
 
         if (
+          song.audio.mode ===
+            "procedural" &&
           event.type === "tap"
         ) {
           return {
@@ -13653,7 +13859,7 @@ function openUpgradePanel() {
   awaitingUpgrade = true;
   running = false;
   pauseButton.disabled = true;
-  clock.stopScheduler();
+  clock.stopMusic();
 
   active.clear();
   explosions = [];
@@ -13788,7 +13994,7 @@ function completeRun() {
   runPaused = false;
   awaitingUpgrade = false;
   pauseButton.disabled = true;
-  clock.stopScheduler();
+  clock.stopMusic();
 
   const practice =
     runMode === "practice";
@@ -14583,8 +14789,35 @@ async function startRun(mode = "standard") {
   buildPanel.hidden = true;
   summaryPanel.hidden = true;
 
-  await ensureChartLoaded();
-  buildPaths();
+  try {
+    await ensureChartLoaded();
+    await clock.prepareSongAudio(
+      SONG,
+      songSourceUrl
+    );
+    buildPaths();
+  } catch (error) {
+    console.error(
+      "[Aura Farm] start failed",
+      error
+    );
+
+    startButton.disabled = false;
+    dailyButton.disabled = false;
+    practiceButton.disabled = false;
+    startButton.classList.remove(
+      "is-loading"
+    );
+    startButtonLabel.textContent =
+      "REINTENTAR";
+
+    if (menuAuriLine) {
+      menuAuriLine.textContent =
+        `No puedo preparar la canción: ${error.message}`;
+    }
+
+    return;
+  }
 
   recordLifetimeMetric(
     mode === "practice"
@@ -15118,7 +15351,7 @@ function abandonRun() {
   running = false;
   runPaused = false;
   awaitingUpgrade = false;
-  clock.stopScheduler();
+  clock.stopMusic();
 
   active.clear();
   resolved.clear();
