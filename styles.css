@@ -1711,3 +1711,85 @@ button { font: inherit; }
       0 0 42px rgba(var(--machine-secondary),.32);
   }
 }
+
+
+/* v0.28 — machine selector as physical silhouettes */
+.machine-option {
+  --pick-accent: 255,196,92;
+  --pick-secondary: 110,215,255;
+  grid-template-rows: auto 34px auto auto;
+  justify-items: center;
+  align-content: center;
+}
+
+.machine-option[data-machine="prism"] {
+  --pick-accent: 211,139,255;
+  --pick-secondary: 94,226,215;
+}
+
+.machine-option[data-machine="pulse"] {
+  --pick-accent: 255,105,148;
+  --pick-secondary: 255,226,104;
+}
+
+.machine-mini {
+  position: relative;
+  width: 46px;
+  height: 30px;
+  display: block;
+  opacity: .72;
+}
+
+.machine-mini::before,
+.machine-mini::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  width: 19px;
+  height: 5px;
+  border: 2px solid rgba(var(--pick-secondary),.78);
+  border-radius: 999px;
+  background: #101a27;
+}
+
+.machine-mini::before {
+  left: 0;
+  transform: rotate(-28deg);
+  transform-origin: right center;
+}
+
+.machine-mini::after {
+  right: 0;
+  transform: rotate(28deg);
+  transform-origin: left center;
+}
+
+.machine-mini b {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%,-50%);
+  border: 3px solid rgb(var(--pick-accent));
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      rgb(var(--pick-secondary)) 0 22%,
+      #111b28 24% 60%,
+      transparent 62%
+    );
+  box-shadow:
+    0 0 13px rgba(var(--pick-accent),.16);
+}
+
+.machine-option.is-selected .machine-mini {
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+.machine-option.is-selected .machine-mini b {
+  box-shadow:
+    0 0 18px rgba(var(--pick-accent),.30);
+}
