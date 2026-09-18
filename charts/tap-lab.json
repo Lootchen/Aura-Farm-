@@ -1,5 +1,5 @@
 {
-  "name": "Mechanics Lab 06 · Analog Slide",
+  "name": "Mechanics Lab 07 · Tap + Slide",
   "bpm": 110,
   "loopBeats": 44,
   "countInBeats": 4,
@@ -37,84 +37,114 @@
       "beat": 7,
       "side": "left",
       "route": 1,
-      "durationBeats": 6,
+      "durationBeats": 8,
       "anchors": [
         {
           "beat": 0,
           "position": 0
         },
         {
-          "beat": 1.5,
-          "position": 0.72
+          "beat": 2,
+          "position": 0.62
         },
         {
-          "beat": 3,
-          "position": -0.68
-        },
-        {
-          "beat": 4.5,
-          "position": 0.48
+          "beat": 4,
+          "position": -0.62
         },
         {
           "beat": 6,
+          "position": 0.34
+        },
+        {
+          "beat": 8,
           "position": 0
         }
       ]
     },
     {
-      "type": "draw",
-      "beat": 17,
-      "windowBeats": 4,
-      "symbol": "u"
-    },
-    {
       "type": "tap",
-      "beat": 24,
+      "beat": 18,
       "side": "left",
       "route": 2,
       "symbol": "♬"
     },
     {
       "type": "tap",
-      "beat": 25,
+      "beat": 19,
       "side": "right",
       "route": 2,
       "symbol": "♪"
     },
     {
+      "type": "tap",
+      "beat": 20,
+      "side": "left",
+      "route": 0,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 21,
+      "side": "right",
+      "route": 0,
+      "symbol": "♪"
+    },
+    {
       "type": "slide",
-      "beat": 29,
+      "beat": 25,
       "side": "right",
       "route": 1,
-      "durationBeats": 6,
+      "durationBeats": 8,
       "anchors": [
         {
           "beat": 0,
           "position": 0
         },
         {
-          "beat": 1.5,
-          "position": -0.7
+          "beat": 2,
+          "position": -0.62
         },
         {
-          "beat": 3,
-          "position": 0.65
-        },
-        {
-          "beat": 4.5,
-          "position": -0.42
+          "beat": 4,
+          "position": 0.62
         },
         {
           "beat": 6,
+          "position": -0.34
+        },
+        {
+          "beat": 8,
           "position": 0
         }
       ]
     },
     {
-      "type": "draw",
+      "type": "tap",
+      "beat": 36,
+      "side": "left",
+      "route": 1,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 37,
+      "side": "right",
+      "route": 1,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
       "beat": 38,
-      "windowBeats": 4,
-      "symbol": "z"
+      "side": "left",
+      "route": 2,
+      "symbol": "♬"
+    },
+    {
+      "type": "tap",
+      "beat": 39,
+      "side": "right",
+      "route": 2,
+      "symbol": "♪"
     }
   ]
 }
