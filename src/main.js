@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.15";
+import { loadGameChart } from "./chart.js?v=0.16";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -24,11 +24,7 @@ const NOTE_RADIUS = 20;
 const PATH_SAMPLES = 160;
 const POST_HIT_SPEED = 455;
 
-const TAP_WINDOWS = {
-  perfect: 0.045,
-  great: 0.090,
-  good: 0.160
-};
+const TAP_MISS_WINDOW = 0.160;
 
 const DRAW_WINDOWS = {
   perfect: 0.200,
@@ -51,16 +47,16 @@ const FLIPPER = {
 };
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
-const LINK = {
+const SLIDE = {
   leadSeconds: 2.25,
-  scrollSpeed: 175,
   startEarly: 0.25,
   startLate: 0.25,
-  handoffGrace: 0.30,
-  disconnectGrace: 0.11,
-  minCoverage: 0.68,
-  tickBeats: 0.5,
-  tickPoints: 18
+  scrollSpeed: 150,
+  positionTolerance: 0.24,
+  disconnectGrace: 0.12,
+  minCoverage: 0.72,
+  padTravel: 44,
+  nodeBeats: 0.5
 };
 
 const DRAW = {
@@ -296,15 +292,17 @@ let showDebug = false;
 
 let drawGesture = null;
 
-const holdState = {
+const slideControl = {
   left: {
     held: false,
-    pressedAt: -Infinity,
+    pointerId: null,
+    position: 0,
     releasedAt: -Infinity
   },
   right: {
     held: false,
-    pressedAt: -Infinity,
+    pointerId: null,
+    position: 0,
     releasedAt: -Infinity
   }
 };
@@ -328,7 +326,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.15", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.16", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -554,36 +552,6 @@ function eventSongTime(eventTimestamp) {
   return clock.songTime - processingDelayMs / 1000 + calibrationOffsetMs / 1000;
 }
 
-function judgementFor(errorSeconds, windows = TAP_WINDOWS) {
-  const error = Math.abs(errorSeconds);
-
-  if (error <= windows.perfect) return JUDGEMENTS.perfect;
-  if (error <= windows.great) return JUDGEMENTS.great;
-  if (error <= windows.good) return JUDGEMENTS.good;
-
-  return null;
-}
-
-function tapScoreFor(deltaSeconds) {
-  const error = Math.abs(deltaSeconds);
-  const ratio = clamp(error / TAP_WINDOWS.good, 0, 1);
-  return Math.round(20 + 480 * Math.pow(1 - ratio, 1.55));
-}
-
-function tapLaunchAngle(side, deltaSeconds) {
-  const base = side === "left"
-    ? -Math.PI / 4
-    : -3 * Math.PI / 4;
-
-  const timing = clamp(
-    deltaSeconds / TAP_WINDOWS.good,
-    -1,
-    1
-  );
-
-  return base + timing * 0.20;
-}
-
 function spawnReady(songTime) {
   const duration = loopDuration();
   const currentLoop = songTime < 0 ? 0 : Math.floor(songTime / duration);
@@ -602,9 +570,9 @@ function spawnReady(songTime) {
       if (event.type === "tap") {
         const path = routeFor(event.side, event.route);
         lead = path.length / NOTE_SPEED;
-        expireAt = targetTime + TAP_WINDOWS.good + 0.22;
-      } else if (event.type === "link") {
-        lead = LINK.leadSeconds;
+        expireAt = targetTime + TAP_MISS_WINDOW + 0.22;
+      } else if (event.type === "slide") {
+        lead = SLIDE.leadSeconds;
         expireAt = targetTime + beatToSeconds(event.durationBeats) + 0.35;
       } else if (event.type === "draw") {
         lead = DRAW.previewSeconds;
@@ -634,23 +602,22 @@ function spawnReady(songTime) {
         });
       }
 
-      if (event.type === "link") {
+      if (event.type === "slide") {
+        const path = routeFor(event.side, event.route);
+
         active.set(key, {
           key,
           loop,
           ...event,
           targetTime,
           endTime: targetTime + beatToSeconds(event.durationBeats),
+          path,
           started: false,
           goodTime: 0,
           trackingTime: 0,
+          lastGoodTime: -Infinity,
           startDelta: null,
-          handoffDone: event.segments.map((segment, index) => index === 0),
-          handoffDelta: event.segments.map(() => null),
-          handoffFlashed: event.segments.map((segment, index) => index === 0),
-          nextTickBeat: 0,
-          ticksHit: 0,
-          ticksTotal: Math.floor(event.durationBeats / LINK.tickBeats) + 1
+          lastError: 1
         });
       }
 
@@ -720,17 +687,26 @@ function flipperSegment(side, songTime) {
   const m = view();
   const pivot = m.pivot[side];
   const phase = flipperPhase(side, songTime);
+  const slide = activeSlideAt(songTime, side);
+
+  const angle =
+    slide?.started
+      ? slideAngle(side, slideControl[side].position)
+      : phase.angle;
 
   return {
     pivot,
     tip: {
-      x: pivot.x + Math.cos(phase.angle) * FLIPPER.length,
-      y: pivot.y + Math.sin(phase.angle) * FLIPPER.length
+      x: pivot.x + Math.cos(angle) * FLIPPER.length,
+      y: pivot.y + Math.sin(angle) * FLIPPER.length
     },
-    phase
+    phase: {
+      ...phase,
+      slide: Boolean(slide?.started),
+      angle
+    }
   };
 }
-
 function distancePointToSegment(point, a, b) {
   const abx = b.x - a.x;
   const aby = b.y - a.y;
@@ -826,47 +802,41 @@ function createImpactFlash(x, y, judgement) {
 }
 
 function resolveTapHit(note, side, songTime) {
-  const delta = songTime - note.targetTime;
-  const judgement = judgementFor(delta);
-
-  if (!judgement) return false;
-
-  const deltaMs = Math.round(delta * 1000);
-  const basePoints = tapScoreFor(delta);
-
   combo += 1;
   const multiplier = comboMultiplier(combo);
 
-  score += basePoints * multiplier;
+  score += JUDGEMENTS.perfect.points * multiplier;
   hitCount += 1;
 
-  lastDeltaMs = deltaMs;
-  lastJudgement = judgement.label;
+  lastDeltaMs = null;
+  lastJudgement = "PERFECT";
 
   note.launched = true;
   note.prevX = note.x;
   note.prevY = note.y;
 
-  const launchAngle = tapLaunchAngle(side, delta);
+  const segment = flipperSegment(side, songTime);
+  const dx = segment.tip.x - segment.pivot.x;
+  const dy = segment.tip.y - segment.pivot.y;
+  const length = Math.hypot(dx, dy) || 1;
 
-  note.vx = Math.cos(launchAngle) * POST_HIT_SPEED;
-  note.vy = Math.sin(launchAngle) * POST_HIT_SPEED;
+  note.vx = (dx / length) * POST_HIT_SPEED;
+  note.vy = (dy / length) * POST_HIT_SPEED;
 
   resolved.add(note.key);
   flippers[side].hitThisSwing = true;
 
-  const contact = flipperSegment(side, songTime).tip;
-  createImpactFlash(contact.x, contact.y, judgement);
-
-  showMessage(
-    `${judgement.label} · ${deltaMs >= 0 ? "+" : ""}${deltaMs}ms · +${basePoints}`,
-    judgement.color
+  createImpactFlash(
+    segment.tip.x,
+    segment.tip.y,
+    JUDGEMENTS.perfect
   );
 
-  hitSound(side, judgement);
+  showMessage("PERFECT", JUDGEMENTS.perfect.color, 360);
+  hitSound(side, JUDGEMENTS.perfect);
 
   if (navigator.vibrate) {
-    navigator.vibrate(judgement === JUDGEMENTS.perfect ? 8 : 5);
+    navigator.vibrate(8);
   }
 
   updateHud();
@@ -910,13 +880,6 @@ function resolveFlipperCollisions(songTime) {
       );
 
     for (const note of candidates) {
-      if (
-        Math.abs(songTime - note.targetTime) >
-        TAP_WINDOWS.good + 0.035
-      ) {
-        continue;
-      }
-
       const distance = distancePointToSegment(
         note,
         segment.pivot,
@@ -1102,75 +1065,63 @@ function updateTap(note, dt, songTime) {
   note.x = point.x;
   note.y = point.y;
 
-  if (songTime - note.targetTime > TAP_WINDOWS.good) {
+  if (songTime - note.targetTime > TAP_MISS_WINDOW) {
     failEvent(note, "MISS");
   }
 }
 
-function setHeldSide(side, held, songTime) {
-  const state = holdState[side];
+function slideAngle(side, position) {
+  const m = view();
+  const center =
+    (m.restAngle[side] + m.strikeAngle[side]) / 2;
+  const span =
+    Math.abs(m.strikeAngle[side] - m.restAngle[side]) / 2;
 
-  if (held) {
-    if (!state.held) {
-      state.held = true;
-      state.pressedAt = songTime;
-    }
-    return;
+  return center - clamp(position, -1, 1) * span;
+}
+
+function slidePositionAtBeat(event, beatOffset) {
+  const anchors = event.anchors;
+
+  if (beatOffset <= anchors[0].beat) {
+    return anchors[0].position;
   }
 
-  if (state.held) {
-    state.held = false;
-    state.releasedAt = songTime;
-  }
-}
+  for (let i = 1; i < anchors.length; i += 1) {
+    const a = anchors[i - 1];
+    const b = anchors[i];
 
-function linkSegmentTime(event, segment) {
-  return event.targetTime + beatToSeconds(segment.beat);
-}
+    if (beatOffset <= b.beat) {
+      const span =
+        Math.max(0.0001, b.beat - a.beat);
+      const t =
+        (beatOffset - a.beat) / span;
 
-function expectedLinkSide(event, songTime) {
-  let current = event.segments[0];
-
-  for (const segment of event.segments) {
-    if (linkSegmentTime(event, segment) <= songTime) {
-      current = segment;
-    } else {
-      break;
-    }
-  }
-
-  return current.side;
-}
-
-function nextLinkSegment(event, songTime) {
-  return event.segments.find(
-    (segment, index) =>
-      index > 0 &&
-      linkSegmentTime(event, segment) > songTime
-  ) ?? null;
-}
-
-function previousLinkSegment(event, songTime) {
-  let previous = null;
-
-  for (const segment of event.segments) {
-    if (linkSegmentTime(event, segment) <= songTime) {
-      if (previous) previous = segment;
-      else previous = segment;
-    } else {
-      break;
+      return lerp(a.position, b.position, t);
     }
   }
 
-  return previous;
+  return anchors.at(-1).position;
 }
 
-function activeLinkAt(songTime) {
+function slidePositionAtTime(event, songTime) {
+  return slidePositionAtBeat(
+    event,
+    clamp(
+      (songTime - event.targetTime) / beatToSeconds(1),
+      0,
+      event.durationBeats
+    )
+  );
+}
+
+function activeSlideAt(songTime, side = null) {
   return [...active.values()]
-    .filter((event) => event.type === "link")
+    .filter((event) => event.type === "slide")
+    .filter((event) => !side || event.side === side)
     .filter(
       (event) =>
-        songTime >= event.targetTime - LINK.leadSeconds &&
+        songTime >= event.targetTime - SLIDE.leadSeconds &&
         songTime <= event.endTime + 0.35
     )
     .sort(
@@ -1180,226 +1131,139 @@ function activeLinkAt(songTime) {
     )[0] ?? null;
 }
 
-function linkPressReserved(event, side, songTime) {
-  if (!event) return false;
+function slidePressReserved(event, side, songTime) {
+  if (!event || event.side !== side) return false;
 
-  if (!event.started) {
-    const first = event.segments[0];
-    const delta = songTime - event.targetTime;
-
-    return (
-      first.side === side &&
-      delta >= -LINK.startEarly &&
-      delta <= LINK.startLate
-    );
+  if (event.started) {
+    return songTime <= event.endTime;
   }
 
-  const next = nextLinkSegment(event, songTime);
+  const delta = songTime - event.targetTime;
 
-  if (!next || next.side !== side) return false;
-
-  return Math.abs(
-    songTime - linkSegmentTime(event, next)
-  ) <= LINK.handoffGrace;
+  return (
+    delta >= -SLIDE.startEarly &&
+    delta <= SLIDE.startLate
+  );
 }
 
-function linkVisualState(side, songTime) {
-  const event = activeLinkAt(songTime);
+function updateSlidePadPosition(side, event) {
+  if (!event) return;
 
-  if (!event) {
-    return {
-      active: false,
-      expected: false,
-      next: false,
-      connected: false
-    };
-  }
+  const point = eventToDesign(event);
+  const center = controlButtonCenter(side);
 
-  const expected = expectedLinkSide(
-    event,
-    Math.max(songTime, event.targetTime)
+  slideControl[side].position = clamp(
+    (point.x - center.x) / SLIDE.padTravel,
+    -1,
+    1
   );
+}
 
-  const next = nextLinkSegment(event, songTime);
-  const nextTime = next
-    ? linkSegmentTime(event, next)
-    : Infinity;
+function beginSlide(event, side, songTime) {
+  if (!event.started) {
+    event.started = true;
+    event.startDelta = songTime - event.targetTime;
+    event.lastGoodTime = songTime;
+    slideControl[side].position =
+      event.anchors[0].position;
+
+    const receiver = slideTipPoint(
+      side,
+      event.anchors[0].position
+    );
+
+    createImpactFlash(
+      receiver.x,
+      receiver.y,
+      JUDGEMENTS.perfect
+    );
+
+    showMessage(
+      "SLIDE · ARRASTRA EL PULGAR",
+      "#fff1a9",
+      520
+    );
+
+    successTone(620);
+
+    if (navigator.vibrate) {
+      navigator.vibrate(6);
+    }
+  }
+}
+
+function slideTipPoint(side, position) {
+  const m = view();
+  const pivot = m.pivot[side];
+  const angle = slideAngle(side, position);
 
   return {
-    active: true,
-    expected: event.started && expected === side,
-    next:
-      Boolean(next) &&
-      next.side === side &&
-      nextTime - songTime <= 0.85 &&
-      nextTime - songTime >= -0.06,
-    connected:
-      event.started &&
-      expected === side &&
-      (
-        holdState[side].held ||
-        songTime - holdState[side].releasedAt <= LINK.disconnectGrace
-      )
+    x: pivot.x + Math.cos(angle) * FLIPPER.length,
+    y: pivot.y + Math.sin(angle) * FLIPPER.length
   };
 }
 
-function linkSideConnected(side, songTime) {
+function slideConnected(event, songTime) {
+  if (!event.started) return false;
+
+  const control = slideControl[event.side];
+  const target =
+    slidePositionAtTime(event, songTime);
+
+  const error =
+    Math.abs(control.position - target);
+
+  event.lastError = error;
+
+  if (
+    control.held &&
+    error <= SLIDE.positionTolerance
+  ) {
+    event.lastGoodTime = songTime;
+    return true;
+  }
+
   return (
-    holdState[side].held ||
-    songTime - holdState[side].releasedAt <= LINK.disconnectGrace
+    songTime - event.lastGoodTime <=
+    SLIDE.disconnectGrace
   );
 }
 
-function scoreLinkTicks(event, songTime) {
-  while (
-    event.nextTickBeat <= event.durationBeats + 0.0001 &&
-    songTime >= event.targetTime + beatToSeconds(event.nextTickBeat)
-  ) {
-    const tickTime =
-      event.targetTime + beatToSeconds(event.nextTickBeat);
-
-    const side =
-      expectedLinkSide(event, tickTime + 0.0001);
-
-    if (linkSideConnected(side, songTime)) {
-      event.ticksHit += 1;
-      score += LINK.tickPoints * comboMultiplier(combo);
-
-      const receiver = linkReceiver(side);
-      createImpactFlash(
-        receiver.x,
-        receiver.y,
-        JUDGEMENTS.good
-      );
-
-      playTone(
-        side === "left" ? 520 : 610,
-        0.028,
-        0.018,
-        "triangle"
-      );
-
-      updateHud();
-    }
-
-    event.nextTickBeat += LINK.tickBeats;
-  }
-}
-
-function updateLink(event, dt, songTime) {
-  const first = event.segments[0];
-  const firstSide = first.side;
-  const firstPress = holdState[firstSide].pressedAt;
-
+function updateSlide(event, dt, songTime) {
   if (!event.started) {
-    const startDelta = firstPress - event.targetTime;
-
-    const validPress =
-      holdState[firstSide].held &&
-      startDelta >= -LINK.startEarly &&
-      startDelta <= LINK.startLate;
-
-    if (validPress) {
-      event.started = true;
-      event.startDelta = startDelta;
-      lastInputType = "slide";
-
-      const receiver = linkReceiver(firstSide);
-      createImpactFlash(
-        receiver.x,
-        receiver.y,
-        JUDGEMENTS.great
-      );
-
-      showMessage(
-        `SLIDE · AGARRADO ${firstSide === "left" ? "A" : "D"}`,
-        "#9edcff",
-        360
-      );
-
-      successTone(590);
-
-      if (navigator.vibrate) {
-        navigator.vibrate(6);
-      }
-    } else if (songTime > event.targetTime + LINK.startLate) {
+    if (
+      songTime >
+      event.targetTime + SLIDE.startLate
+    ) {
       failEvent(event, "SLIDE MISS");
     }
 
     return;
   }
 
-  for (let i = 1; i < event.segments.length; i += 1) {
-    if (event.handoffDone[i]) continue;
+  if (
+    songTime >= event.targetTime &&
+    songTime <= event.endTime
+  ) {
+    event.trackingTime += dt;
 
-    const segment = event.segments[i];
-    const previous = event.segments[i - 1];
-    const segmentTime = linkSegmentTime(event, segment);
-    const pressDelta =
-      holdState[segment.side].pressedAt - segmentTime;
-
-    const overlap =
-      linkSideConnected(previous.side, segmentTime) ||
-      holdState[previous.side].releasedAt >=
-        segmentTime - LINK.disconnectGrace;
-
-    if (
-      Math.abs(pressDelta) <= LINK.handoffGrace &&
-      overlap
-    ) {
-      event.handoffDone[i] = true;
-      event.handoffDelta[i] = pressDelta;
-
-      const receiver = linkReceiver(segment.side);
-
-      createImpactFlash(
-        receiver.x,
-        receiver.y,
-        JUDGEMENTS.perfect
-      );
-
-      showMessage(
-        `TRANSFERENCIA · ${segment.side === "left" ? "A" : "D"}`,
-        "#b8ffd9",
-        300
-      );
-
-      successTone(690);
-
-      if (navigator.vibrate) {
-        navigator.vibrate([4, 20, 4]);
-      }
+    if (slideConnected(event, songTime)) {
+      event.goodTime += dt;
     }
-  }
-
-  if (songTime >= event.targetTime) {
-    const sampleTime =
-      Math.min(songTime, event.endTime);
-
-    if (songTime <= event.endTime) {
-      const expectedSide =
-        expectedLinkSide(event, songTime);
-
-      event.trackingTime += dt;
-
-      if (linkSideConnected(expectedSide, songTime)) {
-        event.goodTime += dt;
-      }
-    }
-
-    scoreLinkTicks(event, sampleTime);
   }
 
   if (songTime >= event.endTime) {
-    finishLink(event);
+    finishSlide(event);
   }
 }
 
-function spawnSlideProjectile(side) {
-  const receiver = linkReceiver(side);
-  const launchAngle = side === "left"
-    ? -Math.PI / 4
-    : -3 * Math.PI / 4;
+function spawnSlideProjectile(event) {
+  const finalPosition =
+    event.anchors.at(-1).position;
+  const point =
+    slideTipPoint(event.side, finalPosition);
+  const angle =
+    slideAngle(event.side, finalPosition);
 
   const key =
     `slidefx:${performance.now().toFixed(3)}:${Math.random().toString(36).slice(2)}`;
@@ -1407,145 +1271,131 @@ function spawnSlideProjectile(side) {
   active.set(key, {
     key,
     type: "tap",
-    side,
+    side: event.side,
     symbol: "★",
     launched: true,
-    x: receiver.x,
-    y: receiver.y,
-    prevX: receiver.x,
-    prevY: receiver.y,
-    vx:
-      Math.cos(launchAngle) *
-      POST_HIT_SPEED *
-      1.08,
-    vy:
-      Math.sin(launchAngle) *
-      POST_HIT_SPEED *
-      1.08
+    x: point.x,
+    y: point.y,
+    prevX: point.x,
+    prevY: point.y,
+    vx: Math.cos(angle) * POST_HIT_SPEED,
+    vy: Math.sin(angle) * POST_HIT_SPEED
   });
 }
 
-function finishLink(event) {
+function finishSlide(event) {
   if (!active.has(event.key)) return;
 
-  const duration = Math.max(
-    0.001,
-    event.endTime - event.targetTime
-  );
+  const duration =
+    Math.max(
+      0.001,
+      event.endTime - event.targetTime
+    );
 
-  const coverage = event.goodTime / duration;
-  const handoffsOk = event.handoffDone.every(Boolean);
-  const finalSide = event.segments.at(-1).side;
-  const endConnected =
-    linkSideConnected(finalSide, event.endTime);
+  const coverage =
+    event.goodTime / duration;
+
+  const connectedAtEnd =
+    event.endTime - event.lastGoodTime <=
+    SLIDE.disconnectGrace;
 
   if (
-    coverage < LINK.minCoverage ||
-    !handoffsOk ||
-    !endConnected
+    coverage < SLIDE.minCoverage ||
+    !connectedAtEnd
   ) {
-    failEvent(event, "SLIDE FALLÓ");
+    failEvent(event, "SLIDE MISS");
     return;
   }
 
-  const timingErrors = [
-    Math.abs(event.startDelta ?? LINK.startLate),
-    ...event.handoffDelta
-      .filter((value) => Number.isFinite(value))
-      .map(Math.abs)
-  ];
-
-  const worstTiming =
-    timingErrors.length
-      ? Math.max(...timingErrors)
-      : 0;
-
-  let judgement = JUDGEMENTS.good;
-
-  if (
-    coverage >= 0.94 &&
-    worstTiming <= 0.11
-  ) {
-    judgement = JUDGEMENTS.perfect;
-  } else if (
-    coverage >= 0.83 &&
-    worstTiming <= 0.20
-  ) {
-    judgement = JUDGEMENTS.great;
-  }
-
   combo += 1;
-
-  const tickBonus =
-    event.ticksHit * LINK.tickPoints;
-
   score +=
-    (judgement.points + 140) *
-    comboMultiplier(combo);
+    450 * comboMultiplier(combo);
 
-  lastJudgement = `SLIDE ${judgement.label}`;
-  lastDeltaMs = Math.round(worstTiming * 1000);
+  lastDeltaMs = null;
+  lastJudgement = "SLIDE PERFECT";
 
   active.delete(event.key);
   resolved.add(event.key);
 
-  const receiver = linkReceiver(finalSide);
+  const finalPoint =
+    slideTipPoint(
+      event.side,
+      event.anchors.at(-1).position
+    );
 
   createImpactFlash(
-    receiver.x,
-    receiver.y,
-    judgement
+    finalPoint.x,
+    finalPoint.y,
+    JUDGEMENTS.perfect
   );
 
-  spawnSlideProjectile(finalSide);
+  spawnSlideProjectile(event);
 
   showMessage(
-    `SLIDE ${judgement.label} · ${Math.round(coverage * 100)}% · ${event.ticksHit}/${event.ticksTotal}`,
-    judgement.color,
-    620
+    "SLIDE PERFECT",
+    JUDGEMENTS.perfect.color,
+    580
   );
 
-  successTone(810);
+  successTone(820);
 
   if (navigator.vibrate) {
-    navigator.vibrate([6, 22, 8]);
+    navigator.vibrate([6, 20, 7]);
   }
+
+  slideControl[event.side].position = 0;
 
   updateHud();
 }
 
-function linkReceiver(side) {
-  return view().impact[side];
-}
+function slideNodePoint(
+  event,
+  beatOffset,
+  songTime
+) {
+  const m = view();
+  const pivot = m.pivot[event.side];
+  const position =
+    slidePositionAtBeat(event, beatOffset);
+  const angle =
+    slideAngle(event.side, position);
 
-function linkNodePoint(event, beatOffset, side, songTime) {
-  const receiver = linkReceiver(side);
   const nodeTime =
     event.targetTime + beatToSeconds(beatOffset);
 
+  const radius =
+    FLIPPER.length +
+    SLIDE.scrollSpeed * (nodeTime - songTime);
+
   return {
-    x: receiver.x,
-    y:
-      receiver.y -
-      LINK.scrollSpeed *
-      (nodeTime - songTime)
+    x: pivot.x + Math.cos(angle) * radius,
+    y: pivot.y + Math.sin(angle) * radius,
+    radius,
+    position,
+    angle
   };
 }
 
-function drawSlideOrb(x, y, side, radius, alpha = 1, energized = false) {
+function drawSlideOrb(
+  x,
+  y,
+  side,
+  radius,
+  alpha = 1,
+  activeState = false
+) {
   ctx.save();
-
   ctx.globalAlpha = alpha;
-  ctx.shadowBlur = energized ? 22 : 8;
+  ctx.shadowBlur = activeState ? 20 : 8;
   ctx.shadowColor =
-    energized
+    activeState
       ? "#fff1a9"
       : side === "left"
         ? "#6ed7ff"
         : "#d88bff";
 
   ctx.fillStyle =
-    energized
+    activeState
       ? "#fff1a9"
       : side === "left"
         ? "#6ed7ff"
@@ -1556,228 +1406,172 @@ function drawSlideOrb(x, y, side, radius, alpha = 1, energized = false) {
   ctx.fill();
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle = energized
-    ? "#171411"
-    : "#08101d";
-
+  ctx.fillStyle =
+    activeState ? "#171411" : "#08101d";
   ctx.font =
-    `900 ${Math.max(12, radius)}px system-ui, sans-serif`;
+    `900 ${Math.max(11, radius - 1)}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("♪", x, y + 1);
-
+  ctx.fillText("↔", x, y + 1);
   ctx.restore();
 }
 
-function drawLink(event, songTime) {
+function drawSlide(event, songTime) {
+  ctx.save();
+
+  if (!event.started) {
+    const distance =
+      event.path.length -
+      NOTE_SPEED *
+      (event.targetTime - songTime);
+
+    const head =
+      pointAtDistance(event.path, distance);
+
+    ctx.strokeStyle =
+      event.side === "left"
+        ? "rgba(110,215,255,.34)"
+        : "rgba(216,139,255,.34)";
+
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(head.x, head.y);
+
+    const behind =
+      pointAtDistance(
+        event.path,
+        Math.max(0, distance - 55)
+      );
+
+    ctx.lineTo(behind.x, behind.y);
+    ctx.stroke();
+
+    drawSlideOrb(
+      head.x,
+      head.y,
+      event.side,
+      22,
+      1,
+      false
+    );
+
+    ctx.fillStyle =
+      "rgba(240,248,255,.78)";
+    ctx.font =
+      "900 14px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "ATRAPA Y ARRASTRA",
+      DESIGN.width / 2,
+      650
+    );
+
+    ctx.restore();
+    return;
+  }
+
   const nodes = [];
 
   for (
     let beat = 0;
     beat <= event.durationBeats + 0.001;
-    beat += LINK.tickBeats
+    beat += SLIDE.nodeBeats
   ) {
-    let side = event.segments[0].side;
-
-    for (const segment of event.segments) {
-      if (segment.beat <= beat) {
-        side = segment.side;
-      } else {
-        break;
-      }
-    }
-
-    const segmentChange = event.segments.find(
-      (segment) =>
-        Math.abs(segment.beat - beat) < 0.001
-    );
-
-    nodes.push({
-      beat,
-      side,
-      transition:
-        Boolean(segmentChange) &&
-        beat > 0,
-      ...linkNodePoint(
+    const point =
+      slideNodePoint(
         event,
         beat,
-        side,
         songTime
-      )
-    });
+      );
+
+    if (
+      point.radius >= FLIPPER.length - 18 &&
+      point.radius <= 360
+    ) {
+      nodes.push({
+        beat,
+        ...point
+      });
+    }
   }
 
-  const visible = nodes.filter(
-    (node) =>
-      node.y >= -70 &&
-      node.y <= DESIGN.height + 50
-  );
-
-  ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  for (let i = 0; i < visible.length - 1; i += 1) {
-    const a = visible[i];
-    const b = visible[i + 1];
-
-    const segmentTime =
-      event.targetTime +
-      beatToSeconds(a.beat);
-
-    const energized =
-      event.started &&
-      songTime >= segmentTime;
-
+  if (nodes.length > 1) {
     ctx.strokeStyle =
-      energized
-        ? "rgba(255,238,153,.70)"
-        : a.side === "left"
-          ? "rgba(110,215,255,.34)"
-          : "rgba(216,139,255,.34)";
+      event.side === "left"
+        ? "rgba(110,215,255,.40)"
+        : "rgba(216,139,255,.40)";
 
-    ctx.shadowBlur = energized ? 14 : 4;
+    ctx.lineWidth = 12;
+    ctx.shadowBlur = 12;
     ctx.shadowColor = ctx.strokeStyle;
-    ctx.lineWidth = energized ? 10 : 7;
-
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
+
+    nodes.forEach((node, index) => {
+      if (index === 0) {
+        ctx.moveTo(node.x, node.y);
+      } else {
+        ctx.lineTo(node.x, node.y);
+      }
+    });
+
     ctx.stroke();
   }
 
   ctx.shadowBlur = 0;
 
-  for (const node of visible) {
-    const nodeTime =
-      event.targetTime +
-      beatToSeconds(node.beat);
-
-    const energized =
-      event.started &&
-      songTime >= nodeTime;
-
+  for (const node of nodes) {
     drawSlideOrb(
       node.x,
       node.y,
-      node.side,
-      node.transition ? 17 : 11,
-      energized ? 1 : 0.78,
-      energized
+      event.side,
+      node.beat === 0 ? 15 : 9,
+      0.82,
+      false
+    );
+  }
+
+  const targetPosition =
+    slidePositionAtTime(event, songTime);
+
+  const target =
+    slideTipPoint(
+      event.side,
+      targetPosition
     );
 
-    if (node.transition) {
-      ctx.strokeStyle =
-        "rgba(255,255,255,.82)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(
-        node.x,
-        node.y,
-        24,
-        0,
-        Math.PI * 2
-      );
-      ctx.stroke();
-    }
-  }
+  const connected =
+    slideConnected(event, songTime);
 
-  if (event.started) {
-    const expected =
-      expectedLinkSide(
-        event,
-        Math.max(songTime, event.targetTime)
-      );
+  ctx.strokeStyle =
+    connected
+      ? "#fff1a9"
+      : "#ff7184";
 
-    const receiver = linkReceiver(expected);
-    const connected =
-      linkSideConnected(expected, songTime);
+  ctx.lineWidth = 5;
+  ctx.shadowBlur = 22;
+  ctx.shadowColor = ctx.strokeStyle;
+  ctx.beginPath();
+  ctx.arc(
+    target.x,
+    target.y,
+    19,
+    0,
+    Math.PI * 2
+  );
+  ctx.stroke();
 
-    ctx.shadowBlur = 24;
-    ctx.shadowColor = "#fff1a9";
-    ctx.strokeStyle =
-      connected
-        ? "#fff1a9"
-        : "#ff7184";
-
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(
-      receiver.x,
-      receiver.y,
-      23,
-      0,
-      Math.PI * 2
-    );
-    ctx.stroke();
-
-    ctx.shadowBlur = 0;
-
-    if (connected) {
-      drawSlideOrb(
-        receiver.x,
-        receiver.y,
-        expected,
-        17,
-        1,
-        true
-      );
-    }
-  }
-
-  const next = nextLinkSegment(event, songTime);
-  const nextIn = next
-    ? linkSegmentTime(event, next) - songTime
-    : Infinity;
-
-  let instruction;
-
-  if (!event.started) {
-    instruction =
-      `ATRAPA Y MANTÉN ${event.segments[0].side === "left" ? "A" : "D"}`;
-  } else if (
-    next &&
-    nextIn <= 0.9 &&
-    nextIn >= -0.08
-  ) {
-    instruction =
-      `CONECTA ${next.side === "left" ? "A" : "D"} SIN SOLTAR`;
-  } else {
-    const expected =
-      expectedLinkSide(event, songTime);
-
-    const previousSide =
-      expected === "left" ? "right" : "left";
-
-    const currentSegmentIndex =
-      event.segments.findIndex(
-        (segment, index) =>
-          index === event.segments.length - 1 ||
-          linkSegmentTime(event, event.segments[index + 1]) > songTime
-      );
-
-    const justTransferred =
-      currentSegmentIndex > 0 &&
-      songTime -
-        linkSegmentTime(
-          event,
-          event.segments[currentSegmentIndex]
-        ) < 0.72 &&
-      holdState[previousSide].held;
-
-    instruction = justTransferred
-      ? `SUELTA ${previousSide === "left" ? "A" : "D"} · MANTÉN ${expected === "left" ? "A" : "D"}`
-      : `MANTÉN ${expected === "left" ? "A" : "D"}`;
-  }
-
+  ctx.shadowBlur = 0;
   ctx.fillStyle =
-    "rgba(238,248,255,.80)";
-  ctx.font = "900 14px system-ui, sans-serif";
+    "rgba(240,248,255,.82)";
+  ctx.font =
+    "900 14px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
   ctx.fillText(
-    instruction,
+    "DESLIZA EL PULGAR · SIGUE LA CINTA",
     DESIGN.width / 2,
     650
   );
@@ -1986,14 +1780,6 @@ function finishDraw(event, songTime) {
     return;
   }
 
-  let judgement = JUDGEMENTS.good;
-
-  if (scoreValue >= 0.88) {
-    judgement = JUDGEMENTS.perfect;
-  } else if (scoreValue >= 0.75) {
-    judgement = JUDGEMENTS.great;
-  }
-
   combo += 1;
 
   const remainingRatio =
@@ -2011,7 +1797,7 @@ function finishDraw(event, songTime) {
     Math.round(120 * remainingRatio);
 
   score +=
-    (judgement.points + 150 + timeBonus) *
+    (JUDGEMENTS.perfect.points + 150 + timeBonus) *
     comboMultiplier(combo);
 
   lastJudgement =
@@ -2029,8 +1815,8 @@ function finishDraw(event, songTime) {
   }
 
   showMessage(
-    `MAGIC ${event.symbol.toUpperCase()} · ${judgement.label} · ${Math.round(scoreValue * 100)}%`,
-    judgement.color,
+    `MAGIC ${event.symbol.toUpperCase()} · PERFECT`,
+    JUDGEMENTS.perfect.color,
     600
   );
 
@@ -2059,8 +1845,8 @@ function updateEvents(dt, songTime) {
       continue;
     }
 
-    if (event.type === "link") {
-      updateLink(event, dt, songTime);
+    if (event.type === "slide") {
+      updateSlide(event, dt, songTime);
       continue;
     }
 
@@ -2202,22 +1988,21 @@ function drawControlButton(side, songTime) {
   const m = view();
   const pivot = m.pivot[side];
   const phase = flipperPhase(side, songTime);
-  const slideState = linkVisualState(side, songTime);
+  const slide = activeSlideAt(songTime, side);
+  const control = slideControl[side];
   const left = side === "left";
 
-  const highlighted =
-    phase.active ||
-    slideState.expected ||
-    slideState.next;
+  const slideActive =
+    Boolean(slide?.started);
 
   ctx.save();
 
   ctx.strokeStyle = left
-    ? "rgba(122,211,255,.26)"
+    ? "rgba(122,211,255,.25)"
     : "rgba(211,166,255,.25)";
 
   ctx.lineWidth =
-    slideState.connected ? 15 : 10;
+    slideActive ? 13 : 9;
   ctx.lineCap = "round";
 
   ctx.beginPath();
@@ -2235,33 +2020,32 @@ function drawControlButton(side, songTime) {
 
   ctx.stroke();
 
+  const highlighted =
+    phase.active ||
+    slideActive ||
+    Boolean(slide && !slide.started);
+
   ctx.shadowBlur =
-    highlighted ? 28 : 10;
+    highlighted ? 24 : 9;
 
   ctx.shadowColor =
-    slideState.next
-      ? "#fff1a9"
-      : left
-        ? "rgba(92,204,255,.58)"
-        : "rgba(204,139,255,.56)";
+    left
+      ? "rgba(92,204,255,.58)"
+      : "rgba(204,139,255,.56)";
 
   ctx.fillStyle =
-    slideState.next
-      ? "#5b522d"
-      : highlighted
-        ? "#fff0a3"
-        : left
-          ? "#153e5d"
-          : "#34264f";
+    highlighted
+      ? "#24303d"
+      : left
+        ? "#153e5d"
+        : "#34264f";
 
   ctx.strokeStyle =
-    slideState.next
+    slideActive
       ? "#fff1a9"
-      : highlighted
-        ? "#fff7c7"
-        : left
-          ? "rgba(142,222,255,.75)"
-          : "rgba(224,188,255,.72)";
+      : left
+        ? "rgba(142,222,255,.76)"
+        : "rgba(224,188,255,.74)";
 
   ctx.lineWidth =
     highlighted ? 4 : 2.5;
@@ -2270,59 +2054,91 @@ function drawControlButton(side, songTime) {
   ctx.arc(
     center.x,
     center.y,
-    slideState.expected ? 40 : 36,
+    36,
     0,
     Math.PI * 2
   );
   ctx.fill();
   ctx.stroke();
 
-  if (slideState.next) {
-    const pulse =
-      4 +
-      (Math.sin(performance.now() / 95) + 1) * 3;
+  ctx.shadowBlur = 0;
+
+  if (slide) {
+    ctx.strokeStyle =
+      "rgba(255,255,255,.34)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(
+      center.x - 27,
+      center.y
+    );
+    ctx.lineTo(
+      center.x + 27,
+      center.y
+    );
+    ctx.stroke();
+
+    const targetPos =
+      slide.started
+        ? slidePositionAtTime(
+            slide,
+            songTime
+          )
+        : slide.anchors[0].position;
 
     ctx.strokeStyle =
-      "rgba(255,241,169,.78)";
+      "rgba(255,241,169,.82)";
     ctx.lineWidth = 3;
     ctx.beginPath();
+    ctx.moveTo(
+      center.x +
+        targetPos * 27,
+      center.y - 10
+    );
+    ctx.lineTo(
+      center.x +
+        targetPos * 27,
+      center.y + 10
+    );
+    ctx.stroke();
+
+    ctx.fillStyle =
+      control.held && slide.started
+        ? "#fff1a9"
+        : "#e8f5ff";
+
+    ctx.beginPath();
     ctx.arc(
-      center.x,
+      center.x +
+        control.position * 27,
       center.y,
-      43 + pulse,
+      8,
       0,
       Math.PI * 2
     );
-    ctx.stroke();
-  }
-
-  ctx.shadowBlur = 0;
-
-  ctx.strokeStyle = highlighted
-    ? "rgba(32,42,48,.72)"
-    : left
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = left
       ? "rgba(170,232,255,.58)"
       : "rgba(235,210,255,.56)";
 
-  ctx.lineWidth = 2;
-  ctx.lineCap = "round";
+    ctx.lineWidth = 2;
 
-  for (const radius of [24, 17, 10]) {
-    ctx.beginPath();
-    ctx.arc(
-      center.x,
-      center.y + 3,
-      radius,
-      Math.PI * 1.15,
-      Math.PI * 1.85
-    );
-    ctx.stroke();
+    for (const radius of [24, 17, 10]) {
+      ctx.beginPath();
+      ctx.arc(
+        center.x,
+        center.y + 3,
+        radius,
+        Math.PI * 1.15,
+        Math.PI * 1.85
+      );
+      ctx.stroke();
+    }
   }
 
-  ctx.fillStyle = highlighted
-    ? "#101723"
-    : "rgba(244,250,255,.84)";
-
+  ctx.fillStyle =
+    "rgba(244,250,255,.84)";
   ctx.font =
     "900 12px system-ui, sans-serif";
   ctx.textAlign = "center";
@@ -2330,90 +2146,99 @@ function drawControlButton(side, songTime) {
   ctx.fillText(
     left ? "A" : "D",
     center.x,
-    center.y + 15
+    center.y + 18
   );
 
   ctx.restore();
 }
 
 function drawFlipper(side, songTime) {
-  let segment = flipperSegment(side, songTime);
+  const segment =
+    flipperSegment(side, songTime);
+
   const phase = segment.phase;
-  const slideState = linkVisualState(side, songTime);
-
-  if (slideState.connected) {
-    const m = view();
-    const gripAngle = lerp(
-      m.restAngle[side],
-      m.strikeAngle[side],
-      0.66
-    );
-
-    segment = {
-      ...segment,
-      tip: {
-        x:
-          segment.pivot.x +
-          Math.cos(gripAngle) *
-          FLIPPER.length,
-        y:
-          segment.pivot.y +
-          Math.sin(gripAngle) *
-          FLIPPER.length
-      }
-    };
-  }
+  const slide =
+    activeSlideAt(songTime, side);
 
   drawControlButton(side, songTime);
 
   ctx.save();
 
+  const slideActive =
+    Boolean(slide?.started);
+
   ctx.shadowBlur =
-    phase.attack || slideState.connected
+    phase.attack || slideActive
       ? 22
       : 6;
+
   ctx.shadowColor =
-    phase.attack || slideState.connected
+    phase.attack || slideActive
       ? "#fff0a3"
       : "#79cfff";
 
   ctx.strokeStyle =
-    phase.attack || slideState.connected
+    phase.attack || slideActive
       ? "#fff0a3"
       : phase.active
         ? "#f2fbff"
         : "#cfe9ff";
 
   ctx.lineWidth =
-    phase.attack || slideState.connected
+    phase.attack || slideActive
       ? FLIPPER.width + 5
       : FLIPPER.width;
 
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(segment.pivot.x, segment.pivot.y);
-  ctx.lineTo(segment.tip.x, segment.tip.y);
+  ctx.moveTo(
+    segment.pivot.x,
+    segment.pivot.y
+  );
+  ctx.lineTo(
+    segment.tip.x,
+    segment.tip.y
+  );
   ctx.stroke();
 
   ctx.shadowBlur = 0;
   ctx.fillStyle =
-    phase.active
+    slideActive || phase.active
       ? "#243a51"
       : "#132238";
 
   ctx.beginPath();
-  ctx.arc(segment.pivot.x, segment.pivot.y, 11, 0, Math.PI * 2);
+  ctx.arc(
+    segment.pivot.x,
+    segment.pivot.y,
+    11,
+    0,
+    Math.PI * 2
+  );
   ctx.fill();
 
-  ctx.shadowBlur = phase.attack ? 22 : 8;
-  ctx.shadowColor = phase.attack ? "#ffe985" : "#9edcff";
-  ctx.fillStyle = phase.attack ? "#ffe985" : "#9edcff";
+  ctx.shadowBlur =
+    phase.attack || slideActive
+      ? 20
+      : 8;
+
+  ctx.shadowColor =
+    phase.attack || slideActive
+      ? "#ffe985"
+      : "#9edcff";
+
+  ctx.fillStyle =
+    phase.attack || slideActive
+      ? "#ffe985"
+      : "#9edcff";
 
   ctx.beginPath();
   ctx.arc(
     segment.tip.x,
     segment.tip.y,
-    phase.attack ? 10 : 7,
+    phase.attack || slideActive
+      ? 10
+      : 7,
     0,
     Math.PI * 2
   );
@@ -2421,7 +2246,6 @@ function drawFlipper(side, songTime) {
 
   ctx.restore();
 }
-
 function drawConstellation(event, songTime) {
   const points = constellationPoints(event.symbol);
   const pulse = 0.55 +
@@ -2599,11 +2423,11 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.15 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.16 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap ±160ms · score continuo · slide ticks 1/2 beat · magic deadline`,
+    `tap: impacto = PERFECT · slide: pad analógico · magic: figura/deadline`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
-    `link L:${holdState.left.held ? "ON" : "off"} R:${holdState.right.held ? "ON" : "off"} · draw ${drawGesture ? "ACTIVO" : "—"}`,
+    `slide L:${slideControl.left.position.toFixed(2)} R:${slideControl.right.position.toFixed(2)} · draw ${drawGesture ? "ACTIVO" : "—"}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`
   ];
@@ -2627,8 +2451,8 @@ function render(songTime) {
   drawBackground();
 
   for (const event of active.values()) {
-    if (event.type === "link") {
-      drawLink(event, songTime);
+    if (event.type === "slide") {
+      drawSlide(event, songTime);
     }
   }
 
@@ -2691,24 +2515,45 @@ function pressVisual(button, state) {
 function handleSidePress(
   side,
   eventTimestamp,
-  inputType = "unknown"
+  inputType = "unknown",
+  pointerEvent = null
 ) {
   if (!running) return;
 
   const songTime =
     eventSongTime(eventTimestamp);
 
-  setHeldSide(side, true, songTime);
-
-  const link = activeLinkAt(songTime);
+  const slide =
+    activeSlideAt(songTime, side);
 
   if (
-    linkPressReserved(
-      link,
+    slide &&
+    slidePressReserved(
+      slide,
       side,
       songTime
     )
   ) {
+    slideControl[side].held = true;
+
+    if (pointerEvent) {
+      slideControl[side].pointerId =
+        pointerEvent.pointerId;
+    }
+
+    if (!slide.started) {
+      beginSlide(
+        slide,
+        side,
+        songTime
+      );
+    } else if (pointerEvent) {
+      updateSlidePadPosition(
+        side,
+        pointerEvent
+      );
+    }
+
     lastInputType = "slide";
     return;
   }
@@ -2720,18 +2565,55 @@ function handleSidePress(
   );
 }
 
+function handleSideMove(
+  side,
+  event
+) {
+  const control =
+    slideControl[side];
+
+  if (
+    control.pointerId !== event.pointerId
+  ) {
+    return;
+  }
+
+  const slide =
+    activeSlideAt(
+      eventSongTime(event.timeStamp),
+      side
+    );
+
+  if (!slide?.started) return;
+
+  updateSlidePadPosition(
+    side,
+    event
+  );
+}
+
 function handleSideRelease(
   side,
-  eventTimestamp
+  eventTimestamp,
+  pointerId = null
 ) {
   const songTime =
     eventSongTime(eventTimestamp);
 
-  setHeldSide(
-    side,
-    false,
-    songTime
-  );
+  const control =
+    slideControl[side];
+
+  if (
+    pointerId !== null &&
+    control.pointerId !== null &&
+    pointerId !== control.pointerId
+  ) {
+    return;
+  }
+
+  control.held = false;
+  control.pointerId = null;
+  control.releasedAt = songTime;
 }
 
 function bindButton(button, side) {
@@ -2743,7 +2625,16 @@ function bindButton(button, side) {
     handleSidePress(
       side,
       event.timeStamp,
-      event.pointerType || "touch"
+      event.pointerType || "touch",
+      event
+    );
+  });
+
+  button.addEventListener("pointermove", (event) => {
+    event.preventDefault();
+    handleSideMove(
+      side,
+      event
     );
   });
 
@@ -2753,7 +2644,8 @@ function bindButton(button, side) {
 
     handleSideRelease(
       side,
-      event?.timeStamp
+      event?.timeStamp,
+      event?.pointerId ?? null
     );
   };
 
@@ -2875,7 +2767,8 @@ window.addEventListener("keydown", (event) => {
     handleSidePress(
       "left",
       event.timeStamp,
-      "keyboard"
+      "keyboard",
+      null
     );
   }
 
@@ -2884,7 +2777,8 @@ window.addEventListener("keydown", (event) => {
     handleSidePress(
       "right",
       event.timeStamp,
-      "keyboard"
+      "keyboard",
+      null
     );
   }
 });
@@ -2930,9 +2824,10 @@ startButton.addEventListener("click", async () => {
   drawGesture = null;
 
   for (const side of ["left", "right"]) {
-    holdState[side].held = false;
-    holdState[side].pressedAt = -Infinity;
-    holdState[side].releasedAt = -Infinity;
+    slideControl[side].held = false;
+    slideControl[side].pointerId = null;
+    slideControl[side].position = 0;
+    slideControl[side].releasedAt = -Infinity;
   }
 
   flippers.left.startTime = -Infinity;
