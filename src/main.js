@@ -36,6 +36,10 @@ const pausePanel = document.querySelector("#pausePanel");
 const resumeButton = document.querySelector("#resumeButton");
 const summaryPanel = document.querySelector("#summaryPanel");
 const summaryTitle = document.querySelector("#summaryTitle");
+const summaryMachine = document.querySelector("#summaryMachine");
+const summaryRankCard = document.querySelector("#summaryRankCard");
+const summaryRank = document.querySelector("#summaryRank");
+const summaryRankLabel = document.querySelector("#summaryRankLabel");
 const summaryScore = document.querySelector("#summaryScore");
 const summaryHits = document.querySelector("#summaryHits");
 const summaryChains = document.querySelector("#summaryChains");
@@ -8159,6 +8163,119 @@ function bossDamagePercent() {
   );
 }
 
+function flowRankForRun({
+  practice = false,
+  bossDamage = 0
+} = {}) {
+  if (practice) {
+    const attempts =
+      (
+        runStats?.traceAttempts ??
+        0
+      ) +
+      (
+        runStats?.followAttempts ??
+        0
+      );
+    const successes =
+      (
+        runStats?.traceSuccess ??
+        0
+      ) +
+      (
+        runStats?.followSuccess ??
+        0
+      );
+    const ratio =
+      attempts > 0
+        ? successes / attempts
+        : 0;
+
+    return ratio >= 0.9
+      ? {
+          rank: "A",
+          label: "LAB LOCKED"
+        }
+      : ratio >= 0.6
+        ? {
+            rank: "B",
+            label: "LAB STABLE"
+          }
+        : {
+            rank: "C",
+            label: "KEEP TUNING"
+          };
+  }
+
+  const attempts =
+    hitCount +
+    missCount;
+  const accuracy =
+    attempts > 0
+      ? hitCount / attempts
+      : 0;
+  const chainQuality =
+    clamp(
+      chainCount / 9,
+      0,
+      1
+    );
+  const comboQuality =
+    clamp(
+      maxCombo / 26,
+      0,
+      1
+    );
+  const bossQuality =
+    clamp(
+      bossDamage / 100,
+      0,
+      1
+    );
+
+  const quality =
+    accuracy * 0.48 +
+    chainQuality * 0.20 +
+    comboQuality * 0.14 +
+    bossQuality * 0.18;
+
+  if (
+    quality >= 0.90 &&
+    missCount <= 2
+  ) {
+    return {
+      rank: "S",
+      label: "FULL BLOOM"
+    };
+  }
+
+  if (quality >= 0.77) {
+    return {
+      rank: "A",
+      label: "FLOW STATE"
+    };
+  }
+
+  if (quality >= 0.62) {
+    return {
+      rank: "B",
+      label: "MACHINE HOT"
+    };
+  }
+
+  if (quality >= 0.46) {
+    return {
+      rank: "C",
+      label: "STABLE GROWTH"
+    };
+  }
+
+  return {
+    rank: "D",
+    label: "RECALIBRATE"
+  };
+}
+
 function completeRun() {
   if (!running) return;
 
@@ -8234,6 +8351,24 @@ function completeRun() {
     runStats.bossDamage =
       completedBossDamage;
   }
+
+  const flowRank =
+    flowRankForRun({
+      practice,
+      bossDamage:
+        completedBossDamage
+    });
+
+  summaryMachine.textContent =
+    MACHINES[
+      selectedMachine
+    ]?.name ?? "FORGE";
+  summaryRank.textContent =
+    flowRank.rank;
+  summaryRankLabel.textContent =
+    flowRank.label;
+  summaryRankCard.dataset.rank =
+    flowRank.rank;
 
   summaryScore.textContent =
     String(score);
