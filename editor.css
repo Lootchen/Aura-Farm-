@@ -636,3 +636,51 @@ button.danger {
     grid-column: auto;
   }
 }
+
+
+/* v0.45 — produced audio / waveform tooling */
+.audio-tools-field {
+  align-content: end;
+}
+
+.audio-tools-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.audio-tools-actions button {
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 34px;
+  padding-inline: 7px;
+  font-size: .48rem;
+}
+
+.audio-analysis-status {
+  min-height: 32px;
+  padding: 8px 9px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px;
+  background: rgba(255,255,255,.018);
+  color: rgba(255,255,255,.46);
+  font:
+    750 .56rem/1.35
+    ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.audio-analysis-status[data-state="ok"] {
+  color: rgb(var(--mint));
+  border-color: rgba(var(--mint),.18);
+  background: rgba(var(--mint),.035);
+}
+
+.audio-analysis-status[data-state="warning"],
+.validation-badge[data-state="warning"] {
+  color: rgb(var(--gold));
+  border-color: rgba(var(--gold),.22);
+  background: rgba(var(--gold),.045);
+}
+
+.waveform-empty-label {
+  color: rgba(255,255,255,.30);
+}
