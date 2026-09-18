@@ -164,7 +164,7 @@ button { font: inherit; }
   z-index: 30;
   inset: 0;
   display: grid;
-  align-items: end;
+  place-items: center;
   padding:
     18px 10px
     max(22px, env(safe-area-inset-bottom));
@@ -209,22 +209,26 @@ button { font: inherit; }
 .upgrade-cards {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
   width: 100%;
+  margin-inline: auto;
 }
 
 .upgrade-card {
-  flex: 1 1 0;
+  --accent: 255, 241, 169;
+  flex: 0 1 160px;
+  width: min(31vw, 160px);
   min-width: 0;
   height: 144px;
   padding: 9px 6px 8px;
-  border: 1px solid rgba(255,255,255,.17);
+  border: 1px solid rgba(var(--accent),.36);
   border-radius: 15px;
   background:
     radial-gradient(
       circle at 50% 18%,
-      rgba(255,241,169,.15),
-      transparent 45%
+      rgba(var(--accent),.19),
+      transparent 47%
     ),
     rgba(15,22,38,.97);
   color: #f5f8ff;
@@ -237,7 +241,8 @@ button { font: inherit; }
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.025),
+    inset 0 0 0 1px rgba(var(--accent),.055),
+    0 0 22px rgba(var(--accent),.075),
     0 12px 32px rgba(0,0,0,.22);
   animation: upgradeCardIn .20s ease-out both;
 }
@@ -263,8 +268,9 @@ button { font: inherit; }
   align-self: end;
   font-size: 2.2rem;
   line-height: 1;
+  color: rgb(var(--accent));
   text-shadow:
-    0 0 20px rgba(255,241,169,.32);
+    0 0 20px rgba(var(--accent),.42);
 }
 
 .upgrade-card strong {
@@ -277,7 +283,9 @@ button { font: inherit; }
   min-width: 52px;
   padding: 4px 6px;
   border-radius: 999px;
-  background: rgba(255,255,255,.075);
+  background: rgba(var(--accent),.11);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent),.10);
   font:
     900 .60rem/1
     ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -290,8 +298,40 @@ button { font: inherit; }
   font-size: .58rem;
   line-height: 1.15;
   font-weight: 700;
-  opacity: .62;
+  opacity: .68;
   text-wrap: balance;
+}
+
+.family-slide {
+  --accent: 214, 139, 255;
+}
+
+.family-shot {
+  --accent: 111, 216, 255;
+}
+
+.family-collision {
+  --accent: 255, 125, 153;
+}
+
+.family-explosion {
+  --accent: 255, 190, 92;
+}
+
+.family-arena {
+  --accent: 82, 224, 207;
+}
+
+.family-chain {
+  --accent: 255, 229, 109;
+}
+
+.family-wall {
+  --accent: 125, 177, 255;
+}
+
+.family-defense {
+  --accent: 168, 196, 214;
 }
 
 @keyframes upgradeCardIn {
@@ -312,6 +352,8 @@ button { font: inherit; }
   }
 
   .upgrade-card {
+    flex-basis: 104px;
+    width: 31%;
     height: 134px;
     padding-inline: 4px;
   }
