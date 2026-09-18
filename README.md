@@ -1,6 +1,6 @@
-# Aura Farm — Mechanics Lab v0.22
+# Aura Farm — Mechanics Lab v0.23 Experimental
 
-Prototipo vertical mobile-first centrado en **timing, contacto físico, apuntado y reacciones en cadena**.
+La v0.23 no intenta pulir el Slide anterior: **compara dos modelos de control distintos** para decidir cuál debe sobrevivir.
 
 ## Tecnología
 
@@ -9,88 +9,93 @@ Prototipo vertical mobile-first centrado en **timing, contacto físico, apuntado
 - Web Audio API como reloj maestro
 - Pointer Events
 - Charts JSON
-- Sin frameworks ni dependencias externas
+- Mobile-first vertical
 
-## Núcleo jugable
+## Tap
 
-### Tap
+Tap no cambia:
 
-- Dos pinzas: izquierda y derecha.
-- Si la pinza toca físicamente la bola, es **PERFECT**; si no, MISS.
-- La bola golpeada se convierte en proyectil a velocidad constante.
-- Proyectiles chocan con notas entrantes, paredes, otros proyectiles y bumpers.
-- Esas colisiones pueden producir CHAIN y nuevas reacciones.
+- dos pinzas;
+- contacto físico = PERFECT;
+- fallo físico = MISS;
+- la bola golpeada pasa a ser un proyectil de velocidad constante;
+- proyectiles pueden provocar CHAIN, colisiones, rebotes, explosiones y sinergias de upgrades.
 
-### Slide — v0.22
+## Slide experimental
 
-El Slide mantiene el joystick 2D real, pero su lectura se rediseñó como una frase instrumental:
+Cada evento Slide declara ahora `mode: "trace"` o `mode: "follow"`.
 
-- cuerda luminosa continua;
-- gemas rítmicas sobre la cuerda;
-- anchors importantes como gemas mayores;
-- marcas de dirección;
-- receptor móvil sobre el punto exacto que hay que seguir;
-- corredor visual cuya anchura coincide con la tolerancia jugable;
-- rastro dorado cuando la pinza permanece conectada;
-- frase larga de 8 beats en el chart de laboratorio.
+### TRACE · DEDO
 
-La referencia conceptual es el lenguaje de slider/sustain de juegos de guitarra: una serie de notas conectadas por una trayectoria visible. Aura Farm lo traduce a movimiento 2D libre de una garra.
+- El Slide se inicia tocando directamente el receptor sobre la cuerda.
+- El dedo controla directamente la posición de la punta de la garra.
+- Izquierda, derecha, arriba y abajo corresponden al movimiento real del dedo.
+- Soltar rompe la conexión; es posible volver a capturar el receptor durante la pequeña gracia existente.
+- El joystick de esa mano no se presenta como el control activo del Slide.
 
-El juicio sigue siendo físico: distancia en píxeles entre la punta de la garra y el receptor del riel.
+Objetivo de la prueba: comprobar si el gesto directo elimina toda transformación mental y hace que seguir frases curvas sea inmediato.
 
-### Magic
+### FOLLOW · STICK
 
-Magic continúa pausado y fuera del contrato de charts.
+- El Slide se inicia desde la palanca correspondiente.
+- El stick **ya no representa una orientación absoluta de la garra**.
+- El stick funciona como velocidad 2D de un cursor/garra: empujar a la izquierda desplaza la punta hacia la izquierda; empujar arriba la desplaza arriba.
+- La posición del jugador persiste al centrar el stick.
+- El receptor musical continúa avanzando por la cuerda al ritmo del chart.
 
-## Upgrades v0.22
+Objetivo de la prueba: conservar la fantasía de palanca/garra sin el problema anterior de convertir mentalmente stick → ángulo alrededor del pivote.
 
-Las cartas siguen en una fila horizontal de tres, pero ahora incluyen una descripción muy breve y las opciones intentan pertenecer a familias distintas.
+## Lab de comparación
 
-Pool actual:
+`charts/tap-lab.json` contiene:
 
-- **Gemela** — cada PERFECT dispara una bola extra.
-- **Rebote** — los proyectiles sobreviven a otra pared.
-- **Perfora** — atraviesa una nota y sigue volando.
-- **Astillas** — las explosiones generan nuevos proyectiles.
-- **Bumper** — añade un reflector físico al tablero.
-- **Nova** — un Slide termina en una salva mayor.
-- **Espejo** — el Slide también dispara desde la otra garra.
-- **Relevo** — un CHAIN continúa con un nuevo proyectil.
-- **Shock** — una explosión Power barre notas cercanas.
-- **Fusión** — el choque entre proyectiles detona como Power.
-- **Carga** — los impactos de pared detonan como Power.
-- **Duplicador** — el primer rebote en bumper duplica la bola.
-- **Shield** — el próximo MISS no rompe el combo.
+1. TRACE izquierdo de 6 beats;
+2. FOLLOW derecho de 6 beats;
+3. TRACE derecho de 6 beats;
+4. FOLLOW izquierdo de 8 beats.
 
-Las mejoras siguen evitando aceleración o gravedad: las bolas se mueven siempre con velocidad constante entre colisiones.
+Los FOLLOW usan curvas deliberadamente suaves para medir el control antes de aumentar la dificultad. Los TRACE tienen cambios espaciales más expresivos.
 
-## Chart de laboratorio
+El chart sólo admite `tap` y `slide`. Para Slide, `mode` es obligatorio y debe ser `trace` o `follow`.
 
-`charts/tap-lab.json` incluye cinco familias de prueba:
+## Upgrades
 
-1. barrido direccional;
-2. arco suave;
-3. cambio brusco;
-4. variación de alcance;
-5. frase larga de slider de 8 beats.
+Las tres cartas aparecen ahora **centradas en pantalla**. Cada familia tiene un color consistente para acelerar la lectura:
 
-Los anchors usan `beat / x / y` y permanecen dentro del círculo unitario del joystick.
+- Slide — violeta.
+- Disparo — azul/cyan.
+- Colisión — rosa/rojo.
+- Explosión — ámbar.
+- Arena — turquesa.
+- Chain — amarillo.
+- Pared — azul.
+- Defensa — gris.
+
+El pool mantiene mejoras jugables visibles: Gemela, Rebote, Perfora, Astillas, Bumper, Nova, Espejo, Relevo, Shock, Fusión, Carga, Duplicador y Shield.
+
+El selector intenta ofrecer familias diferentes en las tres opciones.
+
+## Regla de física
+
+Las bolas y proyectiles se mueven a velocidad constante entre colisiones. No se introduce gravedad, aceleración ni easing jugable.
+
+## Qué hay que decidir probando v0.23
+
+No buscamos todavía dificultad ni arte final. Hay que responder:
+
+- ¿TRACE se entiende sin explicación?
+- ¿FOLLOW hace que izquierda se sienta realmente izquierda?
+- ¿Cuál produce más sensación musical?
+- ¿Cuál combina mejor con la identidad de las garras?
+- ¿Cuál querrías dominar durante una canción completa?
 
 ## Controles
 
-- Móvil: zonas táctiles izquierda/derecha.
-- Teclado: `A` / flecha izquierda y `D` / flecha derecha para Tap.
-- `H`: debug oculto.
+- Tap: zonas táctiles izquierda/derecha.
+- TRACE: dedo directamente sobre el receptor/riel.
+- FOLLOW: palanca de la mano correspondiente.
+- `H`: debug.
 - `[` / `]`: offset de calibración.
-
-## Filosofía
-
-1. Lo que se ve debe coincidir con lo que se juzga.
-2. Movimiento gameplay siempre a velocidad constante.
-3. Tap = golpear físicamente.
-4. Slide = apuntar y recorrer físicamente una frase.
-5. Upgrades = cambiar reglas visibles del tablero.
-6. Visuales secundarios a feeling, lectura y mecánicas.
 
 ## GitHub Pages
 
