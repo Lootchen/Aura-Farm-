@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.38.1";
+import { loadGameChart } from "./chart.js?v=0.39";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.38.1";
+} from "./music.js?v=0.39";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.38.1";
+const GAME_VERSION = "0.39";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.38.1";
+  "./assets/world/glasshouse-far.svg?v=0.39";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.38.1";
+  "./assets/world/growth-bays.svg?v=0.39";
 
 function drawWorldAsset(
   image,
@@ -154,16 +154,17 @@ FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
 const SLIDE = {
   leadSeconds: 2.45,
-  startEarly: 0.42,
-  startLate: 0.38,
+  startEarly: 0.86,
+  startLate: 0.50,
+  catchLead: 0.65,
   scrollSpeed: 145,
-  railTolerance: 34,
-  disconnectGrace: 0.22,
-  minCoverage: 0.60,
+  railTolerance: 36,
+  disconnectGrace: 0.24,
+  minCoverage: 0.58,
   reachMin: 0.88,
   reachMax: 1.15,
   nodeBeats: 0.5,
-  traceGrabRadius: 82
+  traceGrabRadius: 92
 };
 
 const POWER_ORB_BASE_SCALE = 1.55;
@@ -2373,7 +2374,7 @@ function renderBuildVisibility({
       chip.className =
         `build-chip family-${upgrade.family}`;
       chip.innerHTML =
-        `<span>${upgrade.icon}</span><b>LV${level}</b>`;
+        `<span class="build-chip-icon">${upgrade.icon}</span><em>${upgrade.title.toUpperCase().slice(0, 8)}</em><b>LV${level}</b>`;
       chip.title =
         `${upgrade.title} · Nivel ${level}: ${upgrade.desc}`;
       buildDockItems.append(
@@ -3122,7 +3123,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.38.1", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.39", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -5775,9 +5776,15 @@ function beginSlide(event, side, songTime) {
   );
 
   showMessage(
-    "SLIDE · ARRASTRA POR EL RIEL",
+    songTime <
+      event.targetTime
+      ? "TRACE ARMADO · MANTÉN Y PREPÁRATE"
+      : "TRACE · ARRASTRA POR EL RIEL",
     "#fff1a9",
-    620
+    songTime <
+      event.targetTime
+      ? 520
+      : 620
   );
 
   successTone(620);
@@ -6630,7 +6637,10 @@ function drawSlideCatcher(
 
 function drawIncomingSlideHead(
   event,
-  head
+  head,
+  {
+    docked = false
+  } = {}
 ) {
   const sideColor =
     event.side === "left"
@@ -6655,12 +6665,17 @@ function drawIncomingSlideHead(
   ctx.strokeStyle =
     event.started
       ? "rgba(255,241,169,.18)"
-      : sideColor;
+      : docked
+        ? "#fff1a9"
+        : sideColor;
   ctx.globalAlpha =
     event.started
       ? 0.35
-      : 0.22 +
-        pickupPulse * 0.22;
+      : docked
+        ? 0.52 +
+          pickupPulse * 0.34
+        : 0.22 +
+          pickupPulse * 0.22;
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.arc(
@@ -6675,11 +6690,16 @@ function drawIncomingSlideHead(
 
   ctx.globalAlpha = 1;
   ctx.shadowBlur = 12;
-  ctx.shadowColor = sideColor;
+  ctx.shadowColor =
+    docked
+      ? "#fff1a9"
+      : sideColor;
   ctx.fillStyle =
     "rgba(7,11,18,.94)";
   ctx.strokeStyle =
-    sideColor;
+    docked
+      ? "#fff1a9"
+      : sideColor;
   ctx.lineWidth = 3.5;
 
   ctx.beginPath();
@@ -6694,7 +6714,10 @@ function drawIncomingSlideHead(
   ctx.stroke();
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle = sideColor;
+  ctx.fillStyle =
+    docked
+      ? "#fff1a9"
+      : sideColor;
   ctx.beginPath();
   ctx.arc(
     0,
@@ -6705,6 +6728,20 @@ function drawIncomingSlideHead(
   );
   ctx.fill();
 
+  if (docked) {
+    ctx.fillStyle =
+      "rgba(255,249,218,.92)";
+    ctx.font =
+      "900 9px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(
+      "MANTÉN",
+      0,
+      -38
+    );
+  }
+
   ctx.restore();
 }
 
@@ -6713,11 +6750,29 @@ function drawSlide(event, songTime) {
   ctx.save();
 
   if (!event.started) {
-    const distance =
+    const visualArrivalTime =
+      event.targetTime -
+      SLIDE.catchLead;
+    const rawDistance =
       event.path.length -
-      NOTE_SPEED * (event.targetTime - songTime);
+      NOTE_SPEED *
+        (
+          visualArrivalTime -
+          songTime
+        );
+    const distance =
+      Math.min(
+        event.path.length,
+        rawDistance
+      );
+    const docked =
+      songTime >=
+        visualArrivalTime;
     const head =
-      pointAtDistance(event.path, distance);
+      pointAtDistance(
+        event.path,
+        distance
+      );
     const behind =
       pointAtDistance(
         event.path,
@@ -6778,7 +6833,10 @@ function drawSlide(event, songTime) {
 
     drawIncomingSlideHead(
       event,
-      head
+      head,
+      {
+        docked
+      }
     );
     drawSlideCatcher(
       event,
@@ -7790,6 +7848,162 @@ function drawBossCore(songTime) {
     DESIGN.width / 2,
     280
   );
+}
+
+function moduleFamilyColor(
+  family
+) {
+  return {
+    shot: "#6ed7ff",
+    collision: "#5ee2d7",
+    explosion: "#ffc45c",
+    arena: "#d38bff",
+    slide: "#72b7ff",
+    chain: "#ffe56d",
+    wall: "#ff7d99",
+    defense: "#ccecff"
+  }[family] ?? "#dfeaff";
+}
+
+function drawInstalledModuleRack(
+  songTime
+) {
+  const slots = [
+    { x: 188, y: 894 },
+    { x: 224, y: 910 },
+    { x: 316, y: 910 },
+    { x: 352, y: 894 }
+  ];
+  const beat =
+    0.5 +
+    0.5 *
+      Math.sin(
+        songTime *
+        BPM /
+        60 *
+        Math.PI *
+        2
+      );
+
+  ctx.save();
+
+  for (
+    let index = 0;
+    index < ACTIVE_MODULE_LIMIT;
+    index += 1
+  ) {
+    const slot =
+      slots[index];
+    const id =
+      activeModuleIds[index];
+    const upgrade =
+      upgradeById(id);
+
+    ctx.save();
+    ctx.translate(
+      slot.x,
+      slot.y
+    );
+
+    if (!upgrade) {
+      ctx.fillStyle =
+        "rgba(8,14,22,.72)";
+      ctx.strokeStyle =
+        "rgba(255,255,255,.075)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        0,
+        13,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle =
+        "rgba(255,255,255,.13)";
+      ctx.font =
+        "800 8px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        "＋",
+        0,
+        0
+      );
+      ctx.restore();
+      continue;
+    }
+
+    const color =
+      moduleFamilyColor(
+        upgrade.family
+      );
+    const level =
+      moduleLevel(id);
+
+    ctx.shadowBlur =
+      8 + beat * 7;
+    ctx.shadowColor = color;
+    ctx.fillStyle =
+      "rgba(9,15,24,.95)";
+    ctx.strokeStyle = color;
+    ctx.lineWidth =
+      2.2 +
+      beat * 0.6;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      14,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = color;
+    ctx.font =
+      "900 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      upgrade.icon,
+      0,
+      -1
+    );
+
+    const dotGap = 5;
+    const totalWidth =
+      (level - 1) *
+      dotGap;
+
+    for (
+      let dot = 0;
+      dot < level;
+      dot += 1
+    ) {
+      ctx.fillStyle =
+        color;
+      ctx.beginPath();
+      ctx.arc(
+        dot * dotGap -
+          totalWidth / 2,
+        18,
+        1.8,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  ctx.restore();
 }
 
 function drawOperatorSocket(songTime) {
@@ -10072,6 +10286,7 @@ function render(songTime) {
   drawBossCore(songTime);
   drawBumpers();
   drawOperatorSocket(songTime);
+  drawInstalledModuleRack(songTime);
 
   for (const event of active.values()) {
     if (event.type === "slide") {
@@ -12262,16 +12477,21 @@ function renderUpgradeChoices() {
           );
         }
 
+        const installLabel =
+          result.reserve
+            ? `${upgrade.title.toUpperCase()} · RESERVA`
+            : `${upgrade.title.toUpperCase()} · LV${result.level} · ${moduleLevelEffect(upgrade, result.level)}`;
+
         showMessage(
-          result.upgraded
-            ? `${upgrade.title.toUpperCase()} · LV${result.level}`
-            : result.reserve
-              ? `${upgrade.title.toUpperCase()} · RESERVA`
-              : `${upgrade.title.toUpperCase()} · ACTIVO`,
+          installLabel,
           result.reserve
             ? "#9cb0c4"
-            : "#ffe56d",
-          650
+            : moduleFamilyColor(
+                upgrade.family
+              ),
+          result.reserve
+            ? 720
+            : 1050
         );
 
         wave += 1;
