@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.30
+# Aura Farm — Vertical Slice v0.31
 
 **BUILD THE BEAT.**
 
@@ -6,121 +6,185 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
-v0.30 focuses on two systems that were still underdeveloped: **loadout management** and **musical meaning in the chart**.
+v0.31 focuses on two things: making upgrade choices look like **actual gameplay**, and making more of the chart geometry/patterning come from the music rather than arbitrary authoring.
 
-## Module Bay 2.0
+## Module Bay 3.0
 
-Upgrade choices now follow a simpler hierarchy:
+Upgrade cards now prioritize exactly three things:
 
-1. family / route state;
-2. large animated gameplay preview;
-3. module name;
-4. one-sentence description.
+1. **mini gameplay loop**
+2. **module name**
+3. **one-sentence description**
 
-The old CSS-only diagrams have been replaced by live Canvas micro-simulations.
+Normal cards no longer show family labels, serials or route jargon above the preview.
 
-Each visible preview demonstrates the mechanic itself:
+Only meaningful state badges remain:
 
-- Gemela splits the shot;
-- Rebote demonstrates a wall bounce;
-- Perfora crosses targets;
-- Astillas bursts into fragments;
-- Bumper reflects a projectile;
-- Nova expands a Power burst;
-- Espejo shows symmetrical returns;
-- Relevo travels through linked targets;
-- Shock expands an AOE ring;
-- Fusión collides two projectiles;
-- Carga hits a wall and detonates;
-- Duplicador splits after a bumper;
-- Shield displays a protective field.
+- `LV2 / LV3`
+- `SINERGIA · ...`
+- `RESERVA`
 
-## Finite build
+### Real gameplay previews
 
-A run now has:
+The old abstract dots/lines have been replaced with miniature gameplay scenes rendered in Canvas.
 
-- **4 active module slots**
-- **4 reserve slots**
-- modules can reach **level 3** unless they are unique-rule modules.
+The previews reuse Aura Farm's visual grammar:
 
-Only active modules affect:
+- glasshouse arena
+- real claw silhouette
+- incoming Tap note
+- PERFECT feedback
+- launched projectiles
+- walls
+- bumpers
+- CHAIN
+- Slide rail
+- Power Return
+- shield response
 
-- projectile physics;
-- arena objects;
-- Slide rewards;
-- synergies;
-- music mix.
+Examples:
 
-Reserve modules are owned but inactive.
+- Gemela: note → claw PERFECT → two projectiles.
+- Rebote: PERFECT → projectile → wall → visible ricochet.
+- Perfora: projectile crosses incoming targets with CHAIN · PERFORA.
+- Astillas: projectile collision → explosion → fragments.
+- Bumper: projectile physically reflects from a bumper.
+- Nova: miniature Slide → POWER RETURN salvo.
+- Espejo: Slide reward appears from both sides.
+- Relevo: projectile moves through a linked CHAIN sequence.
+- Shock: Power impact produces an AOE that removes nearby notes.
+- Fusión: two real projectiles converge and detonate.
+- Carga: Power projectile hits a wall and detonates.
+- Duplicador: bumper contact creates the second projectile.
+- Shield: a missed note is absorbed while the combo remains.
 
-### Duplicate modules
+The goal is that a player can hide the title/description and still understand most of the module by watching the loop.
 
-Choosing an already owned module upgrades it instead of consuming another slot.
+## Build system
 
-Example:
+v0.31 keeps:
 
-`Rebote LV1 → Rebote LV2 → Rebote LV3`
+- 4 active module slots
+- 4 reserve slots
+- module levels up to LV3
+- duplicate modules upgrade existing modules
+- fifth/new modules enter reserve when active slots are full
+- swapping is allowed only between acts
 
-The underlying physical rule stacks naturally.
+Only active modules affect physics, synergies and music.
 
-### New fifth module
+### Inspectable build
 
-If all four active slots are occupied, a new module goes to reserve.
+`BUILD · VER` opens **AURI · LOADOUT**.
 
-Before the next act, the Loadout Manager opens automatically so the player can decide whether to replace an active module.
+The selected module now shows:
 
-## Build / Loadout Manager
+- the same animated gameplay preview used in Module Bay
+- current level
+- current level effect
+- description
+- active/reserve state
+- available action between acts
 
-The gameplay Build Dock now includes **VER**.
+Mid-song inspection remains read-only.
 
-It opens:
+## Musical phrasing pass
 
-**AURI · LOADOUT**
+The chart now contains **51 authored events**.
 
-The player can inspect:
+The 10 new events are not arbitrary density:
 
-- 4 active slots;
-- 4 reserve slots;
-- module level;
-- full description;
-- active synergies.
+- four reinforce the initial kick/snare pulse before the first melodic Slide;
+- four land exactly on written transition fills;
+- two complete the final AURA CORE resolution bar.
 
-During normal gameplay this view is read-only.
+## Phrase-aligned CHAIN
 
-Changing modules is restricted to inter-act Module Bay decisions so pausing mid-song does not become optimal loadout micromanagement.
+CHAIN groups now follow the same `music.phrase` IDs used by the song semantics.
 
-Between acts, reserve modules can:
+Examples include:
 
-- be equipped into an empty active slot;
-- swap with an active module;
-- receive future duplicate upgrades.
+- `spark-a`
+- `current-answer`
+- `relay-a`
+- `overdrive-a`
+- `finale`
+- `core-fan`
 
-## Musical Intent System
+A CHAIN should therefore represent an audible phrase/fill rather than a visually convenient cluster.
 
-Every chart event now states what part of the song it represents.
+The introductory pulse is intentionally not treated as a CHAIN so the first bars remain easy to read.
 
-Required metadata:
+## Music-driven Tap routes
 
-```json
-"music": {
-  "stem": "lead",
-  "intent": "phrase",
-  "energy": 0.8,
-  "phrase": "ascent-line",
-  "contour": true
-}
-```
+Tap approach paths are selected from musical semantics.
 
-Supported stems:
+### Direct route
 
-- drums
-- bass
-- harmony
-- lead
-- aura
-- boss
+Used mainly for:
 
-Supported musical intents:
+- pulse
+- backbeat
+- low-energy bass
+
+### Middle route
+
+Used for:
+
+- response
+- pickup
+- resolve
+- medium melodic register
+
+### Wide/cross-field route
+
+Used for:
+
+- fill
+- climax
+- strong syncopation
+- high melodic register
+- boss material
+
+Current route distribution:
+
+- 13 direct
+- 20 middle
+- 14 wide
+
+The route changes how the note enters the arena, not its judgement rule.
+
+## Slide musical contour
+
+The four contour-enabled Slides still derive their physical rail from the actual lead/Aura pitch contour in `music.js`.
+
+The first Slide begins at beat 8 because that is where the authored lead phrase actually begins.
+
+## Music-driven world response
+
+The environment now reacts to stems without making gameplay objects busier:
+
+- kick lightly pulses chassis rails/glow;
+- snare adds a smaller structural accent;
+- lead opens the internal circuitry;
+- Aura brightens growth conduits/leaves.
+
+This follows the Art Bible rule:
+
+> music moves the world, not the readability of the notes.
+
+## Musical intent
+
+Every chart event still requires:
+
+- `stem`
+- `intent`
+- `energy`
+- `phrase`
+
+All 51 events currently declare a stem that is actually audible at that beat.
+
+Supported intents remain:
 
 - pulse
 - backbeat
@@ -133,119 +197,37 @@ Supported musical intents:
 - resolve
 - climax
 
-The full design is documented in:
-
-`docs/musical-intent-v0.30.md`
-
-## Musical geometry
-
-Slide is no longer authored only as arbitrary joystick coordinates.
-
-A Slide with `music.contour: true` samples the actual pitch sequence from `GLASSHOUSE CIRCUIT` and converts that contour into physical claw vectors.
-
-Current examples:
-
-- SPROUT Slide follows the lead phrase `60 → 63 → 67 → 65 → 62`.
-- CURRENT Slide follows `67 → 65 → 60 → 58 → 53 → 56 → 60`.
-- FRACTURE and ASCENT use their own authored melodic contours.
-
-The fallback JSON anchors remain valid chart data, but the live geometry is rebuilt from the music for contour-enabled Slides.
-
-## First Slide correction
-
-The first Slide used to start at beat 6.
-
-It now starts at **beat 8**.
-
-Reason:
-
-- beat 6 contains rhythm/bass;
-- the authored lead enters at beat 8.
-
-The game no longer asks for a melodic continuous gesture before the melody exists.
-
-## Tap / musical semantics
-
-Tap remains the discrete-event mechanic.
-
-Its authored `energy` now affects:
-
-- visible radius;
-- real physical hitbox;
-- hit feedback strength;
-- haptic strength;
-- AURI reaction;
-- hit-sound volume/duration.
-
-The represented stem affects the hit sound itself.
-
-Lead/Aura/Bass/Boss events derive feedback pitch from the actual authored note at that beat.
-
-Because visual radius and collision radius use the same value, the project principle remains:
-
-**what you see is what is judged.**
-
-## Chart validation
-
-`src/chart.js` now rejects events with invalid or missing musical semantics.
-
-All 41 current events have:
-
-- a real stem;
-- musical intent;
-- energy;
-- phrase identity.
-
-An audit verifies that each event's declared stem actually contains material at that beat.
-
-## Research direction
-
-The charting approach follows principles observed in established rhythm-game production:
-
-- physical gestures should be guided by musical structure;
-- timing and sections are part of gameplay meaning, not just synchronization;
-- human-like patterning matters as much as individual beat accuracy;
-- sustained gestures should represent audible continuity.
-
-Reference work included Rotaeno's official level-design discussion, osu!'s official beatmapping/timing documentation, and research on beat-aligned and pattern-focused chart generation.
-
-The goal is to learn chart-design principles, not reproduce other games' proprietary layouts or assets.
-
-## Existing v0.29 visual direction
+## Existing visual direction
 
 The Art Bible remains active:
 
 `docs/art-bible-v1.md`
 
-Primary gameplay remains visually minimal:
+Primary gameplay remains minimal:
 
-- Tap = ring / body / core;
-- projectiles = simple bright balls;
-- Slide = clean rail / frets / catcher;
-- claws = strong silhouettes;
-- environmental richness lives behind gameplay.
+- Tap = ring / body / core
+- projectile = simple bright ball
+- Slide = clean rail / frets / catcher
+- claw = strong silhouette
+- environmental richness stays behind gameplay
 
-World assets:
+## Existing run systems
 
-- `assets/world/glasshouse-far.svg`
-- `assets/world/growth-bays.svg`
+v0.31 keeps:
 
-## Core systems retained
-
-v0.30 keeps:
-
-- 7-act run;
-- AURI;
-- CHAIN;
-- POWER RETURN;
-- AURA CORE two-phase boss;
-- Practice;
-- Daily seed;
-- latency calibration;
-- manual/background pause;
-- Flow Rank;
-- six-stem `GLASSHOUSE CIRCUIT` mix;
-- constant-speed projectile physics.
+- 7-act run
+- AURI
+- CHAIN
+- POWER RETURN
+- AURA CORE two-phase boss
+- Practice
+- Daily seed
+- latency calibration
+- safe manual/background pause
+- Flow Rank
+- six-stem GLASSHOUSE CIRCUIT mix
+- active/reserve loadout
+- constant-speed projectile physics
 
 ## Physics
 
@@ -253,24 +235,37 @@ Non-negotiable:
 
 **notes and projectiles move at constant velocity between collisions.**
 
-Loadout changes rebuild rules for future interactions; they do not introduce acceleration or hidden timing modifiers.
+Music semantics can change approach path, radius and feedback strength, but do not introduce hidden acceleration or timing windows.
 
-## What to test in v0.30
+## What to test in v0.31
 
-1. Do the animated module previews explain the mechanic faster than the old cards?
-2. Does 4 active + reserve create a real build identity?
-3. Does upgrading an existing module feel preferable to collecting everything?
-4. Is swapping modules between acts understandable without explanation?
-5. Does the first Slide finally feel justified by the music?
-6. Do melodic rises/falls feel connected to the Slide shape?
-7. Do stronger musical accents feel physically stronger without looking busier?
-8. Does the build still remain readable while gameplay stays minimal?
+1. Do module previews finally look like Aura Farm gameplay instead of animated icons?
+2. Can Gemela/Rebote/Perfora/Nova be understood without reading the description?
+3. Is the simplified card layout easier to scan?
+4. Is BUILD · VER useful during a real run?
+5. Do fills and climax groups feel musically justified?
+6. Does the first eight-beat pulse make the opening easier to understand?
+7. Do direct/middle/wide note routes feel related to musical function?
+8. Do kick/lead/Aura environmental reactions add cohesion without visual noise?
+9. Does the chart feel less arbitrary than v0.30?
 
 ## Direction documents
 
 - `docs/art-bible-v1.md`
 - `docs/product-direction-v0.28.md`
-- `docs/musical-intent-v0.30.md`
+- `docs/musical-intent-v0.31.md`
+
+## Next production order
+
+After v0.31 the next high-value work should be:
+
+1. playtest and balance the 4-slot build economy;
+2. decide TRACE vs FOLLOW and remove the losing Slide model;
+3. produce a professional audio/stem version of GLASSHOUSE CIRCUIT using the current six-bus contract;
+4. create final AURI concept/animation language;
+5. replace prototype arena vectors with production environmental assets while preserving geometry;
+6. tune boss/CHAIN opportunities around the final music;
+7. only then expand song/content volume or online systems.
 
 ## GitHub Pages
 
