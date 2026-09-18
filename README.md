@@ -1,101 +1,158 @@
-# Aura Farm — Mechanics Lab v0.23 Experimental
+# Aura Farm — Vertical Slice v0.24
 
-La v0.23 no intenta pulir el Slide anterior: **compara dos modelos de control distintos** para decidir cuál debe sobrevivir.
+**BUILD THE BEAT.**
 
-## Tecnología
+Aura Farm ya no se plantea como un rhythm game tradicional con una lista creciente de tipos de nota. La vertical slice prueba un núcleo de **rhythm-action roguelite / hybrid arcade**:
 
-- HTML + Canvas 2D
-- JavaScript ES Modules
-- Web Audio API como reloj maestro
-- Pointer Events
-- Charts JSON
-- Mobile-first vertical
+> Golpea al ritmo → la nota sobrevive como proyectil → modifica físicamente las notas futuras → construye una máquina musical diferente durante la run.
 
-## Tap
+## Run
 
-Tap no cambia:
+Una run completa tiene **7 actos**.
 
-- dos pinzas;
-- contacto físico = PERFECT;
-- fallo físico = MISS;
-- la bola golpeada pasa a ser un proyectil de velocidad constante;
-- proyectiles pueden provocar CHAIN, colisiones, rebotes, explosiones y sinergias de upgrades.
+- Cada acto usa 68 beats a 110 BPM (~37 s de gameplay).
+- Entre los actos 1–6 se elige una de tres mejoras.
+- Con count-ins y decisiones, una run completa queda aproximadamente en la franja de 4–5 minutos.
+- El acto 7 activa **AURA CORE**, un boss/reactor físico que recibe daño de los proyectiles.
+- Al terminar se muestra resumen de score, PERFECT, CHAIN, MISS, daño al Core y build.
 
-## Slide experimental
+## Core
 
-Cada evento Slide declara ahora `mode: "trace"` o `mode: "follow"`.
+### Tap
 
-### TRACE · DEDO
+- Contacto físico de pinza con bola = PERFECT.
+- Si no hay contacto, MISS.
+- La bola acertada se transforma en proyectil a velocidad constante.
+- Los proyectiles interactúan con notas, paredes, bumpers, otros proyectiles y AURA CORE.
 
-- El Slide se inicia tocando directamente el receptor sobre la cuerda.
-- El dedo controla directamente la posición de la punta de la garra.
-- Izquierda, derecha, arriba y abajo corresponden al movimiento real del dedo.
-- Soltar rompe la conexión; es posible volver a capturar el receptor durante la pequeña gracia existente.
-- El joystick de esa mano no se presenta como el control activo del Slide.
+### CHAIN intencional
 
-Objetivo de la prueba: comprobar si el gesto directo elimina toda transformación mental y hace que seguir frases curvas sea inmediato.
+El chart puede declarar `chainGroup`.
 
-### FOLLOW · STICK
+- Las notas del mismo grupo muestran un aro amarillo y una conexión discontinua.
+- El objetivo es que el jugador empiece a prever trayectorias y busque cadenas deliberadamente.
+- Los actos 3, 5 y 7 añaden capas extra de notas para que el mismo tema se vuelva más denso durante la run.
 
-- El Slide se inicia desde la palanca correspondiente.
-- El stick **ya no representa una orientación absoluta de la garra**.
-- El stick funciona como velocidad 2D de un cursor/garra: empujar a la izquierda desplaza la punta hacia la izquierda; empujar arriba la desplaza arriba.
-- La posición del jugador persiste al centrar el stick.
-- El receptor musical continúa avanzando por la cuerda al ritmo del chart.
+### Slide experimental
 
-Objetivo de la prueba: conservar la fantasía de palanca/garra sin el problema anterior de convertir mentalmente stick → ángulo alrededor del pivote.
+El chart sigue comparando dos modelos:
 
-## Lab de comparación
+- **TRACE · DEDO**: el dedo mueve directamente la punta de la garra sobre el riel.
+- **FOLLOW · STICK**: la palanca funciona como velocidad 2D; izquierda desplaza la garra a la izquierda, sin mapping angular absoluto.
 
-`charts/tap-lab.json` contiene:
+La telemetría local registra intentos y éxitos de ambos modos para orientar la siguiente decisión de diseño.
 
-1. TRACE izquierdo de 6 beats;
-2. FOLLOW derecho de 6 beats;
-3. TRACE derecho de 6 beats;
-4. FOLLOW izquierdo de 8 beats.
+## Build / upgrades
 
-Los FOLLOW usan curvas deliberadamente suaves para medir el control antes de aumentar la dificultad. Los TRACE tienen cambios espaciales más expresivos.
+Las cartas son cambios visibles de reglas, no estadísticas abstractas.
 
-El chart sólo admite `tap` y `slide`. Para Slide, `mode` es obligatorio y debe ser `trace` o `follow`.
+Pool actual:
 
-## Upgrades
+- Gemela
+- Rebote
+- Perfora
+- Astillas
+- Bumper
+- Nova
+- Espejo
+- Relevo
+- Shock
+- Fusión
+- Carga
+- Duplicador
+- Shield
 
-Las tres cartas aparecen ahora **centradas en pantalla**. Cada familia tiene un color consistente para acelerar la lectura:
+Las opciones intentan pertenecer a familias distintas. Las familias tienen color consistente tanto en selección como en resumen.
 
-- Slide — violeta.
-- Disparo — azul/cyan.
-- Colisión — rosa/rojo.
-- Explosión — ámbar.
-- Arena — turquesa.
-- Chain — amarillo.
-- Pared — azul.
-- Defensa — gris.
+## Música reactiva
 
-El pool mantiene mejoras jugables visibles: Gemela, Rebote, Perfora, Astillas, Bumper, Nova, Espejo, Relevo, Shock, Fusión, Carga, Duplicador y Shield.
+La Web Audio API sigue siendo el reloj maestro, pero la música ya reacciona a la build.
 
-El selector intenta ofrecer familias diferentes en las tres opciones.
+- La densidad del groove aumenta con los actos y el número de upgrades.
+- Upgrades de Slide añaden una capa lead.
+- Upgrades de explosión/fusión/pared añaden pulsos de Aura.
+- Gemela/Relevo/Duplicador añaden clicks rítmicos.
+- El acto 7 añade un drone específico del boss.
+- CHAIN produce una respuesta tonal ascendente.
 
-## Regla de física
+Esto permite probar la tesis de producto: **la misma canción debe sonar distinta cuando la build crece**.
 
-Las bolas y proyectiles se mueven a velocidad constante entre colisiones. No se introduce gravedad, aceleración ni easing jugable.
+## Identidad visual
 
-## Qué hay que decidir probando v0.23
+La arena deja de ser únicamente “fondo oscuro + neón”.
 
-No buscamos todavía dificultad ni arte final. Hay que responder:
+- Chasis y raíles laterales de una máquina musical.
+- Energía reactiva al beat y progreso de acto integrado en el escenario.
+- Brazos mecánicos con actuador, junta y pinza física.
+- Boss/reactor central en el último acto.
+- Tres máquinas cosméticas con paleta propia:
+  - FORGE — inicial.
+  - PRISM — desbloqueada tras completar 1 run.
+  - PULSE — desbloqueada tras completar 3 runs.
 
-- ¿TRACE se entiende sin explicación?
-- ¿FOLLOW hace que izquierda se sienta realmente izquierda?
-- ¿Cuál produce más sensación musical?
-- ¿Cuál combina mejor con la identidad de las garras?
-- ¿Cuál querrías dominar durante una canción completa?
+Estas máquinas son progresión cosmética, no poder estadístico.
 
-## Controles
+## Daily
 
-- Tap: zonas táctiles izquierda/derecha.
-- TRACE: dedo directamente sobre el receptor/riel.
-- FOLLOW: palanca de la mano correspondiente.
-- `H`: debug.
-- `[` / `]`: offset de calibración.
+**DAILY SEED** usa una semilla determinista derivada de la fecha local.
+
+- El orden aleatorio de mejoras es reproducible para esa fecha.
+- Se guarda el mejor Daily del día en el dispositivo.
+- Es la base técnica para una futura Daily Run compartida/leaderboard sin introducir todavía backend.
+
+## Calibración
+
+La pantalla inicial expone controles táctiles de offset.
+
+- ±15 ms desde UI.
+- `[` / `]` ajustan ±5 ms desde teclado.
+- El ajuste se guarda localmente.
+- Bluetooth sigue requiriendo calibración manual; no se oculta esa limitación.
+
+## Métricas locales
+
+No se envían datos a ningún servidor.
+
+Se guardan localmente:
+
+- runs iniciadas/completadas;
+- total de CHAIN;
+- intentos/éxitos TRACE;
+- intentos/éxitos FOLLOW;
+- best score;
+- Daily best;
+- runs completadas para unlocks.
+
+El objetivo es aprender del core antes de construir analytics remotos, monetización o live ops.
+
+## Chart data-driven
+
+`charts/tap-lab.json` admite:
+
+- `tap`
+- `slide`
+- `mode: trace | follow`
+- `chainGroup`
+- `minAct: 1..7`
+
+El chart actual tiene 41 eventos totales, con capas adicionales para actos 3, 5 y 7.
+
+## Física
+
+Regla no negociable:
+
+**las bolas se mueven con velocidad constante entre colisiones.**
+
+Sin gravedad, aceleración ni easing jugable.
+
+## Qué debe validar esta slice
+
+1. ¿Tap → proyectil → CHAIN genera decisiones intencionales?
+2. ¿La build cambia realmente cómo se juega y cómo suena la run?
+3. ¿TRACE o FOLLOW merece convertirse en el Slide definitivo?
+4. ¿El acto 7 produce suficiente clímax?
+5. ¿Terminar una run da ganas de empezar otra?
+6. ¿FORGE/PRISM/PULSE empiezan a construir una identidad visual propia?
 
 ## GitHub Pages
 
