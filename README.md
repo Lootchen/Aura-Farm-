@@ -1,4 +1,4 @@
-# Aura Farm — Mechanics Lab v0.21
+# Aura Farm — Mechanics Lab v0.22
 
 Prototipo vertical mobile-first centrado en **timing, contacto físico, apuntado y reacciones en cadena**.
 
@@ -16,49 +16,65 @@ Prototipo vertical mobile-first centrado en **timing, contacto físico, apuntado
 ### Tap
 
 - Dos pinzas: izquierda y derecha.
-- No hay GOOD/GREAT ocultos: si la pinza toca físicamente la bola, es **PERFECT**; si no, MISS.
-- La bola golpeada pasa a ser un proyectil a velocidad constante.
-- Los proyectiles pueden colisionar con notas entrantes, paredes, otros proyectiles y bumpers.
-- Las colisiones pueden producir CHAIN y explosiones.
+- Si la pinza toca físicamente la bola, es **PERFECT**; si no, MISS.
+- La bola golpeada se convierte en proyectil a velocidad constante.
+- Proyectiles chocan con notas entrantes, paredes, otros proyectiles y bumpers.
+- Esas colisiones pueden producir CHAIN y nuevas reacciones.
 
-### Slide
+### Slide — v0.22
 
-- Cada control es un joystick 2D real con base, vástago y cap móvil.
-- El joystick vuelve al centro al soltarlo.
-- La pinza copia dirección y alcance del stick.
-- El objetivo se presenta como un **riel físico** en el campo de juego, no como información dentro del joystick.
-- El éxito se calcula por distancia real en píxeles entre la punta de la pinza y el gate del riel.
-- La anchura visible del riel corresponde a la tolerancia jugable.
-- Completar el Slide dispara una Power Orb; mejoras como Nova pueden multiplicarla.
+El Slide mantiene el joystick 2D real, pero su lectura se rediseñó como una frase instrumental:
+
+- cuerda luminosa continua;
+- gemas rítmicas sobre la cuerda;
+- anchors importantes como gemas mayores;
+- marcas de dirección;
+- receptor móvil sobre el punto exacto que hay que seguir;
+- corredor visual cuya anchura coincide con la tolerancia jugable;
+- rastro dorado cuando la pinza permanece conectada;
+- frase larga de 8 beats en el chart de laboratorio.
+
+La referencia conceptual es el lenguaje de slider/sustain de juegos de guitarra: una serie de notas conectadas por una trayectoria visible. Aura Farm lo traduce a movimiento 2D libre de una garra.
+
+El juicio sigue siendo físico: distancia en píxeles entre la punta de la garra y el receptor del riel.
 
 ### Magic
 
-Magic está pausado y ya no forma parte del contrato de charts de v0.21.
+Magic continúa pausado y fuera del contrato de charts.
 
-## Upgrades
+## Upgrades v0.22
 
-Al final de cada oleada aparecen tres cartas compactas. Las mejoras deben cambiar algo visible de la partida, no porcentajes ocultos.
+Las cartas siguen en una fila horizontal de tres, pero ahora incluyen una descripción muy breve y las opciones intentan pertenecer a familias distintas.
 
-Pool v0.21:
+Pool actual:
 
-- **Gemela** — añade un proyectil al disparo.
-- **Rebote** — añade rebotes de pared conservando velocidad constante.
-- **Perfora** — permite atravesar notas entrantes.
-- **Astillas** — las explosiones generan proyectiles pequeños.
+- **Gemela** — cada PERFECT dispara una bola extra.
+- **Rebote** — los proyectiles sobreviven a otra pared.
+- **Perfora** — atraviesa una nota y sigue volando.
+- **Astillas** — las explosiones generan nuevos proyectiles.
 - **Bumper** — añade un reflector físico al tablero.
-- **Nova** — añade dos Power Orbs al completar un Slide.
-- **Shield** — salva un combo roto una vez.
+- **Nova** — un Slide termina en una salva mayor.
+- **Espejo** — el Slide también dispara desde la otra garra.
+- **Relevo** — un CHAIN continúa con un nuevo proyectil.
+- **Shock** — una explosión Power barre notas cercanas.
+- **Fusión** — el choque entre proyectiles detona como Power.
+- **Carga** — los impactos de pared detonan como Power.
+- **Duplicador** — el primer rebote en bumper duplica la bola.
+- **Shield** — el próximo MISS no rompe el combo.
+
+Las mejoras siguen evitando aceleración o gravedad: las bolas se mueven siempre con velocidad constante entre colisiones.
 
 ## Chart de laboratorio
 
-`charts/tap-lab.json` prueba cuatro familias de Slide:
+`charts/tap-lab.json` incluye cinco familias de prueba:
 
 1. barrido direccional;
 2. arco suave;
 3. cambio brusco;
-4. variación de alcance.
+4. variación de alcance;
+5. frase larga de slider de 8 beats.
 
-Los anchors usan `beat / x / y` y deben permanecer dentro del círculo unitario del joystick.
+Los anchors usan `beat / x / y` y permanecen dentro del círculo unitario del joystick.
 
 ## Controles
 
@@ -72,14 +88,12 @@ Los anchors usan `beat / x / y` y deben permanecer dentro del círculo unitario 
 1. Lo que se ve debe coincidir con lo que se juzga.
 2. Movimiento gameplay siempre a velocidad constante.
 3. Tap = golpear físicamente.
-4. Slide = apuntar físicamente.
-5. Upgrades = alterar físicamente lo que ocurre después.
+4. Slide = apuntar y recorrer físicamente una frase.
+5. Upgrades = cambiar reglas visibles del tablero.
 6. Visuales secundarios a feeling, lectura y mecánicas.
 
 ## GitHub Pages
 
-La fuente de verdad es la rama `main`.
-
-Prueba directa:
+Fuente de verdad: `main`.
 
 https://lootchen.github.io/Aura-Farm-/
