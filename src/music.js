@@ -200,15 +200,13 @@ export function songFrameAtBeat(beat) {
         : bar.root +
           auraOffset,
     bossMidi:
-      bar.section === "CORE"
-        ? bar.root -
-          12 +
-          (
-            step % 2 === 0
-              ? 0
-              : 1
-          )
-        : null
+      bar.root -
+      12 +
+      (
+        step % 2 === 0
+          ? 0
+          : 1
+      )
   };
 }
 
