@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.45
+# Aura Farm — Vertical Slice v0.46
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,54 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.46 — Second Song / Music-Directed World
+
+The song system is now exercised by two original Aura Farm tracks.
+
+### Track 02 — NEON GERMINATION
+
+- 126 BPM;
+- 64 beats / 16 bars;
+- 51 authored gameplay events;
+- 46 Tap;
+- 5 TRACE;
+- 12 Shield notes;
+- 3 CHAIN phrases;
+- 8 musical sections: DORMANT → SPARK → LIFT → RUN → BLOOM → BREAK → SURGE → CROWN;
+- 51/51 semantic stem alignment checks pass.
+
+The chart is arranged with musical intent rather than uniform density:
+
+- DORMANT teaches the pulse with simple drum hits;
+- SPARK introduces the first lead TRACE and call/response CHAIN;
+- LIFT moves more gameplay onto melody;
+- RUN adds faster alternation and the first Shield pairs;
+- BLOOM opens a longer phrase and larger chain;
+- BREAK deliberately creates negative space/syncopation;
+- SURGE becomes the strongest pre-boss phrase;
+- CROWN concentrates climax events near the end.
+
+### Song select
+
+The main menu now renders the registered song catalog and lets the player switch tracks before a run.
+
+The selection is stored in the local profile. Loading a new song resets/revalidates the chart and updates menu/summary metadata.
+
+### Music-directed presentation
+
+Song packages may define optional `presentation` metadata per musical section.
+
+The gameplay world now reacts to it:
+
+- song colors are blended into the selected machine palette, without replacing chassis identity;
+- section energy controls reactor activation and environmental intensity;
+- downbeats produce restrained stage breathing;
+- section transitions create a short world pulse and AURI state change;
+- the world grid response uses the song's declared `stepsPerBeat` rather than a hardcoded half-beat;
+- HUD section labels continue to follow the actual composition frame.
+
+This makes music drive notes **and** presentation, while preserving a clean central playfield.
 
 ## v0.45 — Produced Audio / Waveform / Offset Pipeline
 
