@@ -522,6 +522,164 @@ class RhythmClock {
     );
   }
 
+  setStemGain(
+    name,
+    value,
+    ramp = 0.45
+  ) {
+    this.ensureMixGraph();
+
+    const bus =
+      this.stemBuses?.[name];
+
+    if (!bus) return;
+
+    const now =
+      this.context.currentTime;
+    const safe =
+      clamp(
+        value,
+        0.0001,
+        1.25
+      );
+
+    bus.gain.cancelScheduledValues(
+      now
+    );
+    bus.gain.setTargetAtTime(
+      safe,
+      now,
+      Math.max(
+        0.03,
+        ramp * 0.35
+      )
+    );
+  }
+
+  applyRunMix(
+    ramp = 0.5
+  ) {
+    if (!this.context) return;
+
+    this.ensureMixGraph();
+
+    const actEnergy =
+      clamp(
+        (wave - 1) /
+          Math.max(
+            1,
+            RUN_ACTS - 1
+          ),
+        0,
+        1
+      );
+    const slideEnergy =
+      clamp(
+        (
+          runMods.slideNova +
+          runMods.slideMirror
+        ) / 3,
+        0,
+        1
+      );
+    const auraEnergy =
+      clamp(
+        (
+          runMods.shockwave +
+          runMods.fusionBlast +
+          runMods.wallCharge +
+          runMods.fragmentCount *
+            0.25
+        ) / 4,
+        0,
+        1
+      );
+    const rhythmEnergy =
+      clamp(
+        (
+          runMods.twinShots +
+          runMods.chainRelay +
+          runMods.bumperSplit
+        ) / 3,
+        0,
+        1
+      );
+    const synergyEnergy =
+      clamp(
+        activeBuildSynergies()
+          .length / 2,
+        0,
+        1
+      );
+
+    this.setStemGain(
+      "drums",
+      0.84 +
+        actEnergy * 0.10 +
+        rhythmEnergy * 0.08,
+      ramp
+    );
+    this.setStemGain(
+      "bass",
+      0.82 +
+        actEnergy * 0.10,
+      ramp
+    );
+    this.setStemGain(
+      "harmony",
+      0.66 +
+        actEnergy * 0.10 +
+        synergyEnergy * 0.05,
+      ramp
+    );
+    this.setStemGain(
+      "lead",
+      0.34 +
+        actEnergy * 0.18 +
+        slideEnergy * 0.30 +
+        synergyEnergy * 0.08,
+      ramp
+    );
+    this.setStemGain(
+      "aura",
+      0.24 +
+        actEnergy * 0.12 +
+        auraEnergy * 0.42 +
+        synergyEnergy * 0.08,
+      ramp
+    );
+    this.setStemGain(
+      "boss",
+      wave === FINAL_ACT
+        ? (
+            bossState.phase === 2
+              ? 1.00
+              : 0.82
+          )
+        : 0.0001,
+      ramp
+    );
+
+    if (this.delayWet) {
+      const now =
+        this.context.currentTime;
+      const target =
+        0.09 +
+        actEnergy * 0.04 +
+        slideEnergy * 0.05 +
+        synergyEnergy * 0.025;
+
+      this.delayWet.gain.cancelScheduledValues(
+        now
+      );
+      this.delayWet.gain.setTargetAtTime(
+        target,
+        now,
+        0.18
+      );
+    }
+  }
+
   stemBus(name) {
     this.ensureMixGraph();
 
@@ -546,6 +704,7 @@ class RhythmClock {
     this.context ??= new AudioContext();
     await this.context.resume();
     this.ensureMixGraph();
+    this.applyRunMix(0.08);
 
     if (!this.noiseBuffer) {
       const length = Math.floor(this.context.sampleRate * 0.12);
@@ -3116,6 +3275,9 @@ function resolveBossCollisions(songTime) {
         [false, false, false];
       bossState.shieldFlash =
         0.32;
+      clock.applyRunMix(
+        0.22
+      );
 
       showMessage(
         "PHASE 2 · ARMOR REBOOT",
@@ -7423,6 +7585,9 @@ function renderUpgradeChoices() {
         renderBuildVisibility({
           announce: true
         });
+        clock.applyRunMix(
+          0.36
+        );
 
         if (runStats) {
           runStats.chosenUpgrades.push(
