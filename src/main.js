@@ -2738,6 +2738,58 @@ function drawIncomingSlideHead(
   ctx.restore();
 }
 
+function drawSlideModeBadge(event) {
+  const trace =
+    slideMode(event) === "trace";
+  const label =
+    trace
+      ? "TRACE · DEDO"
+      : "FOLLOW · STICK";
+
+  ctx.save();
+
+  ctx.font =
+    "900 12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const width =
+    ctx.measureText(label).width + 28;
+  const x = DESIGN.width / 2;
+  const y = 680;
+
+  ctx.fillStyle =
+    "rgba(7,11,19,.78)";
+  ctx.strokeStyle =
+    trace
+      ? "rgba(110,215,255,.78)"
+      : "rgba(216,139,255,.78)";
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+  ctx.roundRect(
+    x - width / 2,
+    y - 15,
+    width,
+    30,
+    15
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle =
+    trace
+      ? "#a9e9ff"
+      : "#e1baff";
+  ctx.fillText(
+    label,
+    x,
+    y + 1
+  );
+
+  ctx.restore();
+}
+
 function drawSlide(event, songTime) {
   ctx.save();
 
@@ -2821,6 +2873,7 @@ function drawSlide(event, songTime) {
       false,
       0.72
     );
+    drawSlideModeBadge(event);
 
     ctx.restore();
     return;
@@ -2910,6 +2963,7 @@ function drawSlide(event, songTime) {
     connected,
     1
   );
+  drawSlideModeBadge(event);
 
   ctx.restore();
 }
@@ -3092,7 +3146,11 @@ function drawControlButton(side, songTime) {
   const slide = activeSlideAt(songTime, side);
   const control = slideControl[side];
   const left = side === "left";
-  const slideActive = Boolean(slide?.started);
+  const slideActive =
+    Boolean(
+      slide?.started &&
+      slideMode(slide) === "follow"
+    );
   const connected =
     slideActive &&
     slideVisualConnected(slide, songTime);
@@ -3563,7 +3621,8 @@ function renderUpgradeChoices() {
   for (const upgrade of choices) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "upgrade-card";
+    button.className =
+      `upgrade-card family-${upgrade.family}`;
     button.innerHTML =
       `<span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span>`;
 
@@ -3798,6 +3857,160 @@ function bindButton(button, side) {
 
 bindButton(leftButton, "left");
 bindButton(rightButton, "right");
+
+function activeTraceSlideCandidate(songTime) {
+  return [...active.values()]
+    .filter(
+      (event) =>
+        event.type === "slide" &&
+        slideMode(event) === "trace"
+    )
+    .filter((event) => {
+      if (event.started) {
+        return songTime <= event.endTime;
+      }
+
+      const delta =
+        songTime - event.targetTime;
+
+      return (
+        delta >= -SLIDE.startEarly &&
+        delta <= SLIDE.startLate
+      );
+    })
+    .sort(
+      (a, b) =>
+        Math.abs(a.targetTime - songTime) -
+        Math.abs(b.targetTime - songTime)
+    )[0] ?? null;
+}
+
+function traceTargetPoint(event, songTime) {
+  return slideTipPoint(
+    event.side,
+    event.started
+      ? slideVectorAtTime(event, songTime)
+      : slideVectorAtBeat(event, 0)
+  );
+}
+
+canvas.addEventListener(
+  "pointerdown",
+  (pointerEvent) => {
+    if (!running) return;
+
+    const songTime =
+      eventSongTime(pointerEvent.timeStamp);
+    const slide =
+      activeTraceSlideCandidate(songTime);
+
+    if (!slide) return;
+
+    const point =
+      eventToDesign(pointerEvent);
+    const target =
+      traceTargetPoint(slide, songTime);
+    const grabRadius =
+      slide.started
+        ? SLIDE.traceGrabRadius * 1.35
+        : SLIDE.traceGrabRadius;
+
+    if (
+      Math.hypot(
+        point.x - target.x,
+        point.y - target.y
+      ) > grabRadius
+    ) {
+      return;
+    }
+
+    pointerEvent.preventDefault();
+    canvas.setPointerCapture?.(
+      pointerEvent.pointerId
+    );
+
+    slide.traceHeld = true;
+    slide.tracePointerId =
+      pointerEvent.pointerId;
+    slide.playerVector =
+      pointToSlideVector(
+        slide.side,
+        point
+      );
+
+    if (!slide.started) {
+      beginSlide(
+        slide,
+        slide.side,
+        songTime
+      );
+    }
+
+    lastInputType = "trace";
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "pointermove",
+  (pointerEvent) => {
+    const slide =
+      [...active.values()]
+        .find(
+          (event) =>
+            event.type === "slide" &&
+            slideMode(event) === "trace" &&
+            event.traceHeld &&
+            event.tracePointerId ===
+              pointerEvent.pointerId
+        );
+
+    if (!slide) return;
+
+    pointerEvent.preventDefault();
+
+    slide.playerVector =
+      pointToSlideVector(
+        slide.side,
+        eventToDesign(pointerEvent)
+      );
+  },
+  { passive: false }
+);
+
+function releaseTracePointer(pointerEvent) {
+  const slide =
+    [...active.values()]
+      .find(
+        (event) =>
+          event.type === "slide" &&
+          slideMode(event) === "trace" &&
+          event.tracePointerId ===
+            pointerEvent.pointerId
+      );
+
+  if (!slide) return;
+
+  pointerEvent.preventDefault();
+  slide.traceHeld = false;
+  slide.tracePointerId = null;
+}
+
+canvas.addEventListener(
+  "pointerup",
+  releaseTracePointer,
+  { passive: false }
+);
+canvas.addEventListener(
+  "pointercancel",
+  releaseTracePointer,
+  { passive: false }
+);
+canvas.addEventListener(
+  "lostpointercapture",
+  releaseTracePointer,
+  { passive: false }
+);
 
 window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
