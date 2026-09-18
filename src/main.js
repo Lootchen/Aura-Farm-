@@ -12,6 +12,13 @@ const startPanel = document.querySelector("#startPanel");
 const startButton = document.querySelector("#startButton");
 const dailyButton = document.querySelector("#dailyButton");
 const practiceButton = document.querySelector("#practiceButton");
+const startButtonLabel = document.querySelector("#startButtonLabel");
+const menuSettingsButton = document.querySelector("#menuSettingsButton");
+const menuSettingsClose = document.querySelector("#menuSettingsClose");
+const menuSettings = document.querySelector("#menuSettings");
+const menuBestScore = document.querySelector("#menuBestScore");
+const menuRuns = document.querySelector("#menuRuns");
+const menuAuriLine = document.querySelector("#menuAuriLine");
 const rerunButton = document.querySelector("#rerunButton");
 const summaryDailyButton = document.querySelector("#summaryDailyButton");
 const leftButton = document.querySelector("#leftButton");
@@ -266,9 +273,7 @@ const lifetimeMetrics = loadLocalJson(
     runsCompleted: 0,
     totalChains: 0,
     traceAttempts: 0,
-    traceSuccess: 0,
-    followAttempts: 0,
-    followSuccess: 0
+    traceSuccess: 0
   }
 );
 
@@ -403,6 +408,31 @@ function refreshMachineOptions() {
   );
 }
 
+function refreshStartMenu() {
+  menuBestScore.textContent =
+    Number(
+      profile.bestScore || 0
+    ).toLocaleString("es-CL");
+  menuRuns.textContent =
+    String(
+      Number(
+        profile.runsCompleted || 0
+      )
+    );
+
+  const completed =
+    Number(
+      profile.runsCompleted || 0
+    );
+
+  menuAuriLine.textContent =
+    completed === 0
+      ? "La máquina está lista. Hazla crecer."
+      : completed < 3
+        ? "Ya conoces el pulso. Ahora construye una build con intención."
+        : "El Core ya te conoce. Haz que esta run suene distinta.";
+}
+
 function hashString(value) {
   let hash = 2166136261;
 
@@ -459,8 +489,6 @@ function newRunStats() {
     startedAt: performance.now(),
     traceAttempts: 0,
     traceSuccess: 0,
-    followAttempts: 0,
-    followSuccess: 0,
     chosenUpgrades: [],
     firstChainMs: null
   };
@@ -8647,12 +8675,12 @@ function drawDebug(songTime) {
   const lines = [
     `SLICE v0.32 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
+    `tap contacto · slide TRACE directo · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `stick L:${slideControl.left.x.toFixed(2)},${slideControl.left.y.toFixed(2)} R:${slideControl.right.x.toFixed(2)},${slideControl.right.y.toFixed(2)}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`,
-    `mode ${runMode} seed ${runSeed} · T ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} F ${runStats?.followSuccess ?? 0}/${runStats?.followAttempts ?? 0}`
+    `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0}`
   ];
 
   ctx.fillStyle = "rgba(0,0,0,.52)";
@@ -10911,7 +10939,7 @@ async function beginAct() {
 
   showMessage(
     runMode === "practice"
-      ? "PRACTICE · TRACE / FOLLOW"
+      ? "PRACTICE · TAP + TRACE"
       : bossAct
         ? "ACTO 7 · AURA CORE"
         : `ACTO ${wave} · ${act.name}`,
@@ -10994,23 +11022,11 @@ function flowRankForRun({
 } = {}) {
   if (practice) {
     const attempts =
-      (
-        runStats?.traceAttempts ??
-        0
-      ) +
-      (
-        runStats?.followAttempts ??
-        0
-      );
+      runStats?.traceAttempts ??
+      0;
     const successes =
-      (
-        runStats?.traceSuccess ??
-        0
-      ) +
-      (
-        runStats?.followSuccess ??
-        0
-      );
+      runStats?.traceSuccess ??
+      0;
     const ratio =
       attempts > 0
         ? successes / attempts
@@ -11284,6 +11300,7 @@ function completeRun() {
             : "";
 
   refreshMachineOptions();
+  refreshStartMenu();
 
   active.clear();
   explosions = [];
@@ -11777,7 +11794,10 @@ async function startRun(mode = "standard") {
   startButton.disabled = true;
   dailyButton.disabled = true;
   practiceButton.disabled = true;
-  startButton.textContent =
+  startButton.classList.add(
+    "is-loading"
+  );
+  startButtonLabel.textContent =
     "INICIANDO…";
 
   upgradePanel.hidden = true;
@@ -11794,6 +11814,7 @@ async function startRun(mode = "standard") {
     1
   );
 
+  menuSettings.hidden = true;
   startPanel.hidden = true;
   buildDock.hidden = false;
   pauseButton.disabled = false;
@@ -11803,9 +11824,26 @@ async function startRun(mode = "standard") {
   startButton.disabled = false;
   dailyButton.disabled = false;
   practiceButton.disabled = false;
-  startButton.textContent =
-    "RUN · 7 ACTOS";
+  startButton.classList.remove(
+    "is-loading"
+  );
+  startButtonLabel.textContent =
+    "INICIAR RUN";
 }
+
+menuSettingsButton.addEventListener(
+  "click",
+  () => {
+    menuSettings.hidden = false;
+  }
+);
+
+menuSettingsClose.addEventListener(
+  "click",
+  () => {
+    menuSettings.hidden = true;
+  }
+);
 
 startButton.addEventListener(
   "click",
@@ -11839,6 +11877,7 @@ for (const option of machineOptions) {
       applyMachineSelection(
         option.dataset.machine
       );
+      refreshStartMenu();
       render(clock.songTime);
     }
   );
@@ -12296,7 +12335,9 @@ function abandonRun() {
   upgradePanel.hidden = true;
   summaryPanel.hidden = true;
   buildDock.hidden = true;
+  menuSettings.hidden = true;
   startPanel.hidden = false;
+  refreshStartMenu();
 
   score = 0;
   combo = 0;
@@ -12356,6 +12397,7 @@ abandonButton.addEventListener(
 );
 
 refreshMachineOptions();
+refreshStartMenu();
 pauseButton.disabled = true;
 buildDock.hidden = true;
 renderBuildVisibility();
