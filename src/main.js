@@ -4357,6 +4357,14 @@ function resolveProjectileCollisions() {
           ? `${projectile.key}|${other.key}`
           : `${other.key}|${projectile.key}`;
 
+      if (
+        projectile.shieldPassKeys?.has(
+          other.key
+        )
+      ) {
+        continue;
+      }
+
       if (checked.has(pairKey)) continue;
       checked.add(pairKey);
 
@@ -4393,6 +4401,11 @@ function resolveProjectileCollisions() {
 
         if (pierces) {
           projectile.piercesLeft -= 1;
+          projectile.shieldPassKeys ??=
+            new Set();
+          projectile.shieldPassKeys.add(
+            other.key
+          );
         } else {
           active.delete(
             projectile.key
