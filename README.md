@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.44
+# Aura Farm — Vertical Slice v0.45
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,72 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.45 — Produced Audio / Waveform / Offset Pipeline
+
+Aura Farm now supports two song audio modes under the same Song Package v1 contract.
+
+### `audio.mode: "procedural"`
+
+This is the existing Aura Farm composition engine.
+
+- composition/pattern data lives in the song JSON;
+- stem alignment is verified semantically at every authored event;
+- GLASSHOUSE CIRCUIT remains procedural and still passes 51/51 stem checks.
+
+### `audio.mode: "file"`
+
+A song package can now point at deployed OGG/WAV/MP3-compatible audio:
+
+```json
+"audio": {
+  "mode": "file",
+  "src": "../assets/audio/my-track.ogg",
+  "gain": 0.9,
+  "stems": ["mix"]
+}
+```
+
+The runtime:
+
+- resolves the audio relative to the song package;
+- decodes it with Web Audio;
+- checks that the file is long enough for chart duration + offset;
+- schedules beat zero against `timing.offsetMs`;
+- pauses by suspending the AudioContext so audio and gameplay freeze on the same clock;
+- stops the source at upgrade/act/run boundaries;
+- preserves authored Tap routes and TRACE anchors instead of trying to derive MIDI data that does not exist in a stereo mix.
+
+### Chart Lab waveform
+
+For file-backed songs Chart Lab now:
+
+- renders the decoded waveform in the MUSIC lane;
+- plays the real audio from the current playhead;
+- exposes `audio.src`, gain and `offsetMs`;
+- can load a local audio file for analysis/preview;
+- analyzes normalized RMS energy on every legal rhythmic step;
+- stores that analysis back into `audio.analysis`.
+
+Validation levels are explicit:
+
+- **SYNC VERIFIED** — procedural stem-by-stem verification;
+- **AUDIO ANALYZED** — external mix timing/grid + decoded audio energy verification;
+- **GRID ONLY** — structurally valid external chart, but audio has not yet been analyzed.
+
+A stereo mix cannot truthfully prove whether a hit follows drums vs lead. File-mode semantic stem labels therefore remain author metadata unless separate stem-aware tooling is added later.
+
+### Licensing
+
+`assets/audio/LICENSES.md` is now required documentation for third-party audio.
+
+No third-party music is bundled in v0.45.
+
+See:
+
+- `docs/file-song-template.json`;
+- `assets/audio/README.md`;
+- `assets/audio/LICENSES.md`.
 
 ## v0.44 — Chart Lab / Song Authoring Pipeline
 
