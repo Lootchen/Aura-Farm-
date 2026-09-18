@@ -21,6 +21,7 @@ const menuRuns = document.querySelector("#menuRuns");
 const menuAuriLine = document.querySelector("#menuAuriLine");
 const rerunButton = document.querySelector("#rerunButton");
 const summaryDailyButton = document.querySelector("#summaryDailyButton");
+const summaryMenuButton = document.querySelector("#summaryMenuButton");
 const leftButton = document.querySelector("#leftButton");
 const rightButton = document.querySelector("#rightButton");
 const scoreEl = document.querySelector("#score");
@@ -11934,6 +11935,22 @@ rerunButton.addEventListener(
 summaryDailyButton.addEventListener(
   "click",
   () => startRun("daily")
+);
+
+summaryMenuButton.addEventListener(
+  "click",
+  () => {
+    summaryPanel.hidden = true;
+    buildDock.hidden = true;
+    menuSettings.hidden = true;
+    startPanel.hidden = false;
+    refreshMachineOptions();
+    refreshStartMenu();
+    score = 0;
+    combo = 0;
+    updateHud();
+    render(clock.songTime);
+  }
 );
 
 for (const option of machineOptions) {
