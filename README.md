@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.35
+# Aura Farm — Vertical Slice v0.36
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,19 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.36 — Visual Identity / Living Machine
+
+v0.36 adds world depth behind the established gameplay grammar instead of decorating the notes.
+
+- distant glasshouse ribs give the playfield architectural scale;
+- a buried segmented reactor sits behind gameplay at deliberately low contrast;
+- reactor activation grows with act intensity, installed module power, lead and Aura activity;
+- sparse condensation motion stays near the side glass instead of crossing the central judgement field;
+- AURI now has quiet physical tethers into both control arms, with small beat-reactive nodes;
+- all new world layers render behind Tap, Shield, TRACE, claws and projectiles.
+
+This pass follows the Art Bible rule: gameplay remains simple in front while identity and musical life accumulate behind it.
 
 ## v0.35 — Contact / Game Feel
 
