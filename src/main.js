@@ -253,7 +253,8 @@ const profile = loadLocalJson(
     selectedMachine: "forge",
     calibrationOffsetMs: 0,
     dailyBest: {},
-    tutorialSeen: false
+    tutorialSeen: false,
+    shieldTutorialSeen: false
   }
 );
 
@@ -318,6 +319,8 @@ let operatorPulse = 0;
 let operatorMood = "idle";
 let operatorLean = 0;
 let calibrationSession = null;
+let shieldGuideActive = false;
+let shieldGuideUntil = -Infinity;
 
 function bumpFeedback(
   shake = 0,
@@ -1912,7 +1915,7 @@ const UPGRADES = [
     icon: "◎",
     title: "Shock",
     effect: "POWER AOE",
-    desc: "Las explosiones Power barren notas cercanas.",
+    desc: "Las explosiones Power barren notas normales y rompen escudos cercanos.",
     apply: () => {
       runMods.shockwave += 1;
     }
@@ -7880,7 +7883,18 @@ function drawAuriFieldGuide(songTime) {
     beat < 19.6
   ) {
     cue =
-      "CHAIN: USA EL RETORNO PARA CRUZAR EL GRUPO";
+      "ESCUDO: TU BOLA ROMPE EL ARO · TÚ AÚN GOLPEAS LA NOTA";
+
+    if (
+      !profile.shieldTutorialSeen
+    ) {
+      profile.shieldTutorialSeen =
+        true;
+      saveLocalJson(
+        PROFILE_KEY,
+        profile
+      );
+    }
   } else if (beat >= 20) {
     profile.tutorialSeen = true;
     saveLocalJson(
@@ -7934,6 +7948,108 @@ function drawAuriFieldGuide(songTime) {
     "800 8px system-ui, sans-serif";
   ctx.fillText(
     cue,
+    x - width / 2 + 58,
+    y
+  );
+
+  ctx.restore();
+}
+
+function drawShieldGuide(songTime) {
+  if (
+    runMode === "daily" ||
+    songTime < 0
+  ) {
+    return;
+  }
+
+  if (
+    !shieldGuideActive &&
+    profile.shieldTutorialSeen
+  ) {
+    return;
+  }
+
+  if (
+    !shieldGuideActive
+  ) {
+    if (!profile.tutorialSeen) {
+      return;
+    }
+
+    const shieldNote =
+      [...active.values()].find(
+        (event) =>
+          event.type === "tap" &&
+          !event.launched &&
+          event.shield &&
+          event.shieldIntact
+      );
+
+    if (!shieldNote) {
+      return;
+    }
+
+    shieldGuideActive = true;
+    shieldGuideUntil =
+      songTime + 2.8;
+    profile.shieldTutorialSeen =
+      true;
+    saveLocalJson(
+      PROFILE_KEY,
+      profile
+    );
+  }
+
+  if (
+    songTime >
+    shieldGuideUntil
+  ) {
+    shieldGuideActive = false;
+    return;
+  }
+
+  const palette =
+    machinePalette();
+  const x = 270;
+  const y = 676;
+  const width = 404;
+
+  ctx.save();
+  ctx.fillStyle =
+    "rgba(5,10,17,.91)";
+  ctx.strokeStyle =
+    "rgba(190,232,255,.42)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(
+    x - width / 2,
+    y - 18,
+    width,
+    36,
+    12
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle =
+    `rgb(${palette.accent.join(",")})`;
+  ctx.font =
+    "900 8px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "AURI //",
+    x - width / 2 + 12,
+    y
+  );
+
+  ctx.fillStyle =
+    "rgba(225,245,255,.86)";
+  ctx.font =
+    "800 8px system-ui, sans-serif";
+  ctx.fillText(
+    "ROMPE EL ARO CON UNA BOLA · EL BEAT SIGUE SIENDO TUYO",
     x - width / 2 + 58,
     y
   );
@@ -9160,6 +9276,7 @@ function render(songTime) {
   drawMessage();
   drawCountIn(songTime);
   drawAuriFieldGuide(songTime);
+  drawShieldGuide(songTime);
   drawImpactVeil();
 
   if (showDebug) drawDebug(songTime);
@@ -9186,6 +9303,8 @@ function resetWaveState() {
   resolved.clear();
   explosions = [];
   impactFlashes = [];
+  shieldGuideActive = false;
+  shieldGuideUntil = -Infinity;
   for (const side of ["left", "right"]) {
     slideControl[side].held = false;
     slideControl[side].x = 0;
@@ -10933,6 +11052,7 @@ function drawModulePreview(
             neighbor.y,
             "right",
             {
+              shielded: true,
               scale: .78
             }
           );
@@ -10973,28 +11093,24 @@ function drawModulePreview(
           familyColor,
           55
         );
-        if (q < .58) {
-          for (
-            const neighbor of
-            neighbors
-          ) {
-            drawPreviewNote(
-              context,
-              neighbor.x,
-              neighbor.y,
-              "right",
-              {
-                scale: .78,
-                alpha:
-                  1 -
-                  q * 1.6
-              }
-            );
-          }
+        for (
+          const neighbor of
+          neighbors
+        ) {
+          drawPreviewNote(
+            context,
+            neighbor.x,
+            neighbor.y,
+            "right",
+            {
+              scale: .78
+            }
+          );
         }
+
         drawPreviewLabel(
           context,
-          "SHOCK",
+          "SHOCK · BREAK",
           familyColor,
           1 -
             clamp(
