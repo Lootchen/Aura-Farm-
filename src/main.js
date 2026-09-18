@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.30";
+import { loadGameChart } from "./chart.js?v=0.31";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.30";
+} from "./music.js?v=0.31";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -80,9 +80,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.30";
+  "./assets/world/glasshouse-far.svg?v=0.31";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.30";
+  "./assets/world/growth-bays.svg?v=0.31";
 
 function drawWorldAsset(
   image,
@@ -2175,8 +2175,10 @@ function renderBuildVisibility({
   }
 
   moduleSlotStatus.textContent =
-    `ACTIVOS ${activeModuleIds.length}/${ACTIVE_MODULE_LIMIT} · RESERVA ${reserveModuleIds.length}/${RESERVE_MODULE_LIMIT}`;
+    `BUILD ${activeModuleIds.length}/${ACTIVE_MODULE_LIMIT}`;
 
+  currentSynergy.hidden =
+    synergies.length === 0;
   currentSynergy.textContent =
     synergies.length
       ? `SYNERGY · ${synergies
@@ -2185,7 +2187,7 @@ function renderBuildVisibility({
               synergy.title
           )
           .join(" · ")}`
-      : "SIN SINERGIA ACTIVA";
+      : "";
 
   if (!announce) return;
 
@@ -2778,7 +2780,7 @@ function eventMusicEnergy(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.30", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.31", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -8574,7 +8576,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.30 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.31 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -8858,67 +8860,699 @@ const MODULE_PREVIEW_COLORS = {
 };
 
 function previewEase(t) {
+  const x =
+    clamp(t, 0, 1);
+
   return (
     0.5 -
     Math.cos(
-      Math.min(1, Math.max(0, t)) *
-      Math.PI
-    ) /
-      2
+      x * Math.PI
+    ) / 2
   );
 }
 
-function drawPreviewOrb(
+function previewSceneTime(now) {
+  const cycleMs = 2850;
+  const raw =
+    (now % cycleMs) /
+    cycleMs;
+
+  return raw < 0.92
+    ? raw / 0.92
+    : 1;
+}
+
+function drawPreviewArena(
+  context,
+  width,
+  height
+) {
+  const palette =
+    machinePalette();
+
+  context.clearRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+  const gradient =
+    context.createLinearGradient(
+      0,
+      0,
+      0,
+      height
+    );
+  gradient.addColorStop(
+    0,
+    "#070c14"
+  );
+  gradient.addColorStop(
+    1,
+    "#0a111b"
+  );
+
+  context.fillStyle =
+    gradient;
+  context.fillRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+  if (
+    WORLD_ASSETS.far.complete &&
+    WORLD_ASSETS.far.naturalWidth > 0
+  ) {
+    context.save();
+    context.globalAlpha = 0.13;
+    context.drawImage(
+      WORLD_ASSETS.far,
+      0,
+      0,
+      width,
+      height
+    );
+    context.restore();
+  }
+
+  context.strokeStyle =
+    "rgba(255,255,255,.045)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(11, 12);
+  context.lineTo(
+    11,
+    height - 10
+  );
+  context.lineTo(
+    width - 11,
+    height - 10
+  );
+  context.lineTo(
+    width - 11,
+    12
+  );
+  context.stroke();
+
+  context.fillStyle =
+    `rgba(${palette.secondary.join(",")},.12)`;
+  context.fillRect(
+    18,
+    height - 18,
+    width - 36,
+    1
+  );
+}
+
+function drawPreviewLabel(
+  context,
+  text,
+  color,
+  alpha = 1,
+  y = 21
+) {
+  context.save();
+  context.globalAlpha =
+    alpha;
+  context.fillStyle =
+    color;
+  context.font =
+    "900 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+  context.textAlign =
+    "center";
+  context.textBaseline =
+    "middle";
+  context.fillText(
+    text,
+    context.canvas.width / 2,
+    y
+  );
+  context.restore();
+}
+
+function previewSideColor(side) {
+  return side === "right"
+    ? "#d88bff"
+    : "#6ed7ff";
+}
+
+function drawPreviewNote(
   context,
   x,
   y,
-  radius,
-  color
+  side = "left",
+  {
+    launched = false,
+    power = false,
+    scale = 1,
+    alpha = 1
+  } = {}
 ) {
+  const radius =
+    (launched ? 6 : 8) *
+    scale;
+  const color =
+    power
+      ? "#fff1a9"
+      : previewSideColor(
+          side
+        );
+
   context.save();
-  context.shadowBlur = 9;
-  context.shadowColor = color;
-  context.fillStyle = color;
+  context.globalAlpha =
+    alpha;
+
+  if (launched) {
+    context.shadowBlur =
+      power ? 13 : 7;
+    context.shadowColor =
+      color;
+    context.fillStyle =
+      color;
+    context.beginPath();
+    context.arc(
+      x,
+      y,
+      radius,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+  } else {
+    context.shadowBlur = 4;
+    context.shadowColor =
+      color;
+    context.fillStyle =
+      "rgba(7,12,20,.96)";
+    context.strokeStyle =
+      color;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(
+      x,
+      y,
+      radius,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+    context.stroke();
+
+    context.shadowBlur = 0;
+    context.fillStyle =
+      color;
+    context.beginPath();
+    context.arc(
+      x,
+      y,
+      radius * 0.34,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+  }
+
+  context.restore();
+}
+
+function previewClawGeometry(
+  width,
+  height,
+  side = "left"
+) {
+  const left =
+    side === "left";
+  const pivot = {
+    x:
+      left
+        ? width * 0.20
+        : width * 0.80,
+    y:
+      height - 25
+  };
+  const angle =
+    left
+      ? -0.79
+      : -2.35;
+  const length = 37;
+
+  return {
+    pivot,
+    angle,
+    tip: {
+      x:
+        pivot.x +
+        Math.cos(angle) *
+          length,
+      y:
+        pivot.y +
+        Math.sin(angle) *
+          length
+    }
+  };
+}
+
+function drawPreviewClaw(
+  context,
+  width,
+  height,
+  side = "left",
+  active = false
+) {
+  const palette =
+    machinePalette();
+  const color =
+    side === "left"
+      ? `rgb(${palette.secondary.join(",")})`
+      : `rgb(${palette.accent.join(",")})`;
+  const geometry =
+    previewClawGeometry(
+      width,
+      height,
+      side
+    );
+  const {
+    pivot,
+    tip,
+    angle
+  } = geometry;
+
+  context.save();
+  context.lineCap = "round";
+
+  context.strokeStyle =
+    "#0c131d";
+  context.lineWidth = 13;
+  context.beginPath();
+  context.moveTo(
+    pivot.x,
+    pivot.y
+  );
+  context.lineTo(
+    tip.x,
+    tip.y
+  );
+  context.stroke();
+
+  context.strokeStyle =
+    active
+      ? "#d7c98a"
+      : "#394856";
+  context.lineWidth = 8;
+  context.beginPath();
+  context.moveTo(
+    pivot.x,
+    pivot.y
+  );
+  context.lineTo(
+    tip.x,
+    tip.y
+  );
+  context.stroke();
+
+  context.strokeStyle =
+    active
+      ? "#fff1a9"
+      : color;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(
+    pivot.x,
+    pivot.y
+  );
+  context.lineTo(
+    tip.x,
+    tip.y
+  );
+  context.stroke();
+
+  context.fillStyle =
+    "#0d1520";
+  context.strokeStyle =
+    color;
+  context.lineWidth = 2;
   context.beginPath();
   context.arc(
-    x,
-    y,
-    radius,
+    pivot.x,
+    pivot.y,
+    6,
     0,
     Math.PI * 2
   );
   context.fill();
+  context.stroke();
+
+  context.translate(
+    tip.x,
+    tip.y
+  );
+  context.rotate(angle);
+
+  context.fillStyle =
+    "#111a26";
+  context.strokeStyle =
+    active
+      ? "#fff1a9"
+      : color;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.arc(
+    0,
+    0,
+    5,
+    0,
+    Math.PI * 2
+  );
+  context.fill();
+  context.stroke();
+
+  for (const sign of [-1, 1]) {
+    context.strokeStyle =
+      "#111a26";
+    context.lineWidth = 6;
+    context.beginPath();
+    context.moveTo(
+      2,
+      sign * 2
+    );
+    context.quadraticCurveTo(
+      8,
+      sign * 5,
+      15,
+      sign * 8
+    );
+    context.stroke();
+
+    context.strokeStyle =
+      active
+        ? "#fff1a9"
+        : color;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(
+      2,
+      sign * 2
+    );
+    context.quadraticCurveTo(
+      8,
+      sign * 5,
+      15,
+      sign * 8
+    );
+    context.stroke();
+  }
+
   context.restore();
+
+  return geometry;
 }
 
-function drawPreviewTarget(
+function drawPreviewBumper(
   context,
   x,
   y,
-  color
+  color = "#fff1a9"
 ) {
-  context.strokeStyle = color;
-  context.lineWidth = 1.5;
+  context.save();
+  context.fillStyle =
+    "#192431";
+  context.strokeStyle =
+    color;
+  context.lineWidth = 3;
   context.beginPath();
   context.arc(
     x,
     y,
-    8,
+    15,
+    0,
+    Math.PI * 2
+  );
+  context.fill();
+  context.stroke();
+  context.restore();
+}
+
+function drawPreviewWall(
+  context,
+  x,
+  y0,
+  y1,
+  color =
+    "rgba(255,255,255,.22)"
+) {
+  context.save();
+  context.strokeStyle =
+    color;
+  context.lineWidth = 3;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(x, y0);
+  context.lineTo(x, y1);
+  context.stroke();
+  context.restore();
+}
+
+function drawPreviewBurst(
+  context,
+  x,
+  y,
+  progress,
+  color,
+  radius = 38
+) {
+  if (
+    progress < 0 ||
+    progress > 1
+  ) {
+    return;
+  }
+
+  context.save();
+  context.globalAlpha =
+    1 - progress;
+  context.strokeStyle =
+    color;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    8 +
+      radius *
+        previewEase(progress),
     0,
     Math.PI * 2
   );
   context.stroke();
-  context.fillStyle =
-    "rgba(255,255,255,.22)";
+  context.restore();
+}
+
+function drawPreviewHitSetup(
+  context,
+  width,
+  height,
+  t,
+  {
+    side = "left",
+    hitAt = 0.31
+  } = {}
+) {
+  const geometry =
+    drawPreviewClaw(
+      context,
+      width,
+      height,
+      side,
+      t >= hitAt &&
+        t < hitAt + 0.15
+    );
+  const incoming =
+    clamp(
+      t / hitAt,
+      0,
+      1
+    );
+  const startY = 21;
+  const noteX =
+    geometry.tip.x;
+  const noteY =
+    lerp(
+      startY,
+      geometry.tip.y,
+      previewEase(incoming)
+    );
+
+  if (t < hitAt) {
+    drawPreviewNote(
+      context,
+      noteX,
+      noteY,
+      side
+    );
+  }
+
+  if (
+    t >= hitAt &&
+    t < hitAt + 0.18
+  ) {
+    const flash =
+      1 -
+      (
+        t - hitAt
+      ) / 0.18;
+    drawPreviewLabel(
+      context,
+      "PERFECT",
+      "#fff1a9",
+      flash,
+      24
+    );
+    drawPreviewBurst(
+      context,
+      geometry.tip.x,
+      geometry.tip.y,
+      (
+        t - hitAt
+      ) / 0.18,
+      "#fff1a9",
+      22
+    );
+  }
+
+  return {
+    ...geometry,
+    hitAt
+  };
+}
+
+function drawPreviewSlideRail(
+  context,
+  points,
+  color,
+  progress = 1
+) {
+  const count =
+    Math.max(
+      2,
+      Math.floor(
+        points.length *
+        clamp(
+          progress,
+          0,
+          1
+        )
+      )
+    );
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+
+  context.strokeStyle =
+    "rgba(6,11,18,.94)";
+  context.lineWidth = 10;
   context.beginPath();
-  context.arc(
-    x,
-    y,
-    2.5,
-    0,
-    Math.PI * 2
+  context.moveTo(
+    points[0].x,
+    points[0].y
   );
-  context.fill();
+  for (
+    let index = 1;
+    index < count;
+    index += 1
+  ) {
+    context.lineTo(
+      points[index].x,
+      points[index].y
+    );
+  }
+  context.stroke();
+
+  context.strokeStyle =
+    color;
+  context.globalAlpha = .78;
+  context.lineWidth = 4;
+  context.beginPath();
+  context.moveTo(
+    points[0].x,
+    points[0].y
+  );
+  for (
+    let index = 1;
+    index < count;
+    index += 1
+  ) {
+    context.lineTo(
+      points[index].x,
+      points[index].y
+    );
+  }
+  context.stroke();
+
+  context.globalAlpha = 1;
+  context.strokeStyle =
+    "rgba(255,255,255,.58)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(
+    points[0].x,
+    points[0].y
+  );
+  for (
+    let index = 1;
+    index < count;
+    index += 1
+  ) {
+    context.lineTo(
+      points[index].x,
+      points[index].y
+    );
+  }
+  context.stroke();
+
+  context.restore();
+}
+
+function previewPolylinePoint(
+  points,
+  t
+) {
+  const scaled =
+    clamp(
+      t,
+      0,
+      1
+    ) *
+    (points.length - 1);
+  const index =
+    Math.min(
+      points.length - 2,
+      Math.floor(scaled)
+    );
+  const local =
+    scaled - index;
+  const a =
+    points[index];
+  const b =
+    points[index + 1];
+
+  return {
+    x:
+      lerp(
+        a.x,
+        b.x,
+        local
+      ),
+    y:
+      lerp(
+        a.y,
+        b.y,
+        local
+      )
+  };
 }
 
 function drawModulePreview(
@@ -8927,501 +9561,1050 @@ function drawModulePreview(
   now
 ) {
   const context =
-    canvas.getContext("2d");
+    canvas.getContext(
+      "2d"
+    );
   const width =
     canvas.width;
   const height =
     canvas.height;
-  const color =
+  const familyColor =
     MODULE_PREVIEW_COLORS[
       upgrade.family
     ] ?? "#ffffff";
-  const cycle =
-    (now % 1600) / 1600;
   const t =
-    cycle < 0.86
-      ? cycle / 0.86
-      : 0;
+    previewSceneTime(now);
 
-  context.clearRect(
-    0,
-    0,
+  drawPreviewArena(
+    context,
     width,
     height
   );
-  context.fillStyle =
-    "#070d15";
-  context.fillRect(
-    0,
-    0,
-    width,
-    height
-  );
-  context.strokeStyle =
-    "rgba(255,255,255,.035)";
-  context.lineWidth = 1;
-  context.beginPath();
-  context.moveTo(14, height / 2);
-  context.lineTo(
-    width - 14,
-    height / 2
-  );
-  context.stroke();
 
-  const midY =
-    height / 2;
+  const leftClaw =
+    previewClawGeometry(
+      width,
+      height,
+      "left"
+    );
+  const rightClaw =
+    previewClawGeometry(
+      width,
+      height,
+      "right"
+    );
+
+  if (
+    [
+      "nova",
+      "mirror-slide"
+    ].includes(upgrade.id)
+  ) {
+    const slideColor =
+      "#d88bff";
+    const rail = [
+      {
+        x:
+          rightClaw.tip.x,
+        y:
+          rightClaw.tip.y
+      },
+      {
+        x:
+          width * 0.67,
+        y:
+          height * 0.58
+      },
+      {
+        x:
+          width * 0.54,
+        y:
+          height * 0.40
+      },
+      {
+        x:
+          width * 0.60,
+        y:
+          height * 0.24
+      }
+    ];
+    const slideEnd = 0.58;
+    const slideT =
+      clamp(
+        t / slideEnd,
+        0,
+        1
+      );
+
+    drawPreviewSlideRail(
+      context,
+      rail,
+      slideColor
+    );
+    drawPreviewClaw(
+      context,
+      width,
+      height,
+      "right",
+      t < slideEnd
+    );
+
+    const cursor =
+      previewPolylinePoint(
+        rail,
+        slideT
+      );
+
+    if (t < slideEnd) {
+      context.fillStyle =
+        "#fff1a9";
+      context.beginPath();
+      context.arc(
+        cursor.x,
+        cursor.y,
+        4,
+        0,
+        Math.PI * 2
+      );
+      context.fill();
+      drawPreviewLabel(
+        context,
+        "SLIDE",
+        "rgba(255,255,255,.68)",
+        1,
+        24
+      );
+    } else {
+      const shot =
+        (t - slideEnd) /
+        (1 - slideEnd);
+      drawPreviewLabel(
+        context,
+        "POWER RETURN",
+        "#fff1a9",
+        1 -
+          clamp(
+            shot - .55,
+            0,
+            1
+          ),
+        24
+      );
+
+      const count =
+        upgrade.id ===
+          "nova"
+          ? 3
+          : 2;
+
+      for (
+        let index = 0;
+        index < count;
+        index += 1
+      ) {
+        const spread =
+          count === 1
+            ? 0
+            : (
+                index -
+                (count - 1) / 2
+              ) * 22;
+        const origin =
+          upgrade.id ===
+            "mirror-slide" &&
+          index === 1
+            ? leftClaw.tip
+            : rail.at(-1);
+        drawPreviewNote(
+          context,
+          origin.x +
+            spread *
+              shot * .55,
+          origin.y -
+            shot * 90,
+          index === 1
+            ? "left"
+            : "right",
+          {
+            launched: true,
+            power: true,
+            scale: .95
+          }
+        );
+      }
+
+      if (
+        upgrade.id ===
+        "mirror-slide"
+      ) {
+        drawPreviewClaw(
+          context,
+          width,
+          height,
+          "left",
+          false
+        );
+      }
+    }
+
+    return;
+  }
+
+  if (
+    upgrade.id ===
+    "combo-shield"
+  ) {
+    const geometry =
+      drawPreviewClaw(
+        context,
+        width,
+        height,
+        "left",
+        false
+      );
+    const missAt = 0.45;
+    const y =
+      lerp(
+        20,
+        geometry.tip.y + 24,
+        previewEase(
+          clamp(
+            t / missAt,
+            0,
+            1
+          )
+        )
+      );
+
+    if (t < missAt) {
+      drawPreviewNote(
+        context,
+        geometry.tip.x + 24,
+        y,
+        "left"
+      );
+    }
+
+    context.fillStyle =
+      "rgba(255,255,255,.42)";
+    context.font =
+      "900 8px ui-monospace, SFMono-Regular, Menlo, monospace";
+    context.textAlign =
+      "left";
+    context.fillText(
+      "COMBO 12",
+      17,
+      22
+    );
+
+    if (t >= missAt) {
+      const pulse =
+        clamp(
+          (
+            t - missAt
+          ) / 0.34,
+          0,
+          1
+        );
+      drawPreviewBurst(
+        context,
+        geometry.pivot.x,
+        geometry.pivot.y - 8,
+        pulse,
+        familyColor,
+        42
+      );
+      drawPreviewLabel(
+        context,
+        "SHIELD",
+        familyColor,
+        1 -
+          clamp(
+            (
+              t -
+              0.76
+            ) / .18,
+            0,
+            1
+          ),
+        25
+      );
+    }
+
+    return;
+  }
+
+  if (
+    upgrade.id ===
+    "fusion"
+  ) {
+    const hitAt = .28;
+    const left =
+      drawPreviewHitSetup(
+        context,
+        width,
+        height,
+        t,
+        {
+          side: "left",
+          hitAt
+        }
+      );
+    const right =
+      drawPreviewHitSetup(
+        context,
+        width,
+        height,
+        t,
+        {
+          side: "right",
+          hitAt
+        }
+      );
+
+    if (t >= hitAt) {
+      const travel =
+        clamp(
+          (
+            t -
+            hitAt
+          ) / .42,
+          0,
+          1
+        );
+      const x1 =
+        lerp(
+          left.tip.x,
+          width / 2,
+          travel
+        );
+      const y1 =
+        lerp(
+          left.tip.y,
+          height * .43,
+          travel
+        );
+      const x2 =
+        lerp(
+          right.tip.x,
+          width / 2,
+          travel
+        );
+      const y2 =
+        lerp(
+          right.tip.y,
+          height * .43,
+          travel
+        );
+
+      if (travel < .98) {
+        drawPreviewNote(
+          context,
+          x1,
+          y1,
+          "left",
+          {
+            launched: true
+          }
+        );
+        drawPreviewNote(
+          context,
+          x2,
+          y2,
+          "right",
+          {
+            launched: true
+          }
+        );
+      } else {
+        drawPreviewBurst(
+          context,
+          width / 2,
+          height * .43,
+          clamp(
+            (
+              t -
+              .70
+            ) / .25,
+            0,
+            1
+          ),
+          familyColor,
+          48
+        );
+        drawPreviewLabel(
+          context,
+          "FUSIÓN",
+          familyColor,
+          1,
+          24
+        );
+      }
+    }
+
+    return;
+  }
+
+  const setup =
+    drawPreviewHitSetup(
+      context,
+      width,
+      height,
+      t
+    );
+  const hitAt =
+    setup.hitAt;
+  const post =
+    clamp(
+      (
+        t -
+        hitAt
+      ) /
+      (1 - hitAt),
+      0,
+      1
+    );
+
+  if (t < hitAt) {
+    return;
+  }
 
   switch (upgrade.id) {
     case "twin-shot": {
-      const p =
-        previewEase(t);
-      drawPreviewOrb(
-        context,
-        width * 0.50 -
-          p * 31,
-        midY +
-          26 -
-          p * 48,
-        5.5,
-        color
-      );
-      drawPreviewOrb(
-        context,
-        width * 0.50 +
-          p * 31,
-        midY +
-          26 -
-          p * 48,
-        5.5,
-        color
-      );
+      for (
+        const direction of [-1, 1]
+      ) {
+        drawPreviewNote(
+          context,
+          setup.tip.x +
+            direction *
+              post * 36,
+          setup.tip.y -
+            post * 98,
+          "left",
+          {
+            launched: true
+          }
+        );
+      }
       break;
     }
 
     case "ricochet": {
-      context.strokeStyle =
-        "rgba(255,255,255,.22)";
-      context.lineWidth = 3;
-      context.beginPath();
-      context.moveTo(22, 18);
-      context.lineTo(22, height - 18);
-      context.moveTo(
-        width - 22,
-        18
-      );
-      context.lineTo(
-        width - 22,
+      const wallX =
+        width - 16;
+      drawPreviewWall(
+        context,
+        wallX,
+        17,
         height - 18
       );
-      context.stroke();
+      const bounceAt = .54;
 
-      const phase =
-        t * 2;
-      const p =
-        phase <= 1
-          ? phase
-          : 2 - phase;
-      drawPreviewOrb(
-        context,
-        28 +
-          p *
-            (width - 56),
-        midY +
-          (phase <= 1
-            ? 18 - p * 35
-            : -17 + p * 35),
-        5.5,
-        color
-      );
+      if (post < bounceAt) {
+        const q =
+          post /
+          bounceAt;
+        drawPreviewNote(
+          context,
+          lerp(
+            setup.tip.x,
+            wallX - 7,
+            q
+          ),
+          lerp(
+            setup.tip.y,
+            height * .38,
+            q
+          ),
+          "left",
+          {
+            launched: true
+          }
+        );
+      } else {
+        const q =
+          (
+            post -
+            bounceAt
+          ) /
+          (1 - bounceAt);
+        drawPreviewNote(
+          context,
+          lerp(
+            wallX - 7,
+            width * .52,
+            q
+          ),
+          lerp(
+            height * .38,
+            22,
+            q
+          ),
+          "left",
+          {
+            launched: true
+          }
+        );
+        drawPreviewLabel(
+          context,
+          "REBOTE",
+          familyColor,
+          1 -
+            clamp(
+              q - .62,
+              0,
+              1
+            ),
+          24
+        );
+      }
       break;
     }
 
     case "pierce": {
-      drawPreviewTarget(
-        context,
-        width * 0.42,
-        midY,
-        color
+      const targets = [
+        {
+          x:
+            width * .51,
+          y:
+            height * .52
+        },
+        {
+          x:
+            width * .70,
+          y:
+            height * .31
+        }
+      ];
+      const projectile = {
+        x:
+          lerp(
+            setup.tip.x,
+            width * .84,
+            post
+          ),
+        y:
+          lerp(
+            setup.tip.y,
+            22,
+            post
+          )
+      };
+
+      targets.forEach(
+        (target, index) => {
+          const threshold =
+            index === 0
+              ? .36
+              : .67;
+
+          if (
+            post <
+            threshold
+          ) {
+            drawPreviewNote(
+              context,
+              target.x,
+              target.y,
+              index
+                ? "right"
+                : "left"
+            );
+          }
+        }
       );
-      drawPreviewTarget(
+
+      drawPreviewNote(
         context,
-        width * 0.68,
-        midY,
-        color
+        projectile.x,
+        projectile.y,
+        "left",
+        {
+          launched: true
+        }
       );
-      drawPreviewOrb(
-        context,
-        18 +
-          t *
-            (width - 36),
-        midY,
-        5.5,
-        color
-      );
+
+      if (
+        post > .38 &&
+        post < .80
+      ) {
+        drawPreviewLabel(
+          context,
+          "CHAIN · PERFORA",
+          "#ffe56d",
+          1,
+          24
+        );
+      }
       break;
     }
 
     case "fragments": {
-      const p =
-        previewEase(t);
-      drawPreviewOrb(
-        context,
-        width / 2,
-        midY,
-        6,
-        color
-      );
+      const target = {
+        x:
+          width * .58,
+        y:
+          height * .43
+      };
+      const impactAt = .46;
 
-      if (t > 0.42) {
+      if (post < impactAt) {
+        drawPreviewNote(
+          context,
+          target.x,
+          target.y,
+          "right"
+        );
+        drawPreviewNote(
+          context,
+          lerp(
+            setup.tip.x,
+            target.x,
+            post /
+              impactAt
+          ),
+          lerp(
+            setup.tip.y,
+            target.y,
+            post /
+              impactAt
+          ),
+          "left",
+          {
+            launched: true
+          }
+        );
+      } else {
         const burst =
-          (t - 0.42) /
-          0.58;
+          (
+            post -
+            impactAt
+          ) /
+          (1 - impactAt);
+
+        drawPreviewBurst(
+          context,
+          target.x,
+          target.y,
+          clamp(
+            burst * 1.4,
+            0,
+            1
+          ),
+          familyColor,
+          32
+        );
 
         for (
           let index = 0;
-          index < 5;
+          index < 4;
           index += 1
         ) {
           const angle =
-            -Math.PI / 2 +
+            -Math.PI * .95 +
             index *
-              (Math.PI * 2 / 5);
-          drawPreviewOrb(
+              (Math.PI * .63);
+          drawPreviewNote(
             context,
-            width / 2 +
+            target.x +
               Math.cos(angle) *
-                burst * 42,
-            midY +
+                burst * 45,
+            target.y +
               Math.sin(angle) *
-                burst * 34,
-            3.2,
-            color
+                burst * 38,
+            "left",
+            {
+              launched: true,
+              scale: .56
+            }
           );
         }
       }
-
-      context.globalAlpha =
-        1 - p * 0.25;
       break;
     }
 
     case "bumper":
     case "bumper-split": {
-      const bx =
-        width * 0.58;
-      context.strokeStyle =
-        color;
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(
-        bx,
-        midY,
-        18,
-        0,
-        Math.PI * 2
-      );
-      context.stroke();
-
-      const before =
-        Math.min(
-          1,
-          t / 0.48
-        );
-      drawPreviewOrb(
+      const bumper = {
+        x:
+          width * .59,
+        y:
+          height * .46
+      };
+      const impactAt = .48;
+      drawPreviewBumper(
         context,
-        18 +
-          before *
-            (bx - 37),
-        midY,
-        5.5,
-        color
+        bumper.x,
+        bumper.y,
+        "#fff1a9"
       );
 
-      if (
-        upgrade.id ===
-          "bumper-split" &&
-        t > 0.50
-      ) {
-        const split =
-          (t - 0.50) /
-          0.50;
-        drawPreviewOrb(
+      if (post < impactAt) {
+        drawPreviewNote(
           context,
-          bx +
-            split * 48,
-          midY -
-            split * 28,
-          4.5,
-          color
+          lerp(
+            setup.tip.x,
+            bumper.x - 17,
+            post /
+              impactAt
+          ),
+          lerp(
+            setup.tip.y,
+            bumper.y + 12,
+            post /
+              impactAt
+          ),
+          "left",
+          {
+            launched: true
+          }
         );
-        drawPreviewOrb(
+      } else {
+        const q =
+          (
+            post -
+            impactAt
+          ) /
+          (1 - impactAt);
+        drawPreviewNote(
           context,
-          bx +
-            split * 48,
-          midY +
-            split * 28,
-          4.5,
-          color
+          lerp(
+            bumper.x - 8,
+            width * .40,
+            q
+          ),
+          lerp(
+            bumper.y - 4,
+            19,
+            q
+          ),
+          "left",
+          {
+            launched: true
+          }
         );
+
+        if (
+          upgrade.id ===
+          "bumper-split"
+        ) {
+          drawPreviewNote(
+            context,
+            lerp(
+              bumper.x + 3,
+              width * .83,
+              q
+            ),
+            lerp(
+              bumper.y - 5,
+              height * .26,
+              q
+            ),
+            "left",
+            {
+              launched: true,
+              scale: .78
+            }
+          );
+          drawPreviewLabel(
+            context,
+            "×2",
+            familyColor,
+            1,
+            24
+          );
+        }
       }
       break;
     }
 
-    case "nova":
     case "shockwave": {
-      const p =
-        previewEase(t);
-      drawPreviewOrb(
-        context,
-        width / 2,
-        midY,
-        6,
-        color
-      );
-      context.strokeStyle =
-        color;
-      context.globalAlpha =
-        1 - p;
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(
-        width / 2,
-        midY,
-        9 + p * 45,
-        0,
-        Math.PI * 2
-      );
-      context.stroke();
-      context.globalAlpha = 1;
-      break;
-    }
-
-    case "mirror-slide": {
-      const p =
-        previewEase(t);
-      drawPreviewOrb(
-        context,
-        34 +
-          p * 62,
-        height - 20 -
-          p * 58,
-        5,
-        color
-      );
-      drawPreviewOrb(
-        context,
-        width - 34 -
-          p * 62,
-        height - 20 -
-          p * 58,
-        5,
-        color
-      );
-      break;
-    }
-
-    case "chain-relay": {
-      const points = [
-        [width * 0.25, height * 0.66],
-        [width * 0.50, height * 0.36],
-        [width * 0.75, height * 0.62]
+      const target = {
+        x:
+          width * .61,
+        y:
+          height * .42
+      };
+      const neighbors = [
+        {
+          x:
+            width * .48,
+          y:
+            height * .25
+        },
+        {
+          x:
+            width * .76,
+          y:
+            height * .33
+        }
       ];
+      const impactAt = .47;
 
-      context.strokeStyle =
-        "rgba(255,229,109,.30)";
-      context.beginPath();
-      context.moveTo(
-        points[0][0],
-        points[0][1]
-      );
-      context.lineTo(
-        points[1][0],
-        points[1][1]
-      );
-      context.lineTo(
-        points[2][0],
-        points[2][1]
-      );
-      context.stroke();
-
-      for (
-        const [x, y] of points
-      ) {
-        drawPreviewTarget(
+      if (post < impactAt) {
+        drawPreviewNote(
           context,
-          x,
-          y,
-          color
+          target.x,
+          target.y,
+          "right"
         );
-      }
+        for (
+          const neighbor of
+          neighbors
+        ) {
+          drawPreviewNote(
+            context,
+            neighbor.x,
+            neighbor.y,
+            "right",
+            {
+              scale: .78
+            }
+          );
+        }
 
-      const segment =
-        t * 2;
-      const a =
-        segment < 1
-          ? points[0]
-          : points[1];
-      const b =
-        segment < 1
-          ? points[1]
-          : points[2];
-      const q =
-        segment % 1;
-      drawPreviewOrb(
-        context,
-        a[0] +
-          (b[0] - a[0]) * q,
-        a[1] +
-          (b[1] - a[1]) * q,
-        4.5,
-        color
-      );
-      break;
-    }
-
-    case "fusion": {
-      const p =
-        Math.min(
-          1,
-          t / 0.62
+        drawPreviewNote(
+          context,
+          lerp(
+            setup.tip.x,
+            target.x,
+            post /
+              impactAt
+          ),
+          lerp(
+            setup.tip.y,
+            target.y,
+            post /
+              impactAt
+          ),
+          "left",
+          {
+            launched: true,
+            power: true
+          }
         );
-      drawPreviewOrb(
-        context,
-        26 +
-          p *
-            (width / 2 - 26),
-        midY,
-        5,
-        color
-      );
-      drawPreviewOrb(
-        context,
-        width - 26 -
-          p *
-            (width / 2 - 26),
-        midY,
-        5,
-        color
-      );
-
-      if (t > 0.62) {
-        const burst =
-          (t - 0.62) /
-          0.38;
-        context.strokeStyle =
-          color;
-        context.globalAlpha =
-          1 - burst;
-        context.lineWidth = 2;
-        context.beginPath();
-        context.arc(
-          width / 2,
-          midY,
-          8 +
-            burst * 38,
-          0,
-          Math.PI * 2
+      } else {
+        const q =
+          (
+            post -
+            impactAt
+          ) /
+          (1 - impactAt);
+        drawPreviewBurst(
+          context,
+          target.x,
+          target.y,
+          q,
+          familyColor,
+          55
         );
-        context.stroke();
-        context.globalAlpha = 1;
+        if (q < .58) {
+          for (
+            const neighbor of
+            neighbors
+          ) {
+            drawPreviewNote(
+              context,
+              neighbor.x,
+              neighbor.y,
+              "right",
+              {
+                scale: .78,
+                alpha:
+                  1 -
+                  q * 1.6
+              }
+            );
+          }
+        }
+        drawPreviewLabel(
+          context,
+          "SHOCK",
+          familyColor,
+          1 -
+            clamp(
+              q - .68,
+              0,
+              1
+            ),
+          24
+        );
       }
       break;
     }
 
     case "wall-charge": {
-      context.strokeStyle =
-        "rgba(255,255,255,.26)";
-      context.lineWidth = 3;
-      context.beginPath();
-      context.moveTo(
-        width - 28,
-        18
-      );
-      context.lineTo(
-        width - 28,
-        height - 18
-      );
-      context.stroke();
-      const p =
-        Math.min(
-          1,
-          t / 0.70
-        );
-      drawPreviewOrb(
+      const wallX =
+        width - 18;
+      const impactAt = .65;
+      drawPreviewWall(
         context,
-        20 +
-          p *
-            (width - 53),
-        midY,
-        5.5,
-        color
+        wallX,
+        16,
+        height - 18,
+        "rgba(255,125,153,.36)"
       );
 
-      if (t > 0.70) {
-        const burst =
-          (t - 0.70) /
-          0.30;
-        context.strokeStyle =
-          color;
-        context.globalAlpha =
-          1 - burst;
-        context.beginPath();
-        context.arc(
-          width - 28,
-          midY,
-          7 +
-            burst * 31,
-          0,
-          Math.PI * 2
+      if (post < impactAt) {
+        drawPreviewNote(
+          context,
+          lerp(
+            setup.tip.x,
+            wallX - 6,
+            post /
+              impactAt
+          ),
+          lerp(
+            setup.tip.y,
+            height * .37,
+            post /
+              impactAt
+          ),
+          "left",
+          {
+            launched: true,
+            power: true
+          }
         );
-        context.stroke();
-        context.globalAlpha = 1;
+      } else {
+        const q =
+          (
+            post -
+            impactAt
+          ) /
+          (1 - impactAt);
+        drawPreviewBurst(
+          context,
+          wallX - 5,
+          height * .37,
+          q,
+          familyColor,
+          43
+        );
+        drawPreviewLabel(
+          context,
+          "CARGA",
+          familyColor,
+          1 -
+            q * .65,
+          24
+        );
       }
       break;
     }
 
-    case "combo-shield": {
-      const pulse =
-        0.5 +
-        0.5 *
-          Math.sin(
-            now / 180
-          );
-      context.strokeStyle =
-        color;
-      context.globalAlpha =
-        0.55 +
-        pulse * 0.35;
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(
-        width / 2,
-        midY,
-        27 +
-          pulse * 4,
-        0,
-        Math.PI * 2
+    case "chain-relay": {
+      const targets = [
+        {
+          x:
+            width * .46,
+          y:
+            height * .55
+        },
+        {
+          x:
+            width * .63,
+          y:
+            height * .38
+        },
+        {
+          x:
+            width * .79,
+          y:
+            height * .22
+        }
+      ];
+      const segment =
+        post * 3;
+      const targetIndex =
+        Math.min(
+          2,
+          Math.floor(segment)
+        );
+
+      targets.forEach(
+        (target, index) => {
+          if (index >= targetIndex) {
+            drawPreviewNote(
+              context,
+              target.x,
+              target.y,
+              index % 2
+                ? "right"
+                : "left",
+              {
+                scale: .74
+              }
+            );
+          }
+        }
       );
-      context.stroke();
-      context.globalAlpha = 1;
-      drawPreviewOrb(
+
+      const from =
+        targetIndex === 0
+          ? setup.tip
+          : targets[
+              targetIndex - 1
+            ];
+      const to =
+        targets[
+          targetIndex
+        ];
+      const q =
+        segment -
+        Math.floor(segment);
+
+      drawPreviewNote(
         context,
-        width / 2,
-        midY,
-        6,
-        color
+        lerp(
+          from.x,
+          to.x,
+          q
+        ),
+        lerp(
+          from.y,
+          to.y,
+          q
+        ),
+        "left",
+        {
+          launched: true,
+          scale: .78
+        }
       );
+
+      if (post > .32) {
+        drawPreviewLabel(
+          context,
+          "CHAIN",
+          "#ffe56d",
+          1,
+          24
+        );
+      }
       break;
     }
 
-    default:
-      drawPreviewOrb(
+    default: {
+      drawPreviewNote(
         context,
-        width / 2,
-        midY,
-        6,
-        color
+        lerp(
+          setup.tip.x,
+          width * .72,
+          post
+        ),
+        lerp(
+          setup.tip.y,
+          20,
+          post
+        ),
+        "left",
+        {
+          launched: true
+        }
       );
+    }
   }
 }
 
@@ -9467,6 +10650,7 @@ function startModulePreviewLoop() {
   modulePreviewFrame =
     requestAnimationFrame(tick);
 }
+
 
 function renderUpgradeChoices() {
   const choices =
@@ -9518,7 +10702,7 @@ function renderUpgradeChoices() {
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"><em><i></i>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="220" height="112" data-module="${upgrade.id}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
+      `<span class="module-head"><em><i></i>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="260" height="150" data-module="${upgrade.id}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
 
     button.addEventListener(
       "click",
