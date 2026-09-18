@@ -390,11 +390,161 @@ class RhythmClock {
     this.nextStep = 0;
     this.timer = null;
     this.noiseBuffer = null;
+    this.masterBus = null;
+    this.compressor = null;
+    this.stemBuses = null;
+    this.sfxBusNode = null;
+    this.delayNode = null;
+    this.delayFeedback = null;
+    this.delayWet = null;
+  }
+
+  ensureMixGraph() {
+    if (
+      !this.context ||
+      this.masterBus
+    ) {
+      return;
+    }
+
+    const context =
+      this.context;
+
+    this.masterBus =
+      context.createGain();
+    this.masterBus.gain.value =
+      0.82;
+
+    this.compressor =
+      context.createDynamicsCompressor();
+    this.compressor.threshold.value =
+      -18;
+    this.compressor.knee.value =
+      18;
+    this.compressor.ratio.value =
+      3;
+    this.compressor.attack.value =
+      0.006;
+    this.compressor.release.value =
+      0.19;
+
+    this.masterBus.connect(
+      this.compressor
+    );
+    this.compressor.connect(
+      context.destination
+    );
+
+    const stemSpec = {
+      drums: { gain: 1.00, pan: 0.00, send: 0.00 },
+      bass: { gain: 0.95, pan: 0.00, send: 0.00 },
+      harmony: { gain: 0.82, pan: -0.10, send: 0.12 },
+      lead: { gain: 0.82, pan: 0.12, send: 0.19 },
+      aura: { gain: 0.78, pan: -0.16, send: 0.24 },
+      boss: { gain: 0.90, pan: 0.00, send: 0.08 }
+    };
+
+    this.delayNode =
+      context.createDelay(0.8);
+    this.delayNode.delayTime.value =
+      (60 / AURA_SONG.bpm) *
+      0.75;
+
+    this.delayFeedback =
+      context.createGain();
+    this.delayFeedback.gain.value =
+      0.18;
+
+    this.delayWet =
+      context.createGain();
+    this.delayWet.gain.value =
+      0.16;
+
+    this.delayNode.connect(
+      this.delayFeedback
+    );
+    this.delayFeedback.connect(
+      this.delayNode
+    );
+    this.delayNode.connect(
+      this.delayWet
+    );
+    this.delayWet.connect(
+      this.masterBus
+    );
+
+    this.stemBuses = {};
+
+    for (
+      const [
+        name,
+        spec
+      ] of Object.entries(
+        stemSpec
+      )
+    ) {
+      const gain =
+        context.createGain();
+      const pan =
+        context.createStereoPanner();
+      const send =
+        context.createGain();
+
+      gain.gain.value =
+        spec.gain;
+      pan.pan.value =
+        spec.pan;
+      send.gain.value =
+        spec.send;
+
+      gain.connect(pan);
+      pan.connect(
+        this.masterBus
+      );
+
+      if (spec.send > 0) {
+        pan.connect(send);
+        send.connect(
+          this.delayNode
+        );
+      }
+
+      this.stemBuses[name] = gain;
+    }
+
+    this.sfxBusNode =
+      context.createGain();
+    this.sfxBusNode.gain.value =
+      0.92;
+    this.sfxBusNode.connect(
+      this.masterBus
+    );
+  }
+
+  stemBus(name) {
+    this.ensureMixGraph();
+
+    return (
+      this.stemBuses?.[name] ??
+      this.masterBus ??
+      this.context.destination
+    );
+  }
+
+  sfxBus() {
+    this.ensureMixGraph();
+
+    return (
+      this.sfxBusNode ??
+      this.masterBus ??
+      this.context.destination
+    );
   }
 
   async start() {
     this.context ??= new AudioContext();
     await this.context.resume();
+    this.ensureMixGraph();
 
     if (!this.noiseBuffer) {
       const length = Math.floor(this.context.sampleRate * 0.12);
@@ -495,7 +645,9 @@ class RhythmClock {
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.045);
 
     oscillator.connect(gain);
-    gain.connect(this.context.destination);
+    gain.connect(
+      this.sfxBus()
+    );
     oscillator.start(time);
     oscillator.stop(time + 0.055);
   }
@@ -708,7 +860,7 @@ class RhythmClock {
     source.connect(filter);
     filter.connect(gain);
     gain.connect(
-      this.context.destination
+      this.stemBus("drums")
     );
 
     source.start(time);
@@ -746,7 +898,7 @@ class RhythmClock {
     source.connect(filter);
     filter.connect(gain);
     gain.connect(
-      this.context.destination
+      this.stemBus("drums")
     );
     source.start(time);
     source.stop(
@@ -784,7 +936,7 @@ class RhythmClock {
 
     oscillator.connect(gain);
     gain.connect(
-      this.context.destination
+      this.stemBus("drums")
     );
     oscillator.start(time);
     oscillator.stop(
@@ -835,7 +987,7 @@ class RhythmClock {
     sub.connect(filter);
     filter.connect(gain);
     gain.connect(
-      this.context.destination
+      this.stemBus("bass")
     );
 
     oscillator.start(time);
@@ -894,7 +1046,7 @@ class RhythmClock {
       oscillator.connect(filter);
       filter.connect(gain);
       gain.connect(
-        this.context.destination
+        this.stemBus("harmony")
       );
       oscillator.start(time);
       oscillator.stop(
@@ -940,7 +1092,7 @@ class RhythmClock {
     oscillator.connect(filter);
     filter.connect(gain);
     gain.connect(
-      this.context.destination
+      this.stemBus("lead")
     );
     oscillator.start(time);
     oscillator.stop(
@@ -979,7 +1131,7 @@ class RhythmClock {
 
       oscillator.connect(gain);
       gain.connect(
-        this.context.destination
+        this.stemBus("aura")
       );
       oscillator.start(time);
       oscillator.stop(
@@ -1029,7 +1181,7 @@ class RhythmClock {
     oscillator.connect(filter);
     filter.connect(gain);
     gain.connect(
-      this.context.destination
+      this.stemBus("boss")
     );
     oscillator.start(time);
     oscillator.stop(
@@ -1066,7 +1218,7 @@ class RhythmClock {
     source.connect(filter);
     filter.connect(gain);
     gain.connect(
-      this.context.destination
+      this.stemBus("drums")
     );
     source.start(time);
     source.stop(
@@ -1999,7 +2151,9 @@ function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
   gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
   oscillator.connect(gain);
-  gain.connect(clock.context.destination);
+  gain.connect(
+    clock.sfxBus()
+  );
 
   oscillator.start(now);
   oscillator.stop(now + duration + 0.01);
