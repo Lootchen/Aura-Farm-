@@ -2116,50 +2116,454 @@ function slideVisualConnected(event, songTime) {
   );
 }
 
-function drawSlideGate(
-  point,
-  angle,
-  connected
-) {
-  ctx.save();
-  ctx.translate(point.x, point.y);
-  ctx.rotate(angle);
+function slideRailPoint(event, beat) {
+  const safeBeat =
+    clamp(
+      beat,
+      0,
+      event.durationBeats
+    );
+  const vector =
+    slideVectorAtBeat(
+      event,
+      safeBeat
+    );
+  const segment =
+    slideSegmentFromVector(
+      event.side,
+      vector
+    );
 
-  ctx.shadowBlur = connected ? 22 : 12;
-  ctx.shadowColor =
-    connected ? "#fff1a9" : "#ff8c9b";
-  ctx.strokeStyle =
-    connected ? "#fff1a9" : "#ff8c9b";
-  ctx.lineWidth = 4;
+  return {
+    beat: safeBeat,
+    x: segment.tip.x,
+    y: segment.tip.y,
+    angle: segment.angle,
+    vector
+  };
+}
+
+function buildSlideRail(
+  event,
+  startBeat = 0,
+  endBeat = event.durationBeats,
+  step = 0.055
+) {
+  const start =
+    clamp(startBeat, 0, event.durationBeats);
+  const end =
+    clamp(endBeat, start, event.durationBeats);
+  const points = [];
+
+  for (
+    let beat = start;
+    beat < end - 0.0001;
+    beat += step
+  ) {
+    points.push(
+      slideRailPoint(event, beat)
+    );
+  }
+
+  points.push(
+    slideRailPoint(event, end)
+  );
+
+  return points;
+}
+
+function traceSlideRail(points) {
+  if (points.length === 0) return;
+
+  ctx.beginPath();
+
+  points.forEach((point, index) => {
+    if (index === 0) {
+      ctx.moveTo(point.x, point.y);
+    } else {
+      ctx.lineTo(point.x, point.y);
+    }
+  });
+}
+
+function slideRailTangent(event, beat) {
+  const before =
+    slideRailPoint(
+      event,
+      beat - 0.04
+    );
+  const after =
+    slideRailPoint(
+      event,
+      beat + 0.04
+    );
+
+  return Math.atan2(
+    after.y - before.y,
+    after.x - before.x
+  );
+}
+
+function drawSlideRailBody(
+  points,
+  side,
+  alpha = 1,
+  connected = false
+) {
+  if (points.length < 2) return;
+
+  const sideColor =
+    side === "left"
+      ? "110,215,255"
+      : "216,139,255";
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
   ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Exact playable corridor.
+  ctx.strokeStyle =
+    connected
+      ? "rgba(255,241,169,.20)"
+      : `rgba(${sideColor},.14)`;
+  ctx.lineWidth =
+    slideTolerance() * 2;
+  traceSlideRail(points);
+  ctx.stroke();
+
+  // Dark channel gives the slide the weight of a sustained note.
+  ctx.strokeStyle =
+    "rgba(7,10,18,.82)";
+  ctx.lineWidth = 25;
+  traceSlideRail(points);
+  ctx.stroke();
+
+  // Guitar-like luminous rope: continuous and clearly distinct from Tap paths.
+  ctx.shadowBlur =
+    connected ? 20 : 14;
+  ctx.shadowColor =
+    connected
+      ? "#fff1a9"
+      : "#a970ff";
+  ctx.strokeStyle =
+    connected
+      ? "rgba(255,225,145,.92)"
+      : "rgba(171,104,255,.88)";
+  ctx.lineWidth = 13;
+  traceSlideRail(points);
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle =
+    connected
+      ? "rgba(255,255,224,.92)"
+      : "rgba(238,218,255,.88)";
+  ctx.lineWidth = 3;
+  traceSlideRail(points);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawSlideGem(
+  event,
+  beat,
+  {
+    radius = 8,
+    alpha = 1,
+    active = false,
+    anchor = false
+  } = {}
+) {
+  const point =
+    slideRailPoint(event, beat);
+  const sideColor =
+    event.side === "left"
+      ? "#6ed7ff"
+      : "#d88bff";
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(point.x, point.y);
+
+  ctx.shadowBlur =
+    active ? 24 : anchor ? 14 : 8;
+  ctx.shadowColor =
+    active ? "#fff1a9" : "#a970ff";
+
+  ctx.fillStyle =
+    active
+      ? "#fff1a9"
+      : "rgba(31,18,50,.90)";
+  ctx.strokeStyle =
+    active
+      ? "#ffffff"
+      : sideColor;
+  ctx.lineWidth =
+    active ? 4 : anchor ? 3.5 : 2.5;
 
   ctx.beginPath();
   ctx.arc(
     0,
     0,
-    11,
-    -Math.PI * 0.72,
-    Math.PI * 0.72
+    radius,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle =
+    active
+      ? "#5e4618"
+      : "rgba(236,213,255,.78)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    Math.max(2, radius * 0.42),
+    0,
+    Math.PI * 2
   );
   ctx.stroke();
 
+  ctx.restore();
+}
+
+function drawSlideBeatGems(
+  event,
+  startBeat,
+  endBeat,
+  alpha = 1
+) {
+  const first =
+    Math.ceil(startBeat / SLIDE.nodeBeats) *
+    SLIDE.nodeBeats;
+
+  for (
+    let beat = first;
+    beat <= endBeat + 0.001;
+    beat += SLIDE.nodeBeats
+  ) {
+    const anchor =
+      event.anchors.some(
+        (item) =>
+          Math.abs(item.beat - beat) < 0.02
+      );
+
+    drawSlideGem(
+      event,
+      beat,
+      {
+        radius: anchor ? 10 : 5.5,
+        alpha:
+          anchor
+            ? alpha
+            : alpha * 0.72,
+        anchor
+      }
+    );
+  }
+
+  for (const anchor of event.anchors) {
+    if (
+      anchor.beat < startBeat - 0.001 ||
+      anchor.beat > endBeat + 0.001
+    ) {
+      continue;
+    }
+
+    drawSlideGem(
+      event,
+      anchor.beat,
+      {
+        radius: 11.5,
+        alpha,
+        anchor: true
+      }
+    );
+  }
+}
+
+function drawSlideDirectionMarkers(
+  event,
+  startBeat,
+  endBeat,
+  alpha = 1
+) {
+  const step = 1;
+  const first =
+    Math.ceil((startBeat + 0.22) / step) *
+    step;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle =
+    "rgba(255,255,255,.66)";
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = "round";
+
+  for (
+    let beat = first;
+    beat < endBeat - 0.12;
+    beat += step
+  ) {
+    const point =
+      slideRailPoint(event, beat);
+    const tangent =
+      slideRailTangent(event, beat);
+
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.rotate(tangent);
+
+    ctx.beginPath();
+    ctx.moveTo(-5, -5);
+    ctx.lineTo(2, 0);
+    ctx.lineTo(-5, 5);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawSlideCatcher(
+  event,
+  beat,
+  connected,
+  alpha = 1
+) {
+  const point =
+    slideRailPoint(event, beat);
+  const tangent =
+    slideRailTangent(event, beat);
+  const pulse =
+    1 +
+    Math.sin(performance.now() / 110) *
+    0.08;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(point.x, point.y);
+  ctx.rotate(tangent);
+
+  // The outer ring is the real physical hit corridor.
+  ctx.strokeStyle =
+    connected
+      ? "rgba(255,241,169,.62)"
+      : "rgba(255,126,148,.55)";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([7, 5]);
   ctx.beginPath();
-  ctx.moveTo(-3, -15);
-  ctx.lineTo(8, -7);
-  ctx.moveTo(-3, 15);
-  ctx.lineTo(8, 7);
+  ctx.arc(
+    0,
+    0,
+    slideTolerance(),
+    0,
+    Math.PI * 2
+  );
   ctx.stroke();
+  ctx.setLineDash([]);
+
+  // A note-catcher crossing the rope makes the current target unmistakable.
+  ctx.shadowBlur = connected ? 24 : 16;
+  ctx.shadowColor =
+    connected ? "#fff1a9" : "#ff7e94";
+  ctx.strokeStyle =
+    connected ? "#fff1a9" : "#ff8ca0";
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+
+  ctx.beginPath();
+  ctx.moveTo(0, -19);
+  ctx.lineTo(0, 19);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    12 * pulse,
+    0,
+    Math.PI * 2
+  );
+  ctx.stroke();
+
+  ctx.restore();
+
+  drawSlideGem(
+    event,
+    beat,
+    {
+      radius: 10,
+      alpha,
+      active: connected
+    }
+  );
+}
+
+function drawIncomingSlideHead(
+  event,
+  head
+) {
+  const sideColor =
+    event.side === "left"
+      ? "#6ed7ff"
+      : "#d88bff";
+
+  ctx.save();
+  ctx.translate(head.x, head.y);
+  ctx.shadowBlur = 22;
+  ctx.shadowColor = "#a970ff";
+  ctx.fillStyle = "rgba(18,13,29,.86)";
+  ctx.strokeStyle = sideColor;
+  ctx.lineWidth = 4;
+
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    24,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#b27cff";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    15,
+    Math.PI * 0.08,
+    Math.PI * 1.92
+  );
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#f2ddff";
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    4,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
 
   ctx.restore();
 }
 
 function drawSlide(event, songTime) {
   ctx.save();
-
-  const sideColor =
-    event.side === "left"
-      ? "#6ed7ff"
-      : "#d88bff";
 
   if (!event.started) {
     const distance =
@@ -2170,206 +2574,165 @@ function drawSlide(event, songTime) {
     const behind =
       pointAtDistance(
         event.path,
-        Math.max(0, distance - 72)
+        Math.max(0, distance - 86)
       );
+    const rail =
+      buildSlideRail(
+        event,
+        0,
+        event.durationBeats
+      );
+    const startPoint = rail[0];
 
-    ctx.strokeStyle =
-      event.side === "left"
-        ? "rgba(110,215,255,.36)"
-        : "rgba(216,139,255,.36)";
-    ctx.lineWidth = 18;
+    // Lead-in tail for the first slider gem.
     ctx.lineCap = "round";
+    ctx.strokeStyle =
+      "rgba(169,112,255,.34)";
+    ctx.lineWidth = 13;
     ctx.beginPath();
     ctx.moveTo(head.x, head.y);
     ctx.lineTo(behind.x, behind.y);
     ctx.stroke();
 
-    drawSlideOrb(
-      head.x,
-      head.y,
+    drawSlideRailBody(
+      rail,
       event.side,
-      24,
-      1,
+      0.66,
       false
     );
+    drawSlideBeatGems(
+      event,
+      0,
+      event.durationBeats,
+      0.82
+    );
+    drawSlideDirectionMarkers(
+      event,
+      0,
+      event.durationBeats,
+      0.45
+    );
 
-    const preview = [];
-    for (
-      let beat = 0;
-      beat <= event.durationBeats + 0.001;
-      beat += 0.12
-    ) {
-      preview.push(
-        slideTipPoint(
-          event.side,
-          slideVectorAtBeat(event, beat)
-        )
+    // When the head gets close, visually join it to the rope.
+    const startDistance =
+      Math.hypot(
+        head.x - startPoint.x,
+        head.y - startPoint.y
       );
-    }
 
-    if (preview.length > 1) {
+    if (startDistance < 220) {
       ctx.strokeStyle =
-        event.side === "left"
-          ? "rgba(110,215,255,.18)"
-          : "rgba(216,139,255,.18)";
-      ctx.lineWidth = slideTolerance() * 2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+        "rgba(181,124,255,.52)";
+      ctx.lineWidth = 6;
+      ctx.setLineDash([7, 8]);
       ctx.beginPath();
-      preview.forEach((point, index) => {
-        if (index === 0) ctx.moveTo(point.x, point.y);
-        else ctx.lineTo(point.x, point.y);
-      });
+      ctx.moveTo(head.x, head.y);
+      ctx.lineTo(
+        startPoint.x,
+        startPoint.y
+      );
       ctx.stroke();
-
-      ctx.strokeStyle = "rgba(255,255,255,.30)";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      preview.forEach((point, index) => {
-        if (index === 0) ctx.moveTo(point.x, point.y);
-        else ctx.lineTo(point.x, point.y);
-      });
-      ctx.stroke();
+      ctx.setLineDash([]);
     }
+
+    drawIncomingSlideHead(
+      event,
+      head
+    );
+    drawSlideCatcher(
+      event,
+      0,
+      false,
+      0.72
+    );
 
     ctx.restore();
     return;
   }
 
-  const beatLength = beatToSeconds(1);
-  const currentBeat = clamp(
-    (songTime - event.targetTime) / beatLength,
-    0,
-    event.durationBeats
-  );
-  const futureBeat =
-    Math.min(
-      event.durationBeats,
-      currentBeat + 3.0
+  const beatLength =
+    beatToSeconds(1);
+  const currentBeat =
+    clamp(
+      (songTime - event.targetTime) /
+        beatLength,
+      0,
+      event.durationBeats
     );
   const connected =
-    slideVisualConnected(event, songTime);
-
-  const rail = [];
-  for (
-    let beat = currentBeat;
-    beat <= futureBeat + 0.001;
-    beat += 0.08
-  ) {
-    const vector =
-      slideVectorAtBeat(event, beat);
-    rail.push({
-      beat,
-      vector,
-      ...slideSegmentFromVector(
-        event.side,
-        vector
-      ).tip
-    });
-  }
-
-  if (rail.length === 1) {
-    const vector =
-      slideVectorAtBeat(
-        event,
-        Math.min(event.durationBeats, currentBeat + 0.01)
-      );
-    rail.push({
-      beat: currentBeat + 0.01,
-      vector,
-      ...slideSegmentFromVector(
-        event.side,
-        vector
-      ).tip
-    });
-  }
-
-  if (rail.length > 1) {
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    ctx.strokeStyle =
-      connected
-        ? "rgba(255,241,169,.26)"
-        : "rgba(255,113,132,.20)";
-    ctx.lineWidth = slideTolerance() * 2;
-    ctx.beginPath();
-    rail.forEach((point, index) => {
-      if (index === 0) ctx.moveTo(point.x, point.y);
-      else ctx.lineTo(point.x, point.y);
-    });
-    ctx.stroke();
-
-    ctx.shadowBlur = connected ? 18 : 8;
-    ctx.shadowColor =
-      connected ? "#fff1a9" : sideColor;
-    ctx.strokeStyle =
-      connected
-        ? "#fff1a9"
-        : sideColor;
-    ctx.globalAlpha =
-      connected ? 0.92 : 0.72;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    rail.forEach((point, index) => {
-      if (index === 0) ctx.moveTo(point.x, point.y);
-      else ctx.lineTo(point.x, point.y);
-    });
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-  }
-
-  for (
-    let beat =
-      Math.ceil(currentBeat / SLIDE.nodeBeats) *
-      SLIDE.nodeBeats;
-    beat <= futureBeat + 0.001;
-    beat += SLIDE.nodeBeats
-  ) {
-    const vector =
-      slideVectorAtBeat(event, beat);
-    const point =
-      slideTipPoint(event.side, vector);
-
-    ctx.fillStyle =
-      connected
-        ? "rgba(255,241,169,.72)"
-        : event.side === "left"
-          ? "rgba(110,215,255,.60)"
-          : "rgba(216,139,255,.60)";
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  const targetVector =
-    slideVectorAtTime(event, songTime);
-  const targetSegment =
-    slideSegmentFromVector(
-      event.side,
-      targetVector
+    slideVisualConnected(
+      event,
+      songTime
     );
 
-  ctx.strokeStyle =
-    connected
-      ? "rgba(255,241,169,.46)"
-      : "rgba(255,113,132,.42)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(
-    targetSegment.tip.x,
-    targetSegment.tip.y,
-    slideTolerance(),
-    0,
-    Math.PI * 2
+  // Full phrase remains faintly visible, like a sustain highway.
+  const fullRail =
+    buildSlideRail(
+      event,
+      0,
+      event.durationBeats
+    );
+  drawSlideRailBody(
+    fullRail,
+    event.side,
+    0.18,
+    false
   );
-  ctx.stroke();
 
-  drawSlideGate(
-    targetSegment.tip,
-    targetSegment.angle,
+  // Remaining rope is the primary read.
+  const remainingRail =
+    buildSlideRail(
+      event,
+      currentBeat,
+      event.durationBeats
+    );
+  drawSlideRailBody(
+    remainingRail,
+    event.side,
+    1,
     connected
+  );
+
+  // Short golden wake communicates successful continuous contact.
+  if (currentBeat > 0.02) {
+    const wake =
+      buildSlideRail(
+        event,
+        Math.max(0, currentBeat - 1.25),
+        currentBeat
+      );
+
+    ctx.save();
+    ctx.strokeStyle =
+      connected
+        ? "rgba(255,241,169,.74)"
+        : "rgba(255,126,148,.28)";
+    ctx.lineWidth = 8;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    traceSlideRail(wake);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  drawSlideBeatGems(
+    event,
+    currentBeat,
+    event.durationBeats,
+    connected ? 0.92 : 0.74
+  );
+  drawSlideDirectionMarkers(
+    event,
+    currentBeat,
+    event.durationBeats,
+    0.58
+  );
+
+  drawSlideCatcher(
+    event,
+    currentBeat,
+    connected,
+    1
   );
 
   ctx.restore();
