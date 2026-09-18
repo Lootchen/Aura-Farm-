@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.32";
+import { loadGameChart } from "./chart.js?v=0.33";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.32";
+} from "./music.js?v=0.33";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -88,9 +88,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.32";
+  "./assets/world/glasshouse-far.svg?v=0.33";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.32";
+  "./assets/world/growth-bays.svg?v=0.33";
 
 function drawWorldAsset(
   image,
@@ -3109,7 +3109,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.32", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.33", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -3437,7 +3437,12 @@ function spawnReady(songTime) {
                   0.10,
               0.95,
               1.05
-            ),        });
+            ),
+          shieldIntact:
+            Boolean(
+              event.shield
+            )
+        });
       }
 
       if (event.type === "slide") {
@@ -3868,6 +3873,7 @@ function spawnLaunchedProjectile({
 }
 
 function resolveTapHit(note, side, songTime) {
+  note.shieldIntact = false;
   combo += 1;
   const multiplier = comboMultiplier(combo);
 
@@ -4114,10 +4120,29 @@ function createExplosion(
 
       if (distance > shockRadius) continue;
 
+      if (
+        noteShieldIntact(
+          target
+        )
+      ) {
+        breakNoteShield(
+          target,
+          null,
+          {
+            source: "SHOCK",
+            chain: false
+          }
+        );
+        continue;
+      }
+
       active.delete(target.key);
       resolved.add(target.key);
       chainCount += 1;
-      awardScore(75 * comboMultiplier(combo));
+      awardScore(
+        75 *
+        comboMultiplier(combo)
+      );
 
       createImpactFlash(
         target.x,
@@ -4203,6 +4228,111 @@ function sweptProjectileHit(a, b) {
   };
 }
 
+function noteShieldIntact(note) {
+  return Boolean(
+    note &&
+    !note.launched &&
+    note.shieldIntact
+  );
+}
+
+function breakNoteShield(
+  note,
+  projectile,
+  {
+    source = "PROJECTILE",
+    chain = false
+  } = {}
+) {
+  if (!noteShieldIntact(note)) {
+    return false;
+  }
+
+  note.shieldIntact = false;
+
+  if (chain) {
+    chainCount += 1;
+    recordLifetimeMetric(
+      "totalChains",
+      1
+    );
+
+    if (
+      runStats &&
+      runStats.firstChainMs === null
+    ) {
+      runStats.firstChainMs =
+        performance.now() -
+        runStats.startedAt;
+    }
+  }
+
+  awardScore(
+    (
+      chain ? 120 : 70
+    ) *
+      comboMultiplier(combo)
+  );
+
+  showMessage(
+    chain
+      ? "CHAIN · BREAK"
+      : source === "SHOCK"
+        ? "SHOCK · BREAK"
+        : "ARMOR BREAK",
+    chain
+      ? "#ffe985"
+      : "#bfeaff",
+    360
+  );
+
+  createImpactFlash(
+    note.x,
+    note.y,
+    JUDGEMENTS.perfect
+  );
+
+  createExplosion(
+    note.x,
+    note.y,
+    0.72,
+    {
+      emitFragments: false,
+      side:
+        projectile?.side ??
+        note.side
+    }
+  );
+
+  playTone(
+    chain ? 760 : 620,
+    0.045,
+    0.045,
+    "triangle"
+  );
+
+  bumpFeedback(
+    chain ? 2.6 : 1.8,
+    chain ? 0.065 : 0.045
+  );
+  setOperatorMood(
+    chain
+      ? "chain"
+      : "hit",
+    chain ? 0.72 : 0.48
+  );
+
+  if (navigator.vibrate) {
+    navigator.vibrate(
+      chain
+        ? [6, 12, 7]
+        : 6
+    );
+  }
+
+  return true;
+}
+
 function resolveProjectileCollisions() {
   const projectiles = [...active.values()].filter(
     (event) => event.type === "tap" && event.launched
@@ -4234,9 +4364,92 @@ function resolveProjectileCollisions() {
       if (!collision) continue;
 
       const chain = !other.launched;
+      const samePhrase =
+        chain &&
+        Boolean(
+          projectile.chainGroup &&
+          other.chainGroup &&
+          projectile.chainGroup ===
+            other.chainGroup
+        );
       const pierces =
         chain &&
-        Number(projectile.piercesLeft || 0) > 0;
+        Number(
+          projectile.piercesLeft || 0
+        ) > 0;
+
+      if (
+        chain &&
+        noteShieldIntact(other)
+      ) {
+        breakNoteShield(
+          other,
+          projectile,
+          {
+            chain:
+              samePhrase
+          }
+        );
+
+        if (pierces) {
+          projectile.piercesLeft -= 1;
+        } else {
+          active.delete(
+            projectile.key
+          );
+        }
+
+        if (
+          samePhrase &&
+          runMods.chainRelay > 0
+        ) {
+          const relayAngle =
+            Math.atan2(
+              projectile.vy,
+              projectile.vx
+            );
+          const relayCount =
+            Math.min(
+              3,
+              runMods.chainRelay
+            );
+
+          for (
+            const angle of
+            fanAngles(
+              relayAngle,
+              relayCount,
+              0.16
+            )
+          ) {
+            spawnLaunchedProjectile({
+              x: collision.x,
+              y: collision.y,
+              angle,
+              side:
+                projectile.side,
+              symbol: "↯",
+              radiusScale: 0.72,
+              speed:
+                POST_HIT_SPEED *
+                0.86,
+              inheritMods: false
+            });
+          }
+        }
+
+        updateHud();
+
+        if (
+          !active.has(
+            projectile.key
+          )
+        ) {
+          break;
+        }
+
+        continue;
+      }
 
       active.delete(other.key);
 
@@ -8096,6 +8309,49 @@ function drawTap(note) {
   }
 
   if (
+    !note.launched &&
+    noteShieldIntact(note)
+  ) {
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle =
+      "rgba(190,232,255,.78)";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+
+    const shieldRadius =
+      radius + 8;
+
+    for (
+      let segment = 0;
+      segment < 4;
+      segment += 1
+    ) {
+      const start =
+        -Math.PI / 2 +
+        segment *
+          Math.PI / 2 +
+        0.14;
+      const end =
+        start +
+        Math.PI / 2 -
+        0.28;
+
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        0,
+        shieldRadius,
+        start,
+        end
+      );
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  if (
     note.launched &&
     Number(
       note.ricochetsLeft || 0
@@ -8191,11 +8447,7 @@ function drawControlButton(side, songTime) {
       : palette.accent;
   const sideColor =
     `rgb(${sideRgb.join(",")})`;
-  const slideActive =
-    Boolean(
-      slide?.started &&
-      slideMode(slide) === "follow"
-    );
+  const slideActive = false;
   const connected =
     slideActive &&
     slideVisualConnected(
@@ -8816,7 +9068,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.32 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.33 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE directo · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -9234,6 +9486,7 @@ function drawPreviewNote(
   {
     launched = false,
     power = false,
+    shielded = false,
     scale = 1,
     alpha = 1
   } = {}
@@ -9300,6 +9553,42 @@ function drawPreviewNote(
       Math.PI * 2
     );
     context.fill();
+  }
+
+  if (
+    shielded &&
+    !launched
+  ) {
+    context.shadowBlur = 0;
+    context.strokeStyle =
+      "rgba(190,232,255,.78)";
+    context.lineWidth = 1.6;
+
+    for (
+      let segment = 0;
+      segment < 4;
+      segment += 1
+    ) {
+      const start =
+        -Math.PI / 2 +
+        segment *
+          Math.PI / 2 +
+        0.16;
+      const end =
+        start +
+        Math.PI / 2 -
+        0.32;
+
+      context.beginPath();
+      context.arc(
+        x,
+        y,
+        radius + 5,
+        start,
+        end
+      );
+      context.stroke();
+    }
   }
 
   context.restore();
@@ -10356,7 +10645,10 @@ function drawModulePreview(
               target.y,
               index
                 ? "right"
-                : "left"
+                : "left",
+              {
+                shielded: true
+              }
             );
           }
         }
@@ -10790,6 +11082,7 @@ function drawModulePreview(
                 ? "right"
                 : "left",
               {
+                shielded: true,
                 scale: .74
               }
             );
