@@ -1,7 +1,7 @@
 {
-  "name": "Mechanics Lab 12 · Slider Rope",
+  "name": "Mechanics Lab 13 · Trace vs Follow",
   "bpm": 110,
-  "loopBeats": 64,
+  "loopBeats": 68,
   "countInBeats": 4,
   "events": [
     {
@@ -34,59 +34,71 @@
     },
     {
       "type": "slide",
+      "mode": "trace",
       "beat": 6,
       "side": "left",
       "route": 1,
-      "durationBeats": 4,
+      "durationBeats": 6,
       "anchors": [
         {
           "beat": 0,
-          "x": 0.84,
-          "y": -0.36
+          "x": 0.8,
+          "y": -0.48
         },
         {
-          "beat": 2,
-          "x": 0.22,
-          "y": -0.95
+          "beat": 1.5,
+          "x": 0.38,
+          "y": -0.9
         },
         {
-          "beat": 4,
-          "x": -0.55,
-          "y": -0.72
+          "beat": 3,
+          "x": -0.28,
+          "y": -0.92
+        },
+        {
+          "beat": 4.5,
+          "x": -0.82,
+          "y": -0.46
+        },
+        {
+          "beat": 6,
+          "x": -0.48,
+          "y": -0.78
         }
       ]
     },
     {
       "type": "tap",
-      "beat": 12,
+      "beat": 14,
       "side": "right",
       "route": 2,
       "symbol": "♬"
     },
     {
       "type": "tap",
-      "beat": 13,
+      "beat": 15,
       "side": "left",
       "route": 0,
       "symbol": "♪"
     },
     {
       "type": "tap",
-      "beat": 14,
+      "beat": 16,
       "side": "right",
       "route": 1,
       "symbol": "♩"
     },
     {
       "type": "tap",
-      "beat": 15,
+      "beat": 17,
       "side": "left",
       "route": 2,
       "symbol": "♪"
     },
     {
       "type": "slide",
-      "beat": 18,
+      "mode": "follow",
+      "beat": 20,
       "side": "right",
       "route": 1,
       "durationBeats": 6,
@@ -94,79 +106,85 @@
         {
           "beat": 0,
           "x": -0.78,
-          "y": -0.62
+          "y": -0.58
         },
         {
           "beat": 2,
-          "x": -0.34,
-          "y": -0.94
+          "x": -0.46,
+          "y": -0.86
         },
         {
           "beat": 4,
-          "x": 0.28,
-          "y": -0.92
+          "x": -0.08,
+          "y": -0.97
         },
         {
           "beat": 6,
-          "x": 0.75,
-          "y": -0.62
+          "x": 0.3,
+          "y": -0.88
         }
       ]
     },
     {
       "type": "tap",
-      "beat": 26,
+      "beat": 28,
       "side": "left",
       "route": 0,
       "symbol": "♩"
     },
     {
       "type": "tap",
-      "beat": 27,
+      "beat": 29,
       "side": "right",
       "route": 0,
       "symbol": "♪"
     },
     {
       "type": "tap",
-      "beat": 28,
+      "beat": 30,
       "side": "left",
       "route": 2,
       "symbol": "♬"
     },
     {
       "type": "tap",
-      "beat": 29,
+      "beat": 31,
       "side": "right",
       "route": 2,
       "symbol": "♪"
     },
     {
       "type": "slide",
-      "beat": 32,
-      "side": "left",
+      "mode": "trace",
+      "beat": 34,
+      "side": "right",
       "route": 2,
       "durationBeats": 6,
       "anchors": [
         {
           "beat": 0,
-          "x": 0.82,
-          "y": -0.55
+          "x": -0.76,
+          "y": -0.56
         },
         {
-          "beat": 2.25,
-          "x": 0.08,
+          "beat": 1,
+          "x": -0.22,
+          "y": -0.97
+        },
+        {
+          "beat": 2.2,
+          "x": 0.54,
+          "y": -0.76
+        },
+        {
+          "beat": 3.4,
+          "x": 0.88,
+          "y": -0.24
+        },
+        {
+          "beat": 4.7,
+          "x": 0.12,
           "y": -0.98
-        },
-        {
-          "beat": 2.55,
-          "x": 0.94,
-          "y": -0.2
-        },
-        {
-          "beat": 4.2,
-          "x": 0.18,
-          "y": -0.96
         },
         {
           "beat": 6,
@@ -177,133 +195,108 @@
     },
     {
       "type": "tap",
-      "beat": 40,
+      "beat": 42,
       "side": "right",
       "route": 1,
       "symbol": "♪"
     },
     {
       "type": "tap",
-      "beat": 41,
+      "beat": 43,
       "side": "left",
       "route": 1,
       "symbol": "♩"
     },
     {
       "type": "tap",
-      "beat": 42,
+      "beat": 44,
       "side": "right",
       "route": 0,
       "symbol": "♬"
     },
     {
       "type": "tap",
-      "beat": 43,
+      "beat": 45,
       "side": "left",
       "route": 0,
       "symbol": "♪"
     },
     {
       "type": "slide",
-      "beat": 46,
-      "side": "right",
+      "mode": "follow",
+      "beat": 48,
+      "side": "left",
       "route": 2,
-      "durationBeats": 6,
+      "durationBeats": 8,
       "anchors": [
         {
           "beat": 0,
-          "x": -0.34,
-          "y": -0.24
+          "x": 0.78,
+          "y": -0.54
         },
         {
-          "beat": 1.5,
-          "x": -0.88,
-          "y": -0.46
+          "beat": 2,
+          "x": 0.44,
+          "y": -0.86
         },
         {
-          "beat": 3,
-          "x": -0.42,
-          "y": -0.23
-        },
-        {
-          "beat": 4.5,
-          "x": -0.9,
-          "y": -0.42
+          "beat": 4,
+          "x": 0.04,
+          "y": -0.98
         },
         {
           "beat": 6,
-          "x": -0.55,
-          "y": -0.36
+          "x": -0.38,
+          "y": -0.86
+        },
+        {
+          "beat": 8,
+          "x": -0.72,
+          "y": -0.58
         }
       ]
     },
     {
       "type": "tap",
-      "beat": 52,
+      "beat": 58,
       "side": "left",
       "route": 1,
       "symbol": "♩"
     },
     {
       "type": "tap",
-      "beat": 53,
+      "beat": 59,
       "side": "right",
       "route": 1,
       "symbol": "♪"
     },
     {
-      "type": "slide",
-      "beat": 54,
+      "type": "tap",
+      "beat": 60,
       "side": "left",
-      "route": 1,
-      "durationBeats": 8,
-      "anchors": [
-        {
-          "beat": 0,
-          "x": 0.78,
-          "y": -0.55
-        },
-        {
-          "beat": 1,
-          "x": 0.28,
-          "y": -0.94
-        },
-        {
-          "beat": 2,
-          "x": -0.42,
-          "y": -0.82
-        },
-        {
-          "beat": 3,
-          "x": -0.93,
-          "y": -0.18
-        },
-        {
-          "beat": 4,
-          "x": -0.34,
-          "y": -0.92
-        },
-        {
-          "beat": 5,
-          "x": 0.34,
-          "y": -0.9
-        },
-        {
-          "beat": 6,
-          "x": 0.92,
-          "y": -0.3
-        },
-        {
-          "beat": 7,
-          "x": 0.48,
-          "y": -0.72
-        },
-        {
-          "beat": 8,
-          "x": 0.1,
-          "y": -0.98
-        }
-      ]
+      "route": 2,
+      "symbol": "♬"
+    },
+    {
+      "type": "tap",
+      "beat": 61,
+      "side": "right",
+      "route": 2,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 62,
+      "side": "left",
+      "route": 0,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 63,
+      "side": "right",
+      "route": 0,
+      "symbol": "♪"
     }
   ]
 }
