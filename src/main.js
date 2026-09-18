@@ -65,7 +65,7 @@ const BUMPER_LAYOUT = [
   { x: 355, y: 430, radius: 27 }
 ];
 
-class RhythmClockclass RhythmClock {
+class RhythmClock {
   constructor() {
     this.context = null;
     this.startAt = 0;
@@ -389,7 +389,7 @@ const slideControl = {
   }
 };
 
-const flippers = {const flippers = {
+const flippers = {
   left: { startTime: -Infinity, hitThisSwing: false },
   right: { startTime: -Infinity, hitThisSwing: false }
 };
@@ -422,7 +422,7 @@ function slideGrace() {
   return SLIDE.disconnectGrace;
 }
 
-function beatToSecondsfunction beatToSeconds(beat) {
+function beatToSeconds(beat) {
   return beat * (60 / BPM);
 }
 
@@ -865,7 +865,7 @@ function hitSound(side, judgement) {
   );
 }
 
-function successTonefunction successTone(frequency = 700) {
+function successTone(frequency = 700) {
   playTone(frequency, 0.07, 0.055, "triangle");
 }
 
@@ -1049,7 +1049,7 @@ function resolveTapHit(note, side, songTime) {
   return true;
 }
 
-function failEventfunction failEvent(event, label = "MISS") {
+function failEvent(event, label = "MISS") {
   const protectedCombo =
     combo > 0 && runMods.comboShieldCharges > 0;
 
@@ -1174,7 +1174,7 @@ function createExplosion(
   }
 }
 
-function sweptProjectileHitfunction sweptProjectileHit(a, b) {
+function sweptProjectileHit(a, b) {
   const ax0 = Number.isFinite(a.prevX) ? a.prevX : a.x;
   const ay0 = Number.isFinite(a.prevY) ? a.prevY : a.y;
   const bx0 = Number.isFinite(b.prevX) ? b.prevX : b.x;
@@ -1412,7 +1412,7 @@ function drawBumpers() {
   }
 }
 
-function updateTapfunction updateTap(note, dt, songTime) {
+function updateTap(note, dt, songTime) {
   if (note.launched) {
     note.prevX = note.x;
     note.prevY = note.y;
@@ -1490,7 +1490,7 @@ function updateTapfunction updateTap(note, dt, songTime) {
   }
 }
 
-function defaultSlideVectorfunction defaultSlideVector(side) {
+function defaultSlideVector(side) {
   return side === "left"
     ? { x: 0.78, y: -0.62 }
     : { x: -0.78, y: -0.62 };
@@ -1744,7 +1744,7 @@ function slideConnected(event, songTime) {
   );
 }
 
-function updateSlide(event, dt, songTime) {function updateSlide(event, dt, songTime) {
+function updateSlide(event, dt, songTime) {
   if (!event.started) {
     if (
       songTime >
@@ -1803,7 +1803,7 @@ function spawnSlideProjectile(event) {
   }
 }
 
-function finishSlide(event) {function finishSlide(event) {
+function finishSlide(event) {
   if (!active.has(event.key)) return;
 
   const duration =
@@ -2239,7 +2239,7 @@ function updateEvents(dt, songTime) {
   }
 }
 
-function updateEffects(dt) {function updateEffects(dt) {
+function updateEffects(dt) {
   for (const explosion of explosions) {
     explosion.life += dt;
   }
@@ -2558,7 +2558,7 @@ function drawControlButton(side, songTime) {
   ctx.restore();
 }
 
-function drawFlipper(side, songTime) {function drawFlipper(side, songTime) {
+function drawFlipper(side, songTime) {
   const segment =
     flipperSegment(side, songTime);
 
@@ -2652,7 +2652,7 @@ function drawFlipper(side, songTime) {function drawFlipper(side, songTime) {
 
   ctx.restore();
 }
-function drawImpactFlashes() {function drawImpactFlashes() {
+function drawImpactFlashes() {
   for (const flash of impactFlashes) {
     const t = clamp(flash.life / flash.duration, 0, 1);
     const alpha = 1 - t;
@@ -2804,7 +2804,7 @@ function resetRunMods() {
   runMods.comboShieldCharges = 0;
 }
 
-function resetWaveState() {function resetWaveState() {
+function resetWaveState() {
   active.clear();
   resolved.clear();
   explosions = [];
@@ -3078,7 +3078,7 @@ function bindButton(button, side) {
 bindButton(leftButton, "left");
 bindButton(rightButton, "right");
 
-window.addEventListener("keydown"window.addEventListener("keydown", (event) => {
+window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
 
   const key = event.key.toLowerCase();
