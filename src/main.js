@@ -141,9 +141,16 @@ const profile = loadLocalJson(
     runsCompleted: 0,
     bestScore: 0,
     selectedMachine: "forge",
-    calibrationOffsetMs: 0
+    calibrationOffsetMs: 0,
+    dailyBest: {}
   }
 );
+
+profile.dailyBest =
+  profile.dailyBest &&
+  typeof profile.dailyBest === "object"
+    ? profile.dailyBest
+    : {};
 
 const lifetimeMetrics = loadLocalJson(
   METRICS_KEY,
@@ -4628,7 +4635,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.24 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.24 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -4881,11 +4888,30 @@ function completeRun() {
     profile.runsCompleted;
 
   profile.runsCompleted += 1;
+  const previousBest =
+    Number(profile.bestScore || 0);
   profile.bestScore =
     Math.max(
-      Number(profile.bestScore || 0),
+      previousBest,
       score
     );
+
+  let dailyRecord = false;
+
+  if (runMode === "daily") {
+    const key =
+      localDateKey();
+    const previousDaily =
+      Number(
+        profile.dailyBest[key] || 0
+      );
+
+    if (score > previousDaily) {
+      profile.dailyBest[key] = score;
+      dailyRecord = true;
+    }
+  }
+
   profile.calibrationOffsetMs =
     calibrationOffsetMs;
 
@@ -4965,9 +4991,11 @@ function completeRun() {
   summaryUnlock.textContent =
     unlocked.length
       ? `NUEVA MÁQUINA: ${unlocked.join(" · ")}`
-      : score >= profile.bestScore
-        ? "NUEVO MEJOR REGISTRO"
-        : "";
+      : dailyRecord
+        ? `DAILY RECORD · ${localDateKey()}`
+        : score > previousBest
+          ? "NUEVO MEJOR REGISTRO"
+          : "";
 
   refreshMachineOptions();
 
