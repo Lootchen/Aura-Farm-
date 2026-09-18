@@ -1,198 +1,426 @@
-# Aura Farm — Vertical Slice v0.27
+# Aura Farm — Vertical Slice v0.28
 
 **BUILD THE BEAT.**
 
-v0.27 une tres frentes que ya estaban maduros: recompensa del Slide, primera identidad real del personaje/UI y una canción compuesta específicamente para la vertical slice.
+Aura Farm is a mobile-first **rhythm-action roguelite / hybrid arcade** built around a physical rule:
 
-## Slide Reward — POWER RETURN
+> Rhythm object → claw contact → projectile → persistent interaction → build mutation.
 
-Completar un Slide ya no hereda ciegamente la dirección final de la garra.
+v0.28 is a product-polish pass focused on readability, music, HUD, mobile feel, upgrades and identity.
 
-La Power Orb:
+## Current run
 
-- sale a una velocidad constante propia;
-- apunta hacia arriba y hacia el interior del campo;
-- cruza de nuevo la zona jugable;
-- tiene **1 rebote de pared garantizado**;
-- suma además cualquier Rebote de la build;
-- Nova mantiene su abanico de Power Orbs;
-- Espejo crea la misma lógica desde la garra contraria.
+A full run has **7 acts**:
 
-La intención es que un Slide PERFECT siempre produzca una recompensa visible con continuidad, no una bola que desaparece inmediatamente contra una pared.
+1. IGNITION
+2. CURRENT
+3. RELAY
+4. OVERDRIVE
+5. FRACTURE
+6. ASCENT
+7. AURA CORE
 
-## AURI — primer PJ de Aura Farm
+The chart grows from 26 base events to 41 in the final act while projectile speed and incoming-note speed remain constant.
 
-El antiguo Operator Socket deja de ser una cara placeholder.
+Between acts 1–6 the player installs one **AURA MODULE**.
 
-**AURI** es el primer lenguaje de personaje de la vertical slice:
+Act 7 is the two-phase AURA CORE encounter.
 
-- pequeña field-tech que vive dentro de la cabina central;
-- casco/hood industrial;
-- visor expresivo;
-- pods laterales;
-- núcleo luminoso en el traje;
-- antena en forma de brote.
+## Core gameplay
 
-El brote es el primer puente visual entre **Aura**, la máquina y la idea de **Farm/cultivar** sin convertir el juego en estética agrícola literal.
+### Tap
 
-### Posición
+- Tap is judged by physical claw contact.
+- Contact = PERFECT.
+- Missed physical contact = MISS.
+- Successful notes remain in the arena as constant-speed projectiles.
+- Projectiles interact with walls, bumpers, notes, other projectiles and AURA CORE.
 
-AURI vive en la cabina inferior central, entre los dos joysticks.
+### CHAIN
 
-No se coloca dentro del centro jugable porque:
+Groups marked by `chainGroup` communicate intended projectile interactions with:
 
-- taparía trayectorias;
-- competiría con Tap/Slide/CHAIN;
-- dificultaría el boss;
-- convertiría al personaje en ruido visual.
+- dashed connections;
+- direction chevrons;
+- a pulsing lead target;
+- `CHAIN ×N` labels for larger opportunities.
 
-La intención futura es tratar al PJ como **HUD diegético**: busto/cara/gestos desde la cabina mientras las garras siguen siendo sus herramientas.
+CHAIN has escalating sound, haptics and impact feedback.
 
-AURI reacciona a:
+### Slide
 
-- PERFECT;
+Slide still compares two input models:
+
+- **TRACE** — directly follow the rail with the fingertip.
+- **FOLLOW** — move the claw with a free 2D virtual stick.
+
+The visual language now includes:
+
+- a physical rail;
+- exact visible tolerance corridor;
+- full-beat frets;
+- lighter half-beat markers;
+- a moving catcher/gate;
+- direction indicators.
+
+The final Slide direction no longer determines the reward trajectory.
+
+### POWER RETURN
+
+A successful Slide fires a Power Orb:
+
+- upward and back into the active field;
+- at constant speed;
+- with **one guaranteed wall ricochet**;
+- plus any additional Rebote stacks;
+- Nova adds a wider Power fan;
+- Espejo mirrors the return from the opposite claw.
+
+The goal is for every Slide PERFECT to continue creating gameplay instead of dying against the nearest wall.
+
+## AURI
+
+AURI is the first character direction for Aura Farm.
+
+She is a **field-tech/operator** integrated into the central cockpit between the two thumb controls.
+
+Visual language:
+
+- hood/helmet;
+- expressive visor;
+- side headset pods;
+- suit core;
+- sprout antenna.
+
+AURI reacts to:
+
+- left/right claw hits;
 - FLOW;
 - CHAIN;
 - MISS;
 - Slide;
 - Shield;
-- boss;
-- victoria.
+- boss damage;
+- victory.
 
-## Dirección artística
+Her cockpit physically leans toward the active side.
 
-La dirección se consolida como **bio-industrial music machine**:
+The sprout grows as the build grows and gains additional leaves from completed synergies.
 
-- máquina arcade/sintetizador/reactor;
-- chasis y actuadores físicos;
-- energía de Aura;
-- pequeños motivos de crecimiento/brote;
-- color funcional según familia;
-- personaje integrado en la máquina;
-- información presentada como hardware del mismo universo.
+The character remains outside the primary playfield so notes, Slide and boss geometry stay readable.
 
-El objetivo es abandonar progresivamente el aspecto de “UI de neón sobre fondo negro”.
+## Bio-industrial Glasshouse
+
+The arena direction is now a **bio-industrial music machine**:
+
+- mechanical chassis rails;
+- glasshouse ribs;
+- glass seams/reflections;
+- growth conduits that wake with each act;
+- machine cells;
+- physical claws and actuators;
+- energy-seed notes.
+
+“Farm” is being interpreted as cultivating builds, energy and music rather than literal farming scenery.
 
 ## AURA MODULES
 
-Las antiguas cartas se presentan ahora como **cartuchos/módulos insertables**.
+Upgrade choices are physical cartridges rather than generic cards.
 
-Cada módulo incluye:
+Each module shows:
 
-- código de serie `AF-XX`;
-- familia funcional;
-- ventana de simulación;
-- nombre;
-- efecto corto;
-- descripción;
-- posible sinergia;
-- conectores físicos en la parte inferior.
+- serial number `AF-XX`;
+- gameplay family;
+- animated behavior preview;
+- module name;
+- effect;
+- short description;
+- stack state;
+- synergy hint.
 
-### Previews
+Current modules:
 
-Las 13 mejoras tienen una mini-demostración animada de su comportamiento:
+- Gemela
+- Rebote
+- Perfora
+- Astillas
+- Bumper
+- Nova
+- Espejo
+- Relevo
+- Shock
+- Fusión
+- Carga
+- Duplicador
+- Shield
 
-- Gemela — dos proyectiles.
-- Rebote — bola rebotando entre paredes.
-- Perfora — proyectil atravesando objetivos.
-- Astillas — explosión que fragmenta.
-- Bumper — rebote físico.
-- Nova — expansión Power.
-- Espejo — disparos simétricos.
-- Relevo — nodos enlazados.
-- Shock — onda AOE.
-- Fusión — dos proyectiles que colisionan.
-- Carga — impacto de pared y detonación.
-- Duplicador — una bola se divide en dos.
-- Shield — campo protector.
+### Build steering
 
-La build persistente, sus stacks y sinergias siguen visibles durante toda la run.
+Offers are no longer pure shuffle.
+
+When possible, a set contains:
+
+1. one module that completes a known synergy;
+2. one continuation of an existing build family;
+3. one new route.
+
+Randomness remains, but the player can intentionally pursue a build.
+
+### Current synergies
+
+- PINBALL
+- WALLSTORM
+- CHAIN REACTOR
+- TWIN NOVA
+- NEEDLE STORM
+- CORE BREAKER
+
+Completing a synergy produces audiovisual feedback and can affect the music mix, but does not secretly add unrelated statistics.
+
+## Build visibility
+
+During gameplay a persistent Build Dock shows installed modules and stacks.
+
+During module selection the full current build and descriptions are visible.
+
+The end-of-run summary groups stacks and completed synergies.
+
+A manual pause button opens **AURI · DIAGNOSTIC BAY**, where the full build can be inspected during a run.
+
+## HUD v0.28
+
+Gameplay HUD priority is now:
+
+1. combo / FLOW;
+2. current musical section;
+3. song progress;
+4. act and last judgement;
+5. score.
+
+The goal is to keep information used for playing visually stronger than information that only records results.
 
 ## Track 01 — GLASSHOUSE CIRCUIT
 
-`src/music.js` contiene la primera composición original específica de Aura Farm.
+The vertical slice includes an authored composition in `src/music.js`.
 
-### Estructura
+- 110 BPM
+- 68 beats
+- 17 bars
+- half-beat arrangement resolution
 
-- 110 BPM.
-- 68 beats.
-- 17 compases de 4/4.
-- resolución interna de medio beat;
-- sincronía obligatoria con el chart.
+Musical sections:
 
-Secciones escritas:
+**GERMINATE → SPROUT → CURRENT → RELAY → FRACTURE → OVERDRIVE → ASCENT → BLOOM → ROOT**
 
-**GERMINATE → SPROUT → CURRENT → RELAY → FRACTURE → OVERDRIVE → ASCENT → BLOOM → CORE**
+The arrangement has authored fills at major transitions.
 
-### Seis stems
+### Six stems
 
-1. **DRUMS** — patrones de kick/snare/hat escritos por sección.
-2. **BASS** — línea de bajo con patrones propios.
-3. **HARMONY** — tríadas/pads que sostienen la progresión.
-4. **LEAD** — frases melódicas escritas por sección.
-5. **AURA** — capa aguda/reactiva ligada a build y CHAIN.
-6. **BOSS** — ostinato grave activado en el acto final.
+1. DRUMS
+2. BASS
+3. HARMONY
+4. LEAD
+5. AURA
+6. BOSS
 
-La música ya no es un groove genérico que se transpone por acto.
+Each stem has its own Web Audio bus.
 
-Cada acto reproduce la misma composición y modifica su **mezcla**:
+The mix includes:
 
-- actos tempranos: drums/bass/harmony dominantes;
-- actos avanzados: el lead se revela;
-- builds de Slide elevan el lead;
-- builds de explosión/fusión/pared elevan Aura;
-- CHAIN aporta energía adicional;
-- acto 7 activa el stem Boss;
-- Phase 2 cambia el timbre del stem Boss.
+- light stereo placement;
+- selective delay sends;
+- master compression;
+- smooth bus crossfades;
+- build-sensitive lead/Aura intensity;
+- boss stem activation;
+- Phase 2 boss timbre.
 
-Los clicks de build y SFX siguen siendo respuestas de gameplay por encima de los seis stems, no parte de la composición base.
+The run changes the **mix of one composition** rather than transposing a generic loop.
 
-## Sincronía música/chart
+A six-channel stem meter next to AURI visualizes the active mix.
 
-Al cargar la run se verifica que el chart tenga exactamente:
+The chart is validated against the music contract: **110 BPM / 68 beats**.
 
-- 110 BPM;
-- 68 beats.
+## AURA CORE
 
-Si la composición y el chart dejan de coincidir, la slice falla explícitamente en vez de tocar música desincronizada.
+The final act has a physical two-phase boss.
 
-## Run / boss / CHAIN
+### Phase 1
 
-Se mantienen los sistemas anteriores:
+- three orbiting armor nodes;
+- armor nodes are real collision targets;
+- Core is shielded while any armor remains;
+- projectiles hitting the protected Core physically reflect while preserving speed.
 
-- 7 actos;
-- densidad de chart creciente;
-- grupos CHAIN legibles;
-- AURA CORE con armadura orbitante;
-- rebote del Core protegido;
-- Phase 2;
-- CORE BREAK;
-- Daily;
-- Practice;
-- progresión FORGE / PRISM / PULSE;
-- pausa/reanudación segura en móvil.
+### Phase 2
 
-## Física
+At 50% Core health:
 
-Regla no negociable:
+- armor reboots;
+- orbital speed increases;
+- boss stem/timbre changes;
+- audiovisual feedback escalates.
 
-**las notas y proyectiles se mueven a velocidad constante entre colisiones.**
+Breaking the Core ends the encounter with a dedicated climax.
 
-La nueva Power Orb de Slide respeta esta regla: cambia dirección inicial y número de rebotes, no introduce aceleración.
+## Game feel
 
-## Qué validar ahora
+Impact has a hierarchy rather than one generic flash:
 
-1. ¿POWER RETURN hace que completar Slide se sienta realmente recompensado?
-2. ¿AURI suma vínculo sin robar atención al gameplay?
-3. ¿La cabina inferior es el lugar correcto para el PJ definitivo?
-4. ¿Los AURA MODULES se entienden más rápido que las antiguas cartas?
-5. ¿Puedes reconocer qué hace un módulo mirando sólo su preview?
-6. ¿GLASSHOUSE CIRCUIT se siente como una canción y no como un metrónomo adornado?
-7. ¿Notas cómo la build revela/modifica stems durante una run?
-8. ¿TRACE o FOLLOW sigue siendo el candidato claro a sobrevivir?
+- Tap PERFECT
+- high-combo PERFECT
+- Slide PERFECT
+- CHAIN
+- Power explosion
+- armor break
+- Phase 2
+- CORE BREAK
+
+The game uses shake, flash, haptics, sound and AURI reaction while keeping simulation and music timing deterministic.
+
+## Mobile-first systems
+
+### Manual pause
+
+The HUD contains a pause control.
+
+Pausing:
+
+- freezes the Web Audio master clock;
+- preserves the current beat;
+- opens build diagnostics;
+- allows resume or safe run abandonment.
+
+Backgrounding the app uses the same pause logic.
+
+### Latency Lab
+
+The start screen includes interactive latency calibration.
+
+- 8 scheduled audio pulses;
+- player taps to the **heard** clicks;
+- nearest valid pulses are measured;
+- median tap offset is calculated;
+- the corrective offset is applied automatically;
+- manual ±15 ms controls remain available.
+
+Calibration is stored locally.
+
+### Practice
+
+`PRACTICE · 1 ACTO` provides a short test environment for Tap, TRACE and FOLLOW.
+
+Practice:
+
+- does not affect run unlocks;
+- does not affect best score or Daily;
+- records TRACE/FOLLOW attempts and successes;
+- reports both ratios in the summary.
+
+## First-run onboarding
+
+AURI provides three short contextual prompts during the first session:
+
+- physical Tap contact;
+- Slide fret/rail rule;
+- using Power Return to attack CHAIN groups.
+
+After the guide is completed, it is stored locally and no longer shown automatically.
+
+## Machines / cosmetic progression
+
+- FORGE — initial
+- PRISM — complete 1 run
+- PULSE — complete 3 runs
+
+Machines alter visual identity, not gameplay power.
+
+The machine picker now shows physical mini-silhouettes rather than text-only choices.
+
+## Run summary
+
+The end screen includes:
+
+- FLOW RANK;
+- machine;
+- track;
+- score;
+- PERFECT;
+- CHAIN;
+- MISS;
+- Core damage;
+- final build;
+- synergies;
+- unlocks.
+
+FLOW RANK evaluates run execution from accuracy, max combo, CHAIN and Core damage. Practice uses TRACE/FOLLOW success instead.
+
+## Daily
+
+Daily Seed remains deterministic from the local date.
+
+It stores a local Daily best and uses the same build/run systems.
+
+No online leaderboard/backend exists yet.
+
+## Local metrics
+
+No analytics are sent to a server.
+
+Local storage currently tracks:
+
+- sessions;
+- runs started/completed;
+- Practice sessions;
+- total CHAIN;
+- TRACE attempts/success;
+- FOLLOW attempts/success;
+- best score;
+- Daily best;
+- calibration;
+- selected machine;
+- unlock progress;
+- first-run tutorial completion.
+
+## Physics rule
+
+**Notes and projectiles move at constant velocity between collisions.**
+
+No gameplay gravity, acceleration or easing is introduced by upgrades, Power Return or boss reflection.
+
+## Brand asset
+
+`assets/ui/aura-mark.svg` is an original Aura Farm mark combining:
+
+- central Aura Core;
+- two claw shapes;
+- a sprout.
+
+It is used on the boot screen and as the page icon.
+
+## Product direction
+
+The market/reference analysis and viability gate are documented in:
+
+`docs/product-direction-v0.28.md`
+
+Current reference principles were extracted from mobile rhythm and roguelite titles including Arcaea, Phigros, Rotaeno, Cytus II, Muse Dash, Vampire Survivors and Balatro. The goal is to learn product principles, not reproduce their copyrighted assets or proprietary designs.
+
+## What v0.28 should validate
+
+1. Does Tap feel immediate and physical?
+2. Does POWER RETURN make Slide completion worth the sustained input?
+3. Does TRACE or FOLLOW clearly feel more intuitive?
+4. Can the player understand modules from previews without reading paragraphs?
+5. Do module offers feel steerable?
+6. Does the build remain readable during gameplay?
+7. Does AURI add identity without obscuring gameplay?
+8. Does GLASSHOUSE CIRCUIT feel like a song rather than a decorated metronome?
+9. Is the changing stem mix noticeable?
+10. Does the run ending create a concrete reason to replay?
 
 ## GitHub Pages
 
-Fuente de verdad: `main`.
+Source of truth: `main`.
 
 https://lootchen.github.io/Aura-Farm-/
