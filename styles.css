@@ -2643,3 +2643,45 @@ button { font: inherit; }
     padding: 3px 5px;
   }
 }
+
+
+/* v0.31 — inspect modules with the same gameplay preview */
+.build-manager-detail {
+  grid-template-columns: 112px minmax(0,1fr);
+  grid-template-rows: auto auto auto auto;
+  column-gap: 10px;
+  align-items: start;
+}
+
+.build-detail-preview {
+  grid-row: 1 / span 4;
+  width: 112px;
+  height: 92px;
+  border-radius: 9px;
+}
+
+.build-manager-detail > strong,
+.build-manager-detail > span,
+.build-manager-detail > small,
+.build-manager-detail > button {
+  grid-column: 2;
+}
+
+.build-level-effect {
+  color: rgb(var(--machine-secondary)) !important;
+  font: 900 .46rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  letter-spacing: .025em;
+  opacity: .78 !important;
+}
+
+@media (max-width: 370px) {
+  .build-manager-detail {
+    grid-template-columns: 92px minmax(0,1fr);
+    column-gap: 8px;
+  }
+
+  .build-detail-preview {
+    width: 92px;
+    height: 82px;
+  }
+}
