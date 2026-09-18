@@ -636,3 +636,10 @@ button { font: inherit; }
     line-height: 1.25;
   }
 }
+
+
+.summary-build span {
+  border-color: rgba(var(--accent, 255,255,255),.28);
+  background: rgba(var(--accent, 255,255,255),.075);
+  color: rgb(var(--accent, 238,244,255));
+}
