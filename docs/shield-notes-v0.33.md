@@ -105,3 +105,39 @@ The corrected order is:
 3. CHAIN markings and transient break feedback.
 
 Base CHAIN phrase notes are now Shield-authored by default unless they are later-act `minAct` inserts. This increases repetition without removing all destructive projectile targets.
+
+
+## v0.38 — Encapsulated Beat redesign
+
+Shield is now treated as a three-state gameplay object rather than a ring modifier.
+
+### Encapsulated
+
+The intact state uses a filled six-node glass cell behind the standard Tap. The normal Tap remains visible and is still the player's claw target.
+
+### Break
+
+Projectile contact removes only the cell. The generic explosion effect was removed from Shield Break because it incorrectly communicated that the note had been destroyed.
+
+The break instead uses six outward fracture rays, dedicated tones, haptics and a short screen veil.
+
+### Exposed
+
+After break, two warm open brackets briefly remain around the Tap. This state communicates that protection is gone while the beat remains active.
+
+### Late-break fairness
+
+A capsule broken within 0.42 s of its target beat receives:
+
+- +110 ms miss grace;
+- +12 px temporary claw collision assist.
+
+This is a reaction buffer, not an auto-hit and not a timing shift.
+
+### v0.38 chart cadence
+
+Shield authoring is deliberately reduced from 21 to 15 Tap notes:
+
+`14, 15, 17, 28, 29, 30, 42, 43, 44, 57, 59, 60, 62, 64.5, 66`.
+
+The intent is repetition without blanket protection.
