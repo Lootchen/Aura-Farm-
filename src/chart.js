@@ -136,6 +136,21 @@ function validateGameChart(chart) {
       throw new Error(`Evento ${index}: music.contour debe ser boolean.`);
     }
 
+    if (
+      event.shield !== undefined &&
+      typeof event.shield !==
+        "boolean"
+    ) {
+      throw new Error(`Evento ${index}: shield debe ser boolean.`);
+    }
+
+    if (
+      event.type !== "tap" &&
+      event.shield
+    ) {
+      throw new Error(`Evento ${index}: sólo Tap puede tener shield.`);
+    }
+
     if (event.type === "tap") {
       if (!["left", "right"].includes(event.side)) {
         throw new Error(`Evento ${index}: side inválido.`);
