@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.31";
+import { loadGameChart } from "./chart.js?v=0.32";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.31";
+} from "./music.js?v=0.32";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -80,9 +80,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.31";
+  "./assets/world/glasshouse-far.svg?v=0.32";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.31";
+  "./assets/world/growth-bays.svg?v=0.32";
 
 function drawWorldAsset(
   image,
@@ -1649,7 +1649,7 @@ const UPGRADES = [
     effect: "+FRAGMENTOS",
     desc: "Las explosiones escupen nuevas bolas.",
     apply: () => {
-      runMods.fragmentCount += runMods.fragmentCount === 0 ? 3 : 2;
+      runMods.fragmentCount += runMods.fragmentCount === 0 ? 3 : 1;
     }
   },
   {
@@ -2301,17 +2301,17 @@ function moduleLevelEffect(
     case "pierce":
       return `ATRAVIESA ${level} BLANCO${level === 1 ? "" : "S"}`;
     case "fragments":
-      return `${1 + level * 2} FRAGMENTOS POR EXPLOSIÓN`;
+      return `${2 + level} FRAGMENTOS POR EXPLOSIÓN`;
     case "bumper":
       return `${Math.min(level, BUMPER_LAYOUT.length)} BUMPER${level === 1 ? "" : "S"} ACTIVOS`;
     case "nova":
-      return `${1 + level * 2} POWER ORBS AL CERRAR SLIDE`;
+      return `${1 + level} POWER ORBS AL CERRAR SLIDE`;
     case "mirror-slide":
       return `${Math.min(3, level)} ORB${level === 1 ? "" : "S"} ESPEJO`;
     case "chain-relay":
       return `${Math.min(3, level)} RELEVO${level === 1 ? "" : "S"} TRAS CHAIN`;
     case "shockwave":
-      return `RADIO SHOCK ${48 * level}px`;
+      return `RADIO SHOCK ${68 + level * 16}px`;
     case "fusion":
       return `FUSIÓN LV${level} · EXPLOSIÓN MAYOR`;
     case "wall-charge":
@@ -2399,7 +2399,7 @@ function renderBuildManager() {
     document.createElement("button");
 
   buildManagerDetail.innerHTML =
-    `<canvas class="build-detail-preview module-preview-canvas" width="260" height="110" data-module="${upgrade.id}" aria-hidden="true"></canvas><strong>${upgrade.icon} ${upgrade.title} · LV${level}${atMax ? " MAX" : ""}</strong><span>${upgrade.desc}</span><small class="build-level-effect">${moduleLevelEffect(upgrade, level)}</small><small>${active ? "ACTIVO · modifica física, sinergias y música." : "RESERVA · no modifica la run hasta equiparlo."}</small>`;
+    `<canvas class="build-detail-preview module-preview-canvas" width="260" height="110" data-module="${upgrade.id}" data-level="${level}" aria-hidden="true"></canvas><strong>${upgrade.icon} ${upgrade.title} · LV${level}${atMax ? " MAX" : ""}</strong><span>${upgrade.desc}</span><small class="build-level-effect">${moduleLevelEffect(upgrade, level)}</small><small>${active ? "ACTIVO · modifica física, sinergias y música." : "RESERVA · no modifica la run hasta equiparlo."}</small>`;
 
   if (!buildManagerEditable()) {
     const hint =
@@ -2907,7 +2907,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.31", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.32", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -3248,10 +3248,7 @@ function spawnReady(songTime) {
           targetTime,
           endTime: targetTime + beatToSeconds(event.durationBeats),
           path,
-          mode:
-            event.mode === "trace"
-              ? "trace"
-              : "follow",
+          mode: "trace",
           started: false,
           goodTime: 0,
           trackingTime: 0,
@@ -3863,7 +3860,7 @@ function createExplosion(
     scale > 1.2 &&
     runMods.shockwave > 0
       ? 68 +
-        runMods.shockwave * 24
+        runMods.shockwave * 16
       : 0;
   const fusionBurst =
     scale >= 1.80;
@@ -4899,10 +4896,8 @@ function slideSegmentFromVector(side, vector) {
     }
   };
 }
-function slideMode(event) {
-  return event?.mode === "trace"
-    ? "trace"
-    : "follow";
+function slideMode() {
+  return "trace";
 }
 
 function slidePlayerVector(event) {
@@ -4951,12 +4946,8 @@ function pointToSlideVector(side, point) {
 }
 
 function slideInputHeld(event) {
-  if (slideMode(event) === "trace") {
-    return Boolean(event.traceHeld);
-  }
-
   return Boolean(
-    slideControl[event.side].held
+    event.traceHeld
   );
 }
 
@@ -4976,25 +4967,8 @@ function activeSlideAt(songTime, side = null) {
     )[0] ?? null;
 }
 
-function slidePressReserved(event, side, songTime) {
-  if (
-    !event ||
-    event.side !== side ||
-    slideMode(event) !== "follow"
-  ) {
-    return false;
-  }
-
-  if (event.started) {
-    return songTime <= event.endTime;
-  }
-
-  const delta = songTime - event.targetTime;
-
-  return (
-    delta >= -SLIDE.startEarly &&
-    delta <= SLIDE.startLate
-  );
+function slidePressReserved() {
+  return false;
 }
 
 function updateSlidePadPosition(side, event) {
@@ -5032,21 +5006,12 @@ function beginSlide(event, side, songTime) {
     songTime - event.targetTime;
   event.lastGoodTime = songTime;
 
-  const mode =
-    slideMode(event);
-
   if (runStats) {
-    if (mode === "trace") {
-      runStats.traceAttempts += 1;
-    } else {
-      runStats.followAttempts += 1;
-    }
+    runStats.traceAttempts += 1;
   }
 
   recordLifetimeMetric(
-    mode === "trace"
-      ? "traceAttempts"
-      : "followAttempts",
+    "traceAttempts",
     1
   );
 
@@ -5068,9 +5033,7 @@ function beginSlide(event, side, songTime) {
   );
 
   showMessage(
-    slideMode(event) === "trace"
-      ? "TRACE · SIGUE LA CUERDA"
-      : "FOLLOW · MUEVE EL STICK",
+    "SLIDE · ARRASTRA POR EL RIEL",
     "#fff1a9",
     620
   );
@@ -5142,30 +5105,6 @@ function updateSlide(event, dt, songTime) {
   }
 
   if (
-    slideMode(event) === "follow" &&
-    slideControl[event.side].held
-  ) {
-    const control =
-      slideControl[event.side];
-    const player =
-      slidePlayerVector(event);
-
-    event.playerVector =
-      clampSlideVector({
-        x:
-          player.x +
-          control.x *
-          SLIDE.followSpeed *
-          dt,
-        y:
-          player.y +
-          control.y *
-          SLIDE.followSpeed *
-          dt
-      });
-  }
-
-  if (
     songTime >= event.targetTime &&
     songTime <= event.endTime
   ) {
@@ -5217,7 +5156,7 @@ function spawnSlideProjectile(event) {
     );
   const point = segment.tip;
   const shotCount =
-    1 + runMods.slideNova * 2;
+    1 + runMods.slideNova;
   const baseAngle =
     slideRewardAngle(
       point,
@@ -5323,21 +5262,12 @@ function finishSlide(event) {
     return;
   }
 
-  const mode =
-    slideMode(event);
-
   if (runStats) {
-    if (mode === "trace") {
-      runStats.traceSuccess += 1;
-    } else {
-      runStats.followSuccess += 1;
-    }
+    runStats.traceSuccess += 1;
   }
 
   recordLifetimeMetric(
-    mode === "trace"
-      ? "traceSuccess"
-      : "followSuccess",
+    "traceSuccess",
     1
   );
 
@@ -6006,58 +5936,6 @@ function drawIncomingSlideHead(
 }
 
 
-function drawSlideModeBadge(event) {
-  const trace =
-    slideMode(event) === "trace";
-  const label =
-    trace
-      ? "TRACE · DEDO"
-      : "FOLLOW · STICK";
-
-  ctx.save();
-
-  ctx.font =
-    "900 12px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  const width =
-    ctx.measureText(label).width + 28;
-  const x = DESIGN.width / 2;
-  const y = 680;
-
-  ctx.fillStyle =
-    "rgba(7,11,19,.78)";
-  ctx.strokeStyle =
-    trace
-      ? "rgba(110,215,255,.78)"
-      : "rgba(216,139,255,.78)";
-  ctx.lineWidth = 2;
-
-  ctx.beginPath();
-  ctx.roundRect(
-    x - width / 2,
-    y - 15,
-    width,
-    30,
-    15
-  );
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle =
-    trace
-      ? "#a9e9ff"
-      : "#e1baff";
-  ctx.fillText(
-    label,
-    x,
-    y + 1
-  );
-
-  ctx.restore();
-}
-
 function drawSlide(event, songTime) {
   ctx.save();
 
@@ -6135,7 +6013,6 @@ function drawSlide(event, songTime) {
       false,
       0.72
     );
-    drawSlideModeBadge(event);
 
     ctx.restore();
     return;
@@ -8768,7 +8645,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.31 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.32 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -9755,6 +9632,14 @@ function drawModulePreview(
     ] ?? "#ffffff";
   const t =
     previewSceneTime(now);
+  const previewLevel =
+    clamp(
+      Number(
+        canvas.dataset.level || 1
+      ),
+      1,
+      MODULE_MAX_LEVEL
+    );
 
   drawPreviewArena(
     context,
@@ -9875,8 +9760,11 @@ function drawModulePreview(
       const count =
         upgrade.id ===
           "nova"
-          ? 3
-          : 2;
+          ? 1 + previewLevel
+          : Math.min(
+              3,
+              previewLevel
+            );
 
       for (
         let index = 0;
@@ -10152,14 +10040,23 @@ function drawModulePreview(
 
   switch (upgrade.id) {
     case "twin-shot": {
+      const count =
+        1 + previewLevel;
+
       for (
-        const direction of [-1, 1]
+        let index = 0;
+        index < count;
+        index += 1
       ) {
+        const offset =
+          index -
+          (count - 1) / 2;
+
         drawPreviewNote(
           context,
           setup.tip.x +
-            direction *
-              post * 36,
+            offset *
+              post * 24,
           setup.tip.y -
             post * 98,
           "left",
@@ -10377,15 +10274,24 @@ function drawModulePreview(
           32
         );
 
+        const fragmentCount =
+          2 + previewLevel;
+
         for (
           let index = 0;
-          index < 4;
+          index < fragmentCount;
           index += 1
         ) {
           const angle =
             -Math.PI * .95 +
             index *
-              (Math.PI * .63);
+              (
+                Math.PI * 1.9 /
+                Math.max(
+                  1,
+                  fragmentCount - 1
+                )
+              );
           drawPreviewNote(
             context,
             target.x +
@@ -10878,7 +10784,7 @@ function renderUpgradeChoices() {
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"${fitLabel ? "" : " hidden"}><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="260" height="150" data-module="${upgrade.id}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
+      `<span class="module-head"${fitLabel ? "" : " hidden"}><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="260" height="150" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
 
     button.addEventListener(
       "click",
@@ -11368,7 +11274,7 @@ function completeRun() {
 
   summaryUnlock.textContent =
     practice
-      ? `TRACE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · FOLLOW ${runStats?.followSuccess ?? 0}/${runStats?.followAttempts ?? 0}`
+      ? `SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0}`
       : unlocked.length
         ? `NUEVA MÁQUINA: ${unlocked.join(" · ")}`
         : dailyRecord
