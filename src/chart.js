@@ -43,6 +43,27 @@ function validateGameChart(chart) {
       throw new Error(`Evento ${index}: beat inválido.`);
     }
 
+    if (
+      event.minAct !== undefined &&
+      (
+        !Number.isInteger(event.minAct) ||
+        event.minAct < 1 ||
+        event.minAct > 7
+      )
+    ) {
+      throw new Error(`Evento ${index}: minAct debe estar entre 1 y 7.`);
+    }
+
+    if (
+      event.chainGroup !== undefined &&
+      (
+        typeof event.chainGroup !== "string" ||
+        event.chainGroup.length < 1
+      )
+    ) {
+      throw new Error(`Evento ${index}: chainGroup inválido.`);
+    }
+
     if (event.type === "tap") {
       if (!["left", "right"].includes(event.side)) {
         throw new Error(`Evento ${index}: side inválido.`);
