@@ -6,6 +6,7 @@ const ctx = canvas.getContext("2d");
 const startPanel = document.querySelector("#startPanel");
 const startButton = document.querySelector("#startButton");
 const dailyButton = document.querySelector("#dailyButton");
+const practiceButton = document.querySelector("#practiceButton");
 const rerunButton = document.querySelector("#rerunButton");
 const summaryDailyButton = document.querySelector("#summaryDailyButton");
 const leftButton = document.querySelector("#leftButton");
@@ -109,6 +110,12 @@ function currentActMeta() {
       RUN_ACTS
     )
   ] ?? ACTS[1];
+}
+
+function runTargetActs() {
+  return runMode === "practice"
+    ? 1
+    : RUN_ACTS;
 }
 const PROFILE_KEY = "aura-farm-profile-v1";
 const METRICS_KEY = "aura-farm-metrics-v1";
@@ -4047,7 +4054,7 @@ function updateHud() {
   comboEl.textContent =
     combo ? `${combo} · x${comboMultiplier(combo)}` : "0";
   actEl.textContent =
-    `${Math.min(wave, RUN_ACTS)}/${RUN_ACTS}`;
+    `${Math.min(wave, runTargetActs())}/${runTargetActs()}`;
 
   lastHitEl.textContent =
     lastDeltaMs === null
@@ -5652,7 +5659,9 @@ async function beginAct() {
   resetWaveState();
 
   bossState = {
-    active: wave === FINAL_ACT,
+    active:
+      runMode !== "practice" &&
+      wave === FINAL_ACT,
     health: BOSS_MAX_HEALTH,
     maxHealth: BOSS_MAX_HEALTH,
     broken: false,
@@ -5669,29 +5678,34 @@ async function beginAct() {
   const act =
     currentActMeta();
 
+  const bossAct =
+    bossState.active;
+
   showMessage(
-    wave === FINAL_ACT
-      ? "ACTO 7 · AURA CORE"
-      : `ACTO ${wave} · ${act.name}`,
-    wave === FINAL_ACT
+    runMode === "practice"
+      ? "PRACTICE · TRACE / FOLLOW"
+      : bossAct
+        ? "ACTO 7 · AURA CORE"
+        : `ACTO ${wave} · ${act.name}`,
+    bossAct
       ? "#ffdf85"
       : "#fff1a9",
-    wave === FINAL_ACT
+    bossAct
       ? 1100
       : 760
   );
 
   setOperatorMood(
-    wave === FINAL_ACT
+    bossAct
       ? "boss"
       : "flow",
     0.8
   );
   bumpFeedback(
-    wave === FINAL_ACT
+    bossAct
       ? 4.8
       : 2.4,
-    wave === FINAL_ACT
+    bossAct
       ? 0.13
       : 0.055
   );
@@ -5723,8 +5737,8 @@ function openUpgradePanel() {
 
   upgradeTitle.textContent =
     runMode === "daily"
-      ? `DAILY · ACTO ${wave}/${RUN_ACTS}`
-      : `ACTO ${wave}/${RUN_ACTS} · ELIGE 1`;
+      ? `DAILY · ACTO ${wave}/${runTargetActs()}`
+      : `ACTO ${wave}/${runTargetActs()} · ELIGE 1`;
 
   render(clock.songTime);
   renderUpgradeChoices();
@@ -5749,34 +5763,49 @@ function completeRun() {
   awaitingUpgrade = false;
   clock.stopScheduler();
 
+  const practice =
+    runMode === "practice";
   const completedBossDamage =
-    bossDamagePercent();
+    practice
+      ? 0
+      : bossDamagePercent();
   const previousRuns =
     profile.runsCompleted;
-
-  profile.runsCompleted += 1;
   const previousBest =
     Number(profile.bestScore || 0);
-  profile.bestScore =
-    Math.max(
-      previousBest,
-      score
-    );
-
   let dailyRecord = false;
 
-  if (runMode === "daily") {
-    const key =
-      localDateKey();
-    const previousDaily =
-      Number(
-        profile.dailyBest[key] || 0
+  if (!practice) {
+    profile.runsCompleted += 1;
+    profile.bestScore =
+      Math.max(
+        previousBest,
+        score
       );
 
-    if (score > previousDaily) {
-      profile.dailyBest[key] = score;
-      dailyRecord = true;
+    if (runMode === "daily") {
+      const key =
+        localDateKey();
+      const previousDaily =
+        Number(
+          profile.dailyBest[key] || 0
+        );
+
+      if (score > previousDaily) {
+        profile.dailyBest[key] = score;
+        dailyRecord = true;
+      }
     }
+
+    recordLifetimeMetric(
+      "runsCompleted",
+      1
+    );
+  } else {
+    recordLifetimeMetric(
+      "practiceSessions",
+      1
+    );
   }
 
   profile.calibrationOffsetMs =
@@ -5785,11 +5814,6 @@ function completeRun() {
   saveLocalJson(
     PROFILE_KEY,
     profile
-  );
-
-  recordLifetimeMetric(
-    "runsCompleted",
-    1
   );
 
   const elapsedMs =
@@ -5816,12 +5840,16 @@ function completeRun() {
   summaryMisses.textContent =
     String(missCount);
   summaryBoss.textContent =
-    `${completedBossDamage}%`;
+    practice
+      ? "—"
+      : `${completedBossDamage}%`;
 
   summaryTitle.textContent =
-    bossState.broken
-      ? "AURA CORE ROTO"
-      : "MÁQUINA ESTABLE";
+    practice
+      ? "PRACTICE COMPLETE"
+      : bossState.broken
+        ? "AURA CORE ROTO"
+        : "MÁQUINA ESTABLE";
 
   summaryBuild.innerHTML = "";
 
@@ -5842,27 +5870,31 @@ function completeRun() {
   }
 
   const unlocked =
-    Object.entries(MACHINES)
-      .filter(
-        ([, machine]) =>
-          machine.unlockRuns >
-            previousRuns &&
-          machine.unlockRuns <=
-            profile.runsCompleted
-      )
-      .map(
-        ([, machine]) =>
-          machine.name
-      );
+    practice
+      ? []
+      : Object.entries(MACHINES)
+          .filter(
+            ([, machine]) =>
+              machine.unlockRuns >
+                previousRuns &&
+              machine.unlockRuns <=
+                profile.runsCompleted
+          )
+          .map(
+            ([, machine]) =>
+              machine.name
+          );
 
   summaryUnlock.textContent =
-    unlocked.length
-      ? `NUEVA MÁQUINA: ${unlocked.join(" · ")}`
-      : dailyRecord
-        ? `DAILY RECORD · ${localDateKey()}`
-        : score > previousBest
-          ? "NUEVO MEJOR REGISTRO"
-          : "";
+    practice
+      ? `TRACE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · FOLLOW ${runStats?.followSuccess ?? 0}/${runStats?.followAttempts ?? 0}`
+      : unlocked.length
+        ? `NUEVA MÁQUINA: ${unlocked.join(" · ")}`
+        : dailyRecord
+          ? `DAILY RECORD · ${localDateKey()}`
+          : score > previousBest
+            ? "NUEVO MEJOR REGISTRO"
+            : "";
 
   refreshMachineOptions();
 
@@ -5903,7 +5935,7 @@ function frame(now) {
   render(songTime);
 
   if (clock.beat >= LOOP_BEATS) {
-    if (wave >= RUN_ACTS) {
+    if (wave >= runTargetActs()) {
       completeRun();
     } else {
       openUpgradePanel();
@@ -6349,6 +6381,7 @@ async function startRun(mode = "standard") {
 
   startButton.disabled = true;
   dailyButton.disabled = true;
+  practiceButton.disabled = true;
   startButton.textContent =
     "INICIANDO…";
 
@@ -6359,7 +6392,9 @@ async function startRun(mode = "standard") {
   buildPaths();
 
   recordLifetimeMetric(
-    "runsStarted",
+    mode === "practice"
+      ? "practiceStarted"
+      : "runsStarted",
     1
   );
 
@@ -6369,6 +6404,7 @@ async function startRun(mode = "standard") {
 
   startButton.disabled = false;
   dailyButton.disabled = false;
+  practiceButton.disabled = false;
   startButton.textContent =
     "RUN · 7 ACTOS";
 }
@@ -6381,6 +6417,11 @@ startButton.addEventListener(
 dailyButton.addEventListener(
   "click",
   () => startRun("daily")
+);
+
+practiceButton.addEventListener(
+  "click",
+  () => startRun("practice")
 );
 
 rerunButton.addEventListener(
