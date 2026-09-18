@@ -1,4 +1,9 @@
 import { loadGameChart } from "./chart.js?v=0.27";
+import {
+  AURA_SONG,
+  midiToHz,
+  songFrameAtBeat
+} from "./music.js?v=0.27";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -119,22 +124,6 @@ function currentActMeta() {
       RUN_ACTS
     )
   ] ?? ACTS[1];
-}
-
-function actPitchRatio() {
-  const semitones =
-    [0, 0, 2, 3, 5, 7, 8, 10][
-      clamp(
-        Math.round(wave),
-        1,
-        RUN_ACTS
-      )
-    ] ?? 0;
-
-  return Math.pow(
-    2,
-    semitones / 12
-  );
 }
 
 function runTargetActs() {
@@ -508,251 +497,322 @@ class RhythmClock {
   }
 
   scheduleGroove(time, beat) {
-    const barBeat =
-      ((beat % 4) + 4) % 4;
+    const frame =
+      songFrameAtBeat(beat);
     const actEnergy =
       clamp(
         (wave - 1) /
-          Math.max(1, RUN_ACTS - 1),
+          Math.max(
+            1,
+            RUN_ACTS - 1
+          ),
         0,
         1
       );
     const buildEnergy =
       Math.min(
         1,
-        buildHistory.length / 6
+        buildHistory.length /
+          6
       );
-
-    this.scheduleHat(
-      time,
-      0.016 +
-        actEnergy * 0.008 +
-        buildEnergy * 0.004
-    );
-
-    if (
-      Math.abs(barBeat - 0) < 0.001 ||
-      Math.abs(barBeat - 2) < 0.001
-    ) {
-      this.scheduleKick(time);
-    }
-
-    if (
-      Math.abs(barBeat - 1) < 0.001 ||
-      Math.abs(barBeat - 3) < 0.001
-    ) {
-      this.scheduleSnare(time);
-    }
-
-    if (Number.isInteger(beat)) {
-      this.scheduleBass(time, beat);
-
-      if (
-        runMods.slideNova > 0 ||
-        runMods.slideMirror > 0
-      ) {
-        this.scheduleLead(
-          time,
-          beat,
-          0.012 +
-            0.006 *
-              Math.min(
-                3,
-                runMods.slideNova +
-                  runMods.slideMirror
-              )
-        );
-      }
-
-      if (
-        Math.abs(barBeat) <
-          0.001
-      ) {
-        this.scheduleActPad(
-          time,
-          0.006 +
-            actEnergy * 0.004
-        );
-      }
-
-      if (
+    const slideBuild =
+      Math.min(
+        1,
+        (
+          runMods.slideNova +
+          runMods.slideMirror
+        ) /
+          3
+      );
+    const auraBuild =
+      Math.min(
+        1,
         (
           runMods.shockwave +
           runMods.fusionBlast +
-          runMods.wallCharge
-        ) > 0 &&
-        Math.abs(barBeat) < 0.001
-      ) {
-        this.scheduleAuraPulse(
-          time,
-          0.018 +
-            0.006 *
-              Math.min(
-                3,
-                runMods.shockwave +
-                  runMods.fusionBlast +
-                  runMods.wallCharge
-              )
-        );
-      }
+          runMods.wallCharge +
+          runMods.fragmentCount *
+            0.3
+        ) /
+          4
+      );
+    const rhythmBuild =
+      Math.min(
+        1,
+        (
+          runMods.twinShots +
+          runMods.chainRelay +
+          runMods.bumperSplit
+        ) /
+          3
+      );
+    const synergyMix =
+      activeBuildSynergies()
+        .length > 0
+        ? 1
+        : 0;
 
-      if (
-        hasActiveSynergy(
-          "pinball-engine"
-        ) ||
-        hasActiveSynergy(
-          "chain-reactor"
-        ) ||
-        hasActiveSynergy(
-          "twin-nova"
-        )
-      ) {
-        this.scheduleLead(
-          time + 0.12,
-          beat + 2,
-          0.010
-        );
-      }
+    // STEM 1 — DRUMS
+    if (frame.hat) {
+      this.scheduleHat(
+        time,
+        (
+          0.011 +
+          actEnergy * 0.006 +
+          buildEnergy * 0.003
+        ) *
+          frame.hatAccent
+      );
+    }
 
-      if (wave === FINAL_ACT) {
-        this.scheduleBossDrone(
+    if (frame.kick) {
+      this.scheduleKick(
+        time,
+        0.068 +
+          actEnergy * 0.018
+      );
+    }
+
+    if (frame.snare) {
+      this.scheduleSnare(
+        time,
+        0.034 +
+          actEnergy * 0.012
+      );
+    }
+
+    // STEM 2 — BASS
+    if (frame.bassMidi !== null) {
+      this.scheduleBassStem(
+        time,
+        midiToHz(
+          frame.bassMidi
+        ),
+        0.017 +
+          actEnergy * 0.009 +
+          buildEnergy * 0.004
+      );
+    }
+
+    // STEM 3 — HARMONY
+    if (frame.chordMidi) {
+      this.scheduleHarmonyStem(
+        time,
+        frame.chordMidi.map(
+          midiToHz
+        ),
+        0.0045 +
+          actEnergy * 0.0035
+      );
+    }
+
+    // STEM 4 — LEAD
+    if (frame.leadMidi !== null) {
+      const leadMix =
+        0.0015 +
+        actEnergy * 0.006 +
+        slideBuild * 0.010 +
+        synergyMix * 0.0025;
+
+      if (leadMix > 0.002) {
+        this.scheduleLeadStem(
           time,
-          beat
+          midiToHz(
+            frame.leadMidi
+          ),
+          leadMix
         );
       }
     }
 
+    // STEM 5 — AURA
+    if (frame.auraMidi !== null) {
+      const auraMix =
+        actEnergy * 0.003 +
+        auraBuild * 0.012 +
+        (
+          chainCount > 0
+            ? 0.0025
+            : 0
+        );
+
+      if (auraMix > 0.002) {
+        this.scheduleAuraStem(
+          time,
+          midiToHz(
+            frame.auraMidi
+          ),
+          auraMix
+        );
+      }
+    }
+
+    // STEM 6 — BOSS
     if (
-      Math.abs(barBeat % 1 - 0.5) <
-        0.001 &&
-      (
-        runMods.twinShots > 0 ||
-        runMods.chainRelay > 0 ||
-        runMods.bumperSplit > 0
-      )
+      wave === FINAL_ACT &&
+      frame.bossMidi !== null
+    ) {
+      this.scheduleBossStem(
+        time,
+        midiToHz(
+          frame.bossMidi
+        ),
+        bossState.phase === 2
+          ? 0.018
+          : 0.013
+      );
+    }
+
+    // Build percussion is reactive SFX layered over the six authored stems.
+    if (
+      frame.step % 2 === 1 &&
+      rhythmBuild > 0
     ) {
       this.scheduleBuildClick(
         time,
-        0.010 +
-          0.004 *
-            Math.min(
-              3,
-              runMods.twinShots +
-                runMods.chainRelay +
-                runMods.bumperSplit
-            )
+        0.006 +
+          rhythmBuild * 0.010
       );
     }
   }
 
   scheduleHat(time, volume) {
-    const source = this.context.createBufferSource();
-    const filter = this.context.createBiquadFilter();
-    const gain = this.context.createGain();
+    const source =
+      this.context.createBufferSource();
+    const filter =
+      this.context.createBiquadFilter();
+    const gain =
+      this.context.createGain();
 
-    source.buffer = this.noiseBuffer;
+    source.buffer =
+      this.noiseBuffer;
     filter.type = "highpass";
-    filter.frequency.value = 5200;
+    filter.frequency.value = 5400;
 
-    gain.gain.setValueAtTime(volume, time);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.035);
+    gain.gain.setValueAtTime(
+      Math.max(
+        0.0001,
+        volume
+      ),
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.035
+    );
 
     source.connect(filter);
     filter.connect(gain);
-    gain.connect(this.context.destination);
+    gain.connect(
+      this.context.destination
+    );
 
     source.start(time);
-    source.stop(time + 0.045);
+    source.stop(
+      time + 0.045
+    );
   }
 
-  scheduleSnare(time) {
-    const source = this.context.createBufferSource();
-    const filter = this.context.createBiquadFilter();
-    const gain = this.context.createGain();
+  scheduleSnare(
+    time,
+    volume = 0.042
+  ) {
+    const source =
+      this.context.createBufferSource();
+    const filter =
+      this.context.createBiquadFilter();
+    const gain =
+      this.context.createGain();
 
-    source.buffer = this.noiseBuffer;
+    source.buffer =
+      this.noiseBuffer;
     filter.type = "bandpass";
-    filter.frequency.value = 1700;
-    filter.Q.value = 0.8;
+    filter.frequency.value = 1750;
+    filter.Q.value = 0.9;
 
-    gain.gain.setValueAtTime(0.045, time);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.085);
+    gain.gain.setValueAtTime(
+      volume,
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.09
+    );
 
     source.connect(filter);
     filter.connect(gain);
-    gain.connect(this.context.destination);
-
+    gain.connect(
+      this.context.destination
+    );
     source.start(time);
-    source.stop(time + 0.09);
+    source.stop(
+      time + 0.095
+    );
   }
 
-  scheduleKick(time) {
-    const oscillator = this.context.createOscillator();
-    const gain = this.context.createGain();
+  scheduleKick(
+    time,
+    volume = 0.082
+  ) {
+    const oscillator =
+      this.context.createOscillator();
+    const gain =
+      this.context.createGain();
 
     oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(125, time);
-    oscillator.frequency.exponentialRampToValueAtTime(48, time + 0.10);
+    oscillator.frequency.setValueAtTime(
+      128,
+      time
+    );
+    oscillator.frequency.exponentialRampToValueAtTime(
+      46,
+      time + 0.11
+    );
 
-    gain.gain.setValueAtTime(0.085, time);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
-
-    oscillator.connect(gain);
-    gain.connect(this.context.destination);
-
-    oscillator.start(time);
-    oscillator.stop(time + 0.13);
-  }
-
-  scheduleBass(time, beat) {
-    const oscillator = this.context.createOscillator();
-    const gain = this.context.createGain();
-    const pattern = [110, 110, 123.47, 98];
-    const frequency =
-      pattern[
-        Math.floor(beat) %
-        pattern.length
-      ] *
-      actPitchRatio();
-
-    oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(frequency, time);
-
-    gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(0.025, time + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.16);
+    gain.gain.setValueAtTime(
+      volume,
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.13
+    );
 
     oscillator.connect(gain);
-    gain.connect(this.context.destination);
-
+    gain.connect(
+      this.context.destination
+    );
     oscillator.start(time);
-    oscillator.stop(time + 0.18);
+    oscillator.stop(
+      time + 0.14
+    );
   }
 
-  scheduleLead(time, beat, volume) {
+  scheduleBassStem(
+    time,
+    frequency,
+    volume
+  ) {
     const oscillator =
+      this.context.createOscillator();
+    const sub =
       this.context.createOscillator();
     const gain =
       this.context.createGain();
     const filter =
       this.context.createBiquadFilter();
-    const pattern =
-      [440, 493.88, 587.33, 659.25];
-    const frequency =
-      pattern[
-        Math.floor(beat) %
-        pattern.length
-      ] *
-      actPitchRatio();
 
-    oscillator.type = "sawtooth";
-    oscillator.frequency.setValueAtTime(
-      frequency,
-      time
-    );
+    oscillator.type = "triangle";
+    oscillator.frequency.value =
+      frequency;
+    sub.type = "sine";
+    sub.frequency.value =
+      frequency / 2;
 
     filter.type = "lowpass";
-    filter.frequency.value = 1800;
+    filter.frequency.value =
+      520 +
+      wave * 55;
 
     gain.gain.setValueAtTime(
       0.0001,
@@ -764,30 +824,36 @@ class RhythmClock {
     );
     gain.gain.exponentialRampToValueAtTime(
       0.0001,
-      time + 0.12
+      time + 0.23
     );
 
     oscillator.connect(filter);
+    sub.connect(filter);
     filter.connect(gain);
-    gain.connect(this.context.destination);
+    gain.connect(
+      this.context.destination
+    );
+
     oscillator.start(time);
-    oscillator.stop(time + 0.14);
+    sub.start(time);
+    oscillator.stop(
+      time + 0.24
+    );
+    sub.stop(
+      time + 0.24
+    );
   }
 
-  scheduleActPad(time, volume) {
-    const root =
-      110 *
-      actPitchRatio();
-    const fifth =
-      root * 1.5;
-
-    for (const [
-      frequency,
-      level
-    ] of [
-      [root, volume],
-      [fifth, volume * 0.68]
-    ]) {
+  scheduleHarmonyStem(
+    time,
+    frequencies,
+    volume
+  ) {
+    for (
+      let index = 0;
+      index < frequencies.length;
+      index += 1
+    ) {
       const oscillator =
         this.context.createOscillator();
       const gain =
@@ -796,26 +862,29 @@ class RhythmClock {
         this.context.createBiquadFilter();
 
       oscillator.type =
-        "triangle";
+        index === 0
+          ? "triangle"
+          : "sine";
       oscillator.frequency.value =
-        frequency;
+        frequencies[index];
 
       filter.type = "lowpass";
       filter.frequency.value =
-        820 +
-        wave * 110;
+        920 +
+        wave * 75;
 
       gain.gain.setValueAtTime(
         0.0001,
         time
       );
       gain.gain.exponentialRampToValueAtTime(
-        level,
-        time + 0.04
+        volume /
+          (1 + index * 0.28),
+        time + 0.07
       );
       gain.gain.exponentialRampToValueAtTime(
         0.0001,
-        time + 0.70
+        time + 1.55
       );
 
       oscillator.connect(filter);
@@ -825,12 +894,149 @@ class RhythmClock {
       );
       oscillator.start(time);
       oscillator.stop(
-        time + 0.74
+        time + 1.58
       );
     }
   }
 
-  scheduleBuildClick(time, volume) {
+  scheduleLeadStem(
+    time,
+    frequency,
+    volume
+  ) {
+    const oscillator =
+      this.context.createOscillator();
+    const gain =
+      this.context.createGain();
+    const filter =
+      this.context.createBiquadFilter();
+
+    oscillator.type = "sawtooth";
+    oscillator.frequency.value =
+      frequency;
+
+    filter.type = "lowpass";
+    filter.frequency.value =
+      1450 +
+      wave * 95;
+
+    gain.gain.setValueAtTime(
+      0.0001,
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      volume,
+      time + 0.009
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.17
+    );
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(
+      this.context.destination
+    );
+    oscillator.start(time);
+    oscillator.stop(
+      time + 0.18
+    );
+  }
+
+  scheduleAuraStem(
+    time,
+    frequency,
+    volume
+  ) {
+    for (const ratio of [1, 1.5]) {
+      const oscillator =
+        this.context.createOscillator();
+      const gain =
+        this.context.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.value =
+        frequency * ratio;
+
+      gain.gain.setValueAtTime(
+        0.0001,
+        time
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        volume /
+          ratio,
+        time + 0.018
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        time + 0.34
+      );
+
+      oscillator.connect(gain);
+      gain.connect(
+        this.context.destination
+      );
+      oscillator.start(time);
+      oscillator.stop(
+        time + 0.36
+      );
+    }
+  }
+
+  scheduleBossStem(
+    time,
+    frequency,
+    volume
+  ) {
+    const oscillator =
+      this.context.createOscillator();
+    const gain =
+      this.context.createGain();
+    const filter =
+      this.context.createBiquadFilter();
+
+    oscillator.type =
+      bossState.phase === 2
+        ? "sawtooth"
+        : "square";
+    oscillator.frequency.value =
+      frequency;
+
+    filter.type = "lowpass";
+    filter.frequency.value =
+      bossState.phase === 2
+        ? 720
+        : 520;
+
+    gain.gain.setValueAtTime(
+      0.0001,
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      volume,
+      time + 0.012
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.30
+    );
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(
+      this.context.destination
+    );
+    oscillator.start(time);
+    oscillator.stop(
+      time + 0.32
+    );
+  }
+
+  scheduleBuildClick(
+    time,
+    volume
+  ) {
     const source =
       this.context.createBufferSource();
     const filter =
@@ -838,7 +1044,8 @@ class RhythmClock {
     const gain =
       this.context.createGain();
 
-    source.buffer = this.noiseBuffer;
+    source.buffer =
+      this.noiseBuffer;
     filter.type = "bandpass";
     filter.frequency.value = 3300;
     filter.Q.value = 2.4;
@@ -854,70 +1061,15 @@ class RhythmClock {
 
     source.connect(filter);
     filter.connect(gain);
-    gain.connect(this.context.destination);
+    gain.connect(
+      this.context.destination
+    );
     source.start(time);
-    source.stop(time + 0.03);
+    source.stop(
+      time + 0.03
+    );
   }
 
-  scheduleAuraPulse(time, volume) {
-    const oscillator =
-      this.context.createOscillator();
-    const gain =
-      this.context.createGain();
-
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(
-      220,
-      time
-    );
-    oscillator.frequency.exponentialRampToValueAtTime(
-      110,
-      time + 0.22
-    );
-
-    gain.gain.setValueAtTime(
-      volume,
-      time
-    );
-    gain.gain.exponentialRampToValueAtTime(
-      0.0001,
-      time + 0.24
-    );
-
-    oscillator.connect(gain);
-    gain.connect(this.context.destination);
-    oscillator.start(time);
-    oscillator.stop(time + 0.25);
-  }
-
-  scheduleBossDrone(time, beat) {
-    const oscillator =
-      this.context.createOscillator();
-    const gain =
-      this.context.createGain();
-
-    oscillator.type = "square";
-    oscillator.frequency.value =
-      beat % 2 === 0 ? 55 : 61.74;
-
-    gain.gain.setValueAtTime(
-      0.0001,
-      time
-    );
-    gain.gain.exponentialRampToValueAtTime(
-      0.012,
-      time + 0.012
-    );
-    gain.gain.exponentialRampToValueAtTime(
-      0.0001,
-      time + 0.34
-    );
-
-    oscillator.connect(gain);
-    gain.connect(this.context.destination);
-    oscillator.start(time);
-    oscillator.stop(time + 0.36);
-  }
 }
 
 const clock = new RhythmClock();
@@ -1408,8 +1560,19 @@ async function ensureChartLoaded() {
   BPM = chart.bpm;
   LOOP_BEATS = chart.loopBeats;
   COUNT_IN_BEATS = chart.countInBeats;
+
+  if (
+    BPM !== AURA_SONG.bpm ||
+    LOOP_BEATS !== AURA_SONG.beats
+  ) {
+    throw new Error(
+      `Track/chart mismatch: ${AURA_SONG.title} expects ${AURA_SONG.bpm} BPM / ${AURA_SONG.beats} beats.`
+    );
+  }
+
   CHART = chart.events;
-  chartName = chart.name || "Mechanics chart";
+  chartName =
+    `${chart.name || "Mechanics chart"} · ${AURA_SONG.title}`;
   chartLoaded = true;
 }
 
