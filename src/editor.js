@@ -5,10 +5,17 @@ import {
   songFrameFromData,
   validateGameChart,
   validateGameSong
-} from "./song.js?v=0.44";
+} from "./song.js?v=0.45";
 import {
   midiToHz
-} from "./music.js?v=0.44";
+} from "./music.js?v=0.45";
+import {
+  analyzeAudioSteps,
+  buildWaveformPeaks,
+  loadAudioBuffer,
+  resolveSongAssetUrl,
+  validateDecodedAudioDuration
+} from "./audio-file.js?v=0.45";
 
 const $ = (selector) =>
   document.querySelector(selector);
@@ -52,6 +59,17 @@ const songBpmInput = $("#songBpmInput");
 const countInInput = $("#countInInput");
 const difficultyInput = $("#difficultyInput");
 const songDescriptionInput = $("#songDescriptionInput");
+const audioModeInput = $("#audioModeInput");
+const offsetInput = $("#offsetInput");
+const audioSrcInput = $("#audioSrcInput");
+const audioGainInput = $("#audioGainInput");
+const audioSrcField = $("#audioSrcField");
+const audioGainField = $("#audioGainField");
+const audioToolsField = $("#audioToolsField");
+const analyzeAudioButton = $("#analyzeAudioButton");
+const localAudioButton = $("#localAudioButton");
+const localAudioInput = $("#localAudioInput");
+const audioAnalysisStatus = $("#audioAnalysisStatus");
 
 const eventBeatInput = $("#eventBeatInput");
 const eventTypeInput = $("#eventTypeInput");
@@ -118,11 +136,202 @@ let playbackStartBeat = 0;
 let playbackStartTime = 0;
 let nextScheduleStep = 0;
 let noiseBuffer = null;
+let fileAudioBuffer = null;
+let waveformPeaks = null;
+let filePlaybackSource = null;
+let songSourceUrl = null;
+let localAudioFileName = null;
 let toastTimer = null;
 
 let history = [];
 let historyIndex = -1;
 let restoringHistory = false;
+
+function ensureAudioContext() {
+  audioContext ??=
+    new AudioContext();
+
+  return audioContext;
+}
+
+function clearFileAudioState() {
+  if (filePlaybackSource) {
+    try {
+      filePlaybackSource.stop();
+    } catch {
+      // Already ended.
+    }
+    filePlaybackSource = null;
+  }
+
+  fileAudioBuffer = null;
+  waveformPeaks = null;
+  localAudioFileName = null;
+}
+
+async function decodeLocalAudioFile(
+  file
+) {
+  const context =
+    ensureAudioContext();
+  const bytes =
+    await file.arrayBuffer();
+
+  return await context
+    .decodeAudioData(
+      bytes.slice(0)
+    );
+}
+
+async function prepareFileAudio({
+  useLocalBuffer = null,
+  analyze = false
+} = {}) {
+  if (
+    song?.audio?.mode !==
+      "file"
+  ) {
+    clearFileAudioState();
+    return null;
+  }
+
+  const context =
+    ensureAudioContext();
+
+  let buffer =
+    useLocalBuffer;
+
+  if (!buffer) {
+    const resolved =
+      resolveSongAssetUrl(
+        songSourceUrl,
+        song.audio.src
+      );
+
+    if (!resolved) {
+      throw new Error(
+        "Define audio.src o carga un archivo local."
+      );
+    }
+
+    buffer =
+      await loadAudioBuffer(
+        context,
+        resolved
+      );
+  }
+
+  validateDecodedAudioDuration(
+    song,
+    buffer
+  );
+
+  fileAudioBuffer =
+    buffer;
+  waveformPeaks =
+    buildWaveformPeaks(
+      buffer,
+      2400
+    );
+
+  if (analyze) {
+    song.audio.analysis =
+      analyzeAudioSteps(
+        buffer,
+        song.timing
+      );
+  }
+
+  resizeTimeline();
+
+  return buffer;
+}
+
+function audioStepEnergyAtBeat(
+  beat
+) {
+  const analysis =
+    song?.audio?.analysis;
+
+  if (
+    !analysis?.stepEnergy
+  ) {
+    return null;
+  }
+
+  const step =
+    Math.round(
+      beat *
+      activeTiming()
+        .stepsPerBeat
+    );
+
+  return Number(
+    analysis.stepEnergy[
+      step
+    ] ?? 0
+  );
+}
+
+function refreshAudioFields() {
+  const fileMode =
+    song?.audio?.mode ===
+      "file";
+
+  audioModeInput.value =
+    fileMode
+      ? "file"
+      : "procedural";
+  offsetInput.value =
+    String(
+      song?.timing
+        ?.offsetMs ??
+      0
+    );
+  audioSrcInput.value =
+    fileMode
+      ? song.audio.src ?? ""
+      : "";
+  audioGainInput.value =
+    fileMode
+      ? String(
+          song.audio.gain ??
+          1
+        )
+      : "1";
+
+  audioSrcField.hidden =
+    !fileMode;
+  audioGainField.hidden =
+    !fileMode;
+  audioToolsField.hidden =
+    !fileMode;
+
+  if (!fileMode) {
+    audioAnalysisStatus.dataset
+      .state = "ok";
+    audioAnalysisStatus.textContent =
+      "PROCEDURAL · sync semántico por stem";
+    return;
+  }
+
+  const analysis =
+    song.audio.analysis;
+
+  if (
+    analysis?.stepEnergy
+  ) {
+    audioAnalysisStatus.dataset
+      .state = "ok";
+    audioAnalysisStatus.textContent =
+      `AUDIO ANALYZED · ${analysis.stepEnergy.length} pasos · ${Number(analysis.durationSeconds).toFixed(2)}s${localAudioFileName ? ` · local: ${localAudioFileName}` : ""}`;
+  } else {
+    audioAnalysisStatus.dataset
+      .state = "warning";
+    audioAnalysisStatus.textContent =
+      `GRID ONLY · falta analizar el mix${localAudioFileName ? ` · local: ${localAudioFileName}` : ""}`;
+  }
+}
 
 function clone(value) {
   return JSON.parse(
@@ -532,6 +741,8 @@ function populateMetadata() {
     chart.difficulty ?? "";
   songDescriptionInput.value =
     song.description ?? "";
+
+  refreshAudioFields();
 }
 
 function populateInspector() {
@@ -583,9 +794,17 @@ function populateInspector() {
     event.minAct ?? "";
   eventChainInput.value =
     event.chainGroup ?? "";
+  eventStemInput.innerHTML =
+    (song.audio?.stems ?? ["mix"])
+      .map(
+        (stem) =>
+          `<option value="${stem}">${stem}</option>`
+      )
+      .join("");
   eventStemInput.value =
     event.music?.stem ??
-    "drums";
+    song.audio?.stems?.[0] ??
+    "mix";
   eventIntentInput.value =
     event.music?.intent ??
     "pulse";
@@ -638,6 +857,56 @@ function autoMusicForBeat(
   beat,
   type
 ) {
+  if (
+    song.audio?.mode ===
+      "file"
+  ) {
+    const energy =
+      audioStepEnergyAtBeat(
+        beat
+      );
+    const safeEnergy =
+      energy === null
+        ? 0.58
+        : Math.max(
+            0.18,
+            Math.min(
+              1,
+              energy
+            )
+          );
+    const stem =
+      song.audio.stems?.includes(
+        "mix"
+      )
+        ? "mix"
+        : song.audio.stems?.[0] ??
+          "mix";
+    const bar =
+      Math.floor(
+        beat /
+        activeTiming()
+          .beatsPerBar
+      );
+
+    return {
+      stem,
+      intent:
+        type === "slide"
+          ? "phrase"
+          : safeEnergy >= 0.72
+            ? "accent"
+            : "pulse",
+      energy:
+        Number(
+          safeEnergy.toFixed(2)
+        ),
+      phrase:
+        `audio-bar-${bar + 1}`,
+      contour: false
+    };
+  }
+
   const frame =
     songFrameFromData(
       song,
@@ -871,14 +1140,51 @@ function validateNow() {
       );
     }
 
-    validationBadge.dataset.state =
-      "ok";
-    validationBadge.textContent =
-      "SYNC OK";
-    validationTitle.textContent =
-      `${report.checked}/${report.checked} eventos alineados`;
-    validationList.innerHTML =
-      '<div class="validation-item ok">Paquete válido · timing, grid, eventos y stems coinciden.</div>';
+    if (
+      report.mode ===
+        "grid-only"
+    ) {
+      validationBadge.dataset.state =
+        "warning";
+      validationBadge.textContent =
+        "GRID ONLY";
+      validationTitle.textContent =
+        `${report.checked} eventos válidos · audio aún no analizado`;
+      validationList.innerHTML =
+        report.warnings
+          .map(
+            (item) =>
+              `<div class="validation-item">${escapeHtml(item)}</div>`
+          )
+          .join("");
+    } else if (
+      report.mode ===
+        "mix-energy"
+    ) {
+      validationBadge.dataset.state =
+        "ok";
+      validationBadge.textContent =
+        "AUDIO ANALYZED";
+      validationTitle.textContent =
+        `${report.verified}/${report.checked} eventos sobre audio detectable`;
+      validationList.innerHTML =
+        [
+          '<div class="validation-item ok">Timing/grid y energía temporal del mix verificados.</div>',
+          ...report.warnings.map(
+            (item) =>
+              `<div class="validation-item">${escapeHtml(item)}</div>`
+          )
+        ].join("");
+    } else {
+      validationBadge.dataset.state =
+        "ok";
+      validationBadge.textContent =
+        "SYNC VERIFIED";
+      validationTitle.textContent =
+        `${report.checked}/${report.checked} eventos alineados por stem`;
+      validationList.innerHTML =
+        '<div class="validation-item ok">Paquete válido · timing, grid, eventos y stems coinciden.</div>';
+    }
   } catch (error) {
     validationBadge.dataset.state =
       "error";
@@ -1097,6 +1403,114 @@ function drawGrid() {
 function drawMusicLane() {
   const timing =
     activeTiming();
+
+  if (
+    song.audio?.mode ===
+      "file"
+  ) {
+    const centerY =
+      Y.music +
+      LAYOUT.music / 2;
+
+    ctx.save();
+    ctx.strokeStyle =
+      "rgba(110,215,255,.72)";
+    ctx.lineWidth = 1;
+
+    if (
+      waveformPeaks &&
+      fileAudioBuffer
+    ) {
+      const width =
+        timing.beats *
+        pxPerBeat;
+      const offsetSeconds =
+        Number(
+          timing.offsetMs ??
+          0
+        ) /
+        1000;
+
+      ctx.beginPath();
+
+      for (
+        let x = 0;
+        x <= width;
+        x += 2
+      ) {
+        const beat =
+          x /
+          pxPerBeat;
+        const audioTime =
+          offsetSeconds +
+          beat *
+            60 /
+            timing.bpm;
+
+        if (
+          audioTime < 0 ||
+          audioTime >
+            fileAudioBuffer
+              .duration
+        ) {
+          continue;
+        }
+
+        const point =
+          Math.min(
+            waveformPeaks.length -
+              1,
+            Math.max(
+              0,
+              Math.floor(
+                audioTime /
+                fileAudioBuffer
+                  .duration *
+                waveformPeaks.length
+              )
+            )
+          );
+        const amp =
+          waveformPeaks[
+            point
+          ] ?? 0;
+        const h =
+          Math.max(
+            1,
+            amp *
+              (LAYOUT.music *
+                0.42)
+          );
+
+        ctx.moveTo(
+          x,
+          centerY - h
+        );
+        ctx.lineTo(
+          x,
+          centerY + h
+        );
+      }
+
+      ctx.stroke();
+    } else {
+      ctx.fillStyle =
+        "rgba(255,255,255,.28)";
+      ctx.font =
+        "800 10px ui-monospace, monospace";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        "AUDIO FILE · usa ANALIZAR SRC o ARCHIVO LOCAL para waveform",
+        12,
+        centerY
+      );
+    }
+
+    ctx.restore();
+    return;
+  }
+
   const step =
     1 /
     timing.stepsPerBeat;
@@ -2896,7 +3310,7 @@ async function loadSongById(
   try {
     const url =
       new URL(
-        `../songs/${entry.file}?v=0.44`,
+        `../songs/${entry.file}?v=0.45`,
         import.meta.url
       );
     const loaded =
@@ -2947,7 +3361,7 @@ async function boot() {
   try {
     const registryUrl =
       new URL(
-        "../songs/index.json?v=0.44",
+        "../songs/index.json?v=0.45",
         import.meta.url
       );
     registry =
