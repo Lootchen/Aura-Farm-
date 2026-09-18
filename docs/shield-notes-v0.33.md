@@ -141,3 +141,19 @@ Shield authoring is deliberately reduced from 21 to 15 Tap notes:
 `14, 15, 17, 28, 29, 30, 42, 43, 44, 57, 59, 60, 62, 64.5, 66`.
 
 The intent is repetition without blanket protection.
+
+
+## v0.38.1 — compact visual shell
+
+The six-sided v0.38 cell solved recognition but occupied too much visual space and competed with the Tap.
+
+The intact state now uses:
+
+- a compact translucent fill close to the Tap;
+- three bright segmented armor arcs;
+- three small anchor studs;
+- one subtle inner support ring.
+
+The exposed state keeps only a short three-ray fracture and two warm brackets for 420 ms.
+
+No Shield mechanics changed in this patch.
