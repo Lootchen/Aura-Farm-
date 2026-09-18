@@ -82,28 +82,28 @@ const BARS = [
   { root: 45, chord: [0,3,7], bass: "pulse", lead: "rest",    aura: "rest",  drums: "seed",     section: "GERMINATE" },
   { root: 41, chord: [0,4,7], bass: "pulse", lead: "rest",    aura: "rest",  drums: "seed",     section: "GERMINATE" },
   { root: 48, chord: [0,4,7], bass: "walk",  lead: "seed",    aura: "rest",  drums: "flow",     section: "SPROUT" },
-  { root: 43, chord: [0,4,7], bass: "walk",  lead: "answer",  aura: "spark", drums: "flow",     section: "SPROUT" },
+  { root: 43, chord: [0,4,7], bass: "walk",  lead: "answer",  aura: "spark", drums: "flow",     section: "SPROUT", fill: true },
 
   // 4–7: machine flow
   { root: 45, chord: [0,3,7], bass: "drive", lead: "relay",   aura: "spark", drums: "flow",     section: "CURRENT" },
   { root: 48, chord: [0,4,7], bass: "drive", lead: "answer",  aura: "spark", drums: "relay",    section: "CURRENT" },
   { root: 41, chord: [0,4,7], bass: "drive", lead: "relay",   aura: "bloom", drums: "relay",    section: "RELAY" },
-  { root: 44, chord: [0,4,7], bass: "walk",  lead: "lift",    aura: "bloom", drums: "relay",    section: "RELAY" },
+  { root: 44, chord: [0,4,7], bass: "walk",  lead: "lift",    aura: "bloom", drums: "relay",    section: "RELAY", fill: true },
 
   // 8–11: fracture / expansion
   { root: 50, chord: [0,3,7], bass: "drive", lead: "fracture",aura: "pulse", drums: "fracture", section: "FRACTURE" },
   { root: 41, chord: [0,4,7], bass: "climb", lead: "relay",   aura: "pulse", drums: "fracture", section: "FRACTURE" },
   { root: 45, chord: [0,3,7], bass: "climb", lead: "lift",    aura: "bloom", drums: "fracture", section: "OVERDRIVE" },
-  { root: 44, chord: [0,4,7], bass: "drive", lead: "answer",  aura: "pulse", drums: "flow",     section: "OVERDRIVE" },
+  { root: 44, chord: [0,4,7], bass: "drive", lead: "answer",  aura: "pulse", drums: "flow",     section: "OVERDRIVE", fill: true },
 
   // 12–15: ascent
   { root: 45, chord: [0,3,7], bass: "climb", lead: "lift",    aura: "pulse", drums: "ascent",   section: "ASCENT" },
   { root: 43, chord: [0,4,7], bass: "climb", lead: "fracture",aura: "pulse", drums: "ascent",   section: "ASCENT" },
   { root: 41, chord: [0,4,7], bass: "drive", lead: "lift",    aura: "bloom", drums: "ascent",   section: "BLOOM" },
-  { root: 44, chord: [0,4,7], bass: "drive", lead: "answer",  aura: "pulse", drums: "ascent",   section: "BLOOM" },
+  { root: 44, chord: [0,4,7], bass: "drive", lead: "answer",  aura: "pulse", drums: "ascent",   section: "BLOOM", fill: true },
 
   // 16: turnaround / Core bar
-  { root: 45, chord: [0,3,7], bass: "boss",  lead: "boss",    aura: "boss",  drums: "boss",     section: "CORE" }
+  { root: 45, chord: [0,3,7], bass: "boss",  lead: "boss",    aura: "boss",  drums: "boss",     section: "ROOT", fill: true }
 ];
 
 const includes = (array, step) => array.includes(step);
@@ -199,6 +199,11 @@ export function songFrameAtBeat(beat) {
         ? null
         : bar.root +
           auraOffset,
+    fill:
+      Boolean(
+        bar.fill &&
+        step >= 6
+      ),
     bossMidi:
       bar.root -
       12 +
