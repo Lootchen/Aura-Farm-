@@ -54,6 +54,10 @@ function validateGameChart(chart) {
     }
 
     if (event.type === "slide") {
+      if (!["trace", "follow"].includes(event.mode)) {
+        throw new Error(`Evento ${index}: mode de slide debe ser trace o follow.`);
+      }
+
       if (!["left", "right"].includes(event.side)) {
         throw new Error(`Evento ${index}: side de slide inválido.`);
       }
