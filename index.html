@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
-  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.29" type="image/svg+xml">
+  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.30" type="image/svg+xml">
   <title>Aura Farm — Build the Beat</title>
-  <link rel="stylesheet" href="./styles.css?v=0.29">
+  <link rel="stylesheet" href="./styles.css?v=0.30">
 </head>
 <body>
   <main class="app" data-machine="forge">
@@ -43,6 +43,7 @@
         <span class="build-empty">SIN MODS</span>
       </div>
       <span id="synergyBadge" class="synergy-badge" hidden></span>
+      <button id="buildButton" class="build-open" type="button">VER</button>
     </aside>
 
     <div class="controls" aria-label="Controles de pinzas">
@@ -51,7 +52,7 @@
     </div>
 
     <section id="startPanel" class="start-panel">
-      <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.29" alt=""></div>
+      <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.30" alt=""></div>
       <span class="eyebrow">AURA FARM · VERTICAL SLICE</span>
       <h1>BUILD THE BEAT</h1>
       <p>Golpea notas, conviértelas en proyectiles y construye una máquina musical distinta en cada run.</p>
@@ -98,14 +99,42 @@
     <section id="upgradePanel" class="upgrade-panel" hidden>
       <div class="upgrade-shell">
         <span class="upgrade-kicker">AURA MODULE BAY</span>
-        <h2 id="upgradeTitle">ELIGE 1 MEJORA</h2>
-        <div class="current-build-block">
-          <span>TU BUILD</span>
-          <div id="currentBuildList" class="current-build-list"></div>
+        <h2 id="upgradeTitle">ELIGE 1 MÓDULO</h2>
+        <div class="module-bay-status">
+          <span id="moduleSlotStatus">ACTIVOS 0/4</span>
           <strong id="currentSynergy" class="current-synergy"></strong>
+          <button id="upgradeManageButton" type="button">GESTIONAR BUILD</button>
         </div>
         <div id="upgradeCards" class="upgrade-cards"></div>
-        <small>La mejora altera el resto de la run y también su mezcla musical.</small>
+        <small>Preview real de la mecánica · duplicados mejoran el módulo hasta nivel 3.</small>
+      </div>
+    </section>
+
+    <section id="buildPanel" class="build-panel" hidden>
+      <div class="build-manager-shell">
+        <span class="eyebrow">AURI · LOADOUT</span>
+        <h2>MI BUILD</h2>
+        <p>Máximo 4 módulos activos. Los módulos en reserva no alteran la run hasta equiparlos.</p>
+
+        <section class="loadout-section">
+          <header><span>ACTIVOS</span><strong id="activeSlotCount">0 / 4</strong></header>
+          <div id="activeModuleSlots" class="loadout-grid active-loadout"></div>
+        </section>
+
+        <section class="loadout-section">
+          <header><span>RESERVA</span><strong id="reserveSlotCount">0 / 4</strong></header>
+          <div id="reserveModuleSlots" class="loadout-grid reserve-loadout"></div>
+        </section>
+
+        <div id="buildManagerDetail" class="build-manager-detail">
+          <span>Selecciona un módulo para ver su función.</span>
+        </div>
+
+        <strong id="buildManagerSynergy" class="build-manager-synergy"></strong>
+
+        <div class="build-manager-actions">
+          <button id="buildCloseButton" class="primary-action" type="button">VOLVER</button>
+        </div>
       </div>
     </section>
 
@@ -167,6 +196,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.29"></script>
+  <script type="module" src="./src/main.js?v=0.30"></script>
 </body>
 </html>
