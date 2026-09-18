@@ -980,7 +980,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.23", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.24", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -1214,6 +1214,13 @@ function spawnReady(songTime) {
 
   for (const loop of loops) {
     CHART.forEach((event, index) => {
+      if (
+        Number(event.minAct || 1) >
+        wave
+      ) {
+        return;
+      }
+
       const key = `${loop}:${index}`;
 
       if (active.has(key) || resolved.has(key)) return;
