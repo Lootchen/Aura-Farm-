@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.37
+# Aura Farm — Vertical Slice v0.38
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,42 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.38 — Shield System / Encapsulated Beat
+
+v0.38 rebuilds Shield as a gameplay state instead of a decorative ring.
+
+### Three readable states
+
+1. **Encapsulated** — a large six-node glass cell surrounds the normal Tap.
+2. **Break** — projectile contact fractures the cell outward without playing the generic destruction explosion.
+3. **Exposed** — warm open brackets remain briefly around the intact Tap so the player reads “shield gone, beat still alive”.
+
+The Tap body never disappears during Shield Break.
+
+### Mechanical polish
+
+- a Shield still absorbs exactly one projectile-derived hit;
+- non-piercing projectiles are consumed on the Shield;
+- Perfora spends one pierce and continues;
+- Shock can break the capsule but cannot delete the authored Shield beat;
+- subsequent projectiles pass through the already exposed beat until the player hits it;
+- if a Shield breaks within 0.42 s of its target beat, the note receives 110 ms of extra miss grace and a 12 px claw catch assist;
+- this late-break assist does not auto-hit the note and does not move the beat.
+
+### Cadence
+
+Blanket Shield authoring from v0.36.2 was too dense. The chart now uses 15 deliberate Shields instead of 21, clustered in learnable 2–3 note phrases while preserving ordinary targets for destructive projectile play.
+
+### Teaching
+
+The first Shield encounter now teaches the state in three steps:
+
+- `ESCUDO = BEAT ENCAPSULADO`
+- `TU BOLA ROMPE LA CÁPSULA · NO EL BEAT`
+- `EXPUESTO = AHORA GOLPÉALO CON LA PINZA`
+
+The first authored Shield also carries a temporary `ESCUDO` pointer during onboarding.
 
 ## v0.37 — Mobile playability / HUD / Module Bay
 
