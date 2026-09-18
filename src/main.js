@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.36.2";
+import { loadGameChart } from "./chart.js?v=0.37";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.36.2";
+} from "./music.js?v=0.37";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.36.2";
+const GAME_VERSION = "0.37";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.36.2";
+  "./assets/world/glasshouse-far.svg?v=0.37";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.36.2";
+  "./assets/world/growth-bays.svg?v=0.37";
 
 function drawWorldAsset(
   image,
@@ -151,16 +151,16 @@ FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
 const SLIDE = {
   leadSeconds: 2.45,
-  startEarly: 0.28,
-  startLate: 0.28,
+  startEarly: 0.42,
+  startLate: 0.38,
   scrollSpeed: 145,
-  railTolerance: 25,
-  disconnectGrace: 0.15,
-  minCoverage: 0.68,
+  railTolerance: 34,
+  disconnectGrace: 0.22,
+  minCoverage: 0.60,
   reachMin: 0.88,
   reachMax: 1.15,
   nodeBeats: 0.5,
-  traceGrabRadius: 58
+  traceGrabRadius: 82
 };
 
 const POWER_ORB_BASE_SCALE = 1.55;
@@ -3119,7 +3119,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.36.2", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.37", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -6531,19 +6531,50 @@ function drawIncomingSlideHead(
     head.y
   );
 
-  ctx.shadowBlur = 8;
+  const pickupPulse =
+    0.5 +
+    0.5 *
+      Math.sin(
+        performance.now() /
+        150
+      );
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle =
+    event.started
+      ? "rgba(255,241,169,.18)"
+      : sideColor;
+  ctx.globalAlpha =
+    event.started
+      ? 0.35
+      : 0.22 +
+        pickupPulse * 0.22;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    31 +
+      pickupPulse * 4,
+    0,
+    Math.PI * 2
+  );
+  ctx.stroke();
+
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 12;
   ctx.shadowColor = sideColor;
   ctx.fillStyle =
     "rgba(7,11,18,.94)";
   ctx.strokeStyle =
     sideColor;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3.5;
 
   ctx.beginPath();
   ctx.arc(
     0,
     0,
-    19,
+    22,
     0,
     Math.PI * 2
   );
@@ -6556,7 +6587,7 @@ function drawIncomingSlideHead(
   ctx.arc(
     0,
     0,
-    6,
+    7,
     0,
     Math.PI * 2
   );
@@ -10127,7 +10158,7 @@ function previewEase(t) {
 }
 
 function previewSceneTime(now) {
-  const cycleMs = 2850;
+  const cycleMs = 3600;
   const raw =
     (now % cycleMs) /
     cycleMs;
@@ -10686,7 +10717,7 @@ function drawPreviewHitSetup(
       ) / 0.18;
     drawPreviewLabel(
       context,
-      "PERFECT",
+      "TAP · PERFECT → SHOT",
       "#fff1a9",
       flash,
       24
@@ -10958,11 +10989,30 @@ function drawModulePreview(
       context.fill();
       drawPreviewLabel(
         context,
-        "SLIDE",
-        "rgba(255,255,255,.68)",
+        "TRACE · ARRASTRA",
+        "rgba(255,255,255,.78)",
         1,
         24
       );
+
+      context.save();
+      context.strokeStyle =
+        "rgba(255,241,169,.62)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(
+        cursor.x,
+        cursor.y,
+        10 +
+          2 *
+            Math.sin(
+              now / 130
+            ),
+        0,
+        Math.PI * 2
+      );
+      context.stroke();
+      context.restore();
     } else {
       const shot =
         (t - slideEnd) /
@@ -12008,7 +12058,7 @@ function renderUpgradeChoices() {
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"${fitLabel ? "" : " hidden"}><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="260" height="150" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
+      `<span class="module-head"${fitLabel ? "" : " hidden"}><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="360" height="210" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
 
     button.addEventListener(
       "click",
@@ -12699,16 +12749,24 @@ canvas.addEventListener(
       pointerEvent.pointerId
     );
 
+    const startingNow =
+      !slide.started;
+
     slide.traceHeld = true;
     slide.tracePointerId =
       pointerEvent.pointerId;
     slide.playerVector =
-      pointToSlideVector(
-        slide.side,
-        point
-      );
+      startingNow
+        ? slideVectorAtBeat(
+            slide,
+            0
+          )
+        : pointToSlideVector(
+            slide.side,
+            point
+          );
 
-    if (!slide.started) {
+    if (startingNow) {
       beginSlide(
         slide,
         slide.side,
