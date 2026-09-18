@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.45";
+} from "./song.js?v=0.46";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.45";
+} from "./music.js?v=0.46";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.45";
+} from "./audio-file.js?v=0.46";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -30,6 +30,7 @@ const menuAuriLine = document.querySelector("#menuAuriLine");
 const menuTrackMeta = document.querySelector("#menuTrackMeta");
 const menuTrackTitle = document.querySelector("#menuTrackTitle");
 const menuTrackDescription = document.querySelector("#menuTrackDescription");
+const songPickerItems = document.querySelector("#songPickerItems");
 const menuVersion = document.querySelector("#menuVersion");
 const rerunButton = document.querySelector("#rerunButton");
 const summaryDailyButton = document.querySelector("#summaryDailyButton");
@@ -93,7 +94,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.45";
+const GAME_VERSION = "0.46";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -107,9 +108,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.45";
+  "./assets/world/glasshouse-far.svg?v=0.46";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.45";
+  "./assets/world/growth-bays.svg?v=0.46";
 
 function drawWorldAsset(
   image,
@@ -281,6 +282,7 @@ const profile = loadLocalJson(
     runsCompleted: 0,
     bestScore: 0,
     selectedMachine: "forge",
+    selectedSongId: "glasshouse-circuit",
     calibrationOffsetMs: 0,
     dailyBest: {},
     tutorialSeen: false,
@@ -313,6 +315,12 @@ let selectedMachine =
   MACHINES[profile.selectedMachine]
     ? profile.selectedMachine
     : "forge";
+
+selectedSongId =
+  typeof profile.selectedSongId ===
+    "string"
+    ? profile.selectedSongId
+    : null;
 let runMode = "standard";
 let runPaused = false;
 let runSeed = 1;
@@ -344,6 +352,7 @@ let bossState = {
 };
 
 let screenShake = 0;
+let musicSectionPulse = 0;
 let impactVeil = 0;
 let operatorPulse = 0;
 let operatorMood = "idle";
@@ -3348,7 +3357,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.45",
+      "../songs/index.json?v=0.46",
       import.meta.url
     );
 
@@ -3357,10 +3366,145 @@ async function ensureSongCatalog() {
       registryUrl
     );
 
-  selectedSongId ??=
-    songCatalog.defaultSong;
+  if (
+    !songCatalog.songs.some(
+      (item) =>
+        item.id ===
+        selectedSongId
+    )
+  ) {
+    selectedSongId =
+      songCatalog.defaultSong;
+  }
+
+  renderSongPicker();
 
   return songCatalog;
+}
+
+function renderSongPicker() {
+  if (
+    !songPickerItems ||
+    !songCatalog
+  ) {
+    return;
+  }
+
+  songPickerItems.innerHTML = "";
+
+  for (
+    const entry of
+    songCatalog.songs
+  ) {
+    const button =
+      document.createElement(
+        "button"
+      );
+    const number =
+      String(
+        entry.trackNumber ??
+        songCatalog.songs.indexOf(entry) +
+          1
+      ).padStart(2, "0");
+
+    button.type = "button";
+    button.className =
+      "song-option";
+    button.dataset.song =
+      entry.id;
+    button.classList.toggle(
+      "is-selected",
+      entry.id ===
+        selectedSongId
+    );
+    button.innerHTML =
+      `<span>${number}</span><div><strong>${entry.title ?? entry.id}</strong><small>${entry.bpm ? `${entry.bpm} BPM · ` : ""}${entry.tag ?? "AURA TRACK"}</small></div>`;
+
+    button.addEventListener(
+      "click",
+      () =>
+        selectSong(
+          entry.id
+        )
+    );
+
+    songPickerItems.append(
+      button
+    );
+  }
+}
+
+async function selectSong(
+  id
+) {
+  if (
+    running ||
+    runPaused ||
+    awaitingUpgrade ||
+    id === selectedSongId
+  ) {
+    return;
+  }
+
+  const catalog =
+    await ensureSongCatalog();
+
+  if (
+    !catalog.songs.some(
+      (item) =>
+        item.id === id
+    )
+  ) {
+    return;
+  }
+
+  startButton.disabled = true;
+  dailyButton.disabled = true;
+  practiceButton.disabled = true;
+
+  selectedSongId = id;
+  profile.selectedSongId = id;
+  saveLocalJson(
+    PROFILE_KEY,
+    profile
+  );
+
+  chartLoaded = false;
+  CHART = [];
+  SONG = null;
+  songSourceUrl = null;
+  songAlignmentReport = null;
+  configureSong(null);
+  clock.stopMusic();
+
+  renderSongPicker();
+
+  try {
+    await ensureChartLoaded();
+    buildPaths();
+
+    if (menuAuriLine) {
+      menuAuriLine.textContent =
+        `${SONG.title} cargada · ${songAlignmentReport.checked} eventos validados.`;
+    }
+  } catch (error) {
+    console.error(
+      "[Aura Farm] song selection failed",
+      error
+    );
+
+    if (menuAuriLine) {
+      menuAuriLine.textContent =
+        `No puedo cargar esta canción: ${error.message}`;
+    }
+  } finally {
+    startButton.disabled =
+      !chartLoaded;
+    dailyButton.disabled =
+      !chartLoaded;
+    practiceButton.disabled =
+      !chartLoaded;
+  }
 }
 
 function applySongMetadataToUi(
@@ -3415,7 +3559,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.45`,
+      `../songs/${entry.file}?v=0.46`,
       import.meta.url
     );
 
@@ -3493,6 +3637,7 @@ async function ensureChartLoaded() {
   applySongMetadataToUi(
     song
   );
+  renderSongPicker();
 
   chartLoaded = true;
 }
@@ -7589,6 +7734,12 @@ function updateEffects(dt) {
       0,
       1 - dt * 7.5
     );
+  musicSectionPulse =
+    Math.max(
+      0,
+      musicSectionPulse -
+        dt * 1.35
+    );
 
   if (
     operatorPulse <= 0 &&
@@ -7662,10 +7813,27 @@ function updateLiveHud(songTime) {
     section !==
     lastHudSection
   ) {
+    const previous =
+      lastHudSection;
+
     lastHudSection =
       section;
     trackSectionEl.textContent =
       section;
+
+    if (
+      previous &&
+      beat >= 0
+    ) {
+      musicSectionPulse = 1;
+      setOperatorMood(
+        section === "CROWN" ||
+        section === "ROOT"
+          ? "boss"
+          : "flow",
+        0.58
+      );
+    }
   }
 
   if (
@@ -7679,6 +7847,115 @@ function updateLiveHud(songTime) {
   }
 }
 
+function songPresentationForSection(
+  section
+) {
+  const presentation =
+    SONG?.presentation;
+  const sectionState =
+    presentation
+      ?.sections?.[section] ??
+    null;
+
+  return {
+    accent:
+      Array.isArray(
+        presentation?.accent
+      )
+        ? presentation.accent
+        : null,
+    secondary:
+      Array.isArray(
+        presentation?.secondary
+      )
+        ? presentation.secondary
+        : null,
+    energy:
+      clamp(
+        Number(
+          sectionState?.energy ??
+          0
+        ),
+        0,
+        1
+      ),
+    pulse:
+      clamp(
+        Number(
+          sectionState?.pulse ??
+          0
+        ),
+        0,
+        1
+      ),
+    bloom:
+      clamp(
+        Number(
+          sectionState?.bloom ??
+          0
+        ),
+        0,
+        1
+      )
+  };
+}
+
+function mixRgb(
+  a,
+  b,
+  amount
+) {
+  if (!b) return a;
+
+  return a.map(
+    (value, index) =>
+      Math.round(
+        lerp(
+          value,
+          b[index] ?? value,
+          amount
+        )
+      )
+  );
+}
+
+function musicReactivePalette(
+  base,
+  presentation
+) {
+  if (
+    !presentation?.accent &&
+    !presentation?.secondary
+  ) {
+    return base;
+  }
+
+  const mix =
+    clamp(
+      0.12 +
+      presentation.bloom *
+        0.22,
+      0.12,
+      0.34
+    );
+
+  return {
+    ...base,
+    accent:
+      mixRgb(
+        base.accent,
+        presentation.accent,
+        mix
+      ),
+    secondary:
+      mixRgb(
+        base.secondary,
+        presentation.secondary,
+        mix
+      )
+  };
+}
+
 function worldMusicResponse() {
   const beat =
     Math.max(
@@ -7686,10 +7963,15 @@ function worldMusicResponse() {
       clock.songTime /
         beatToSeconds(1)
     );
+  const grid =
+    Math.max(
+      1,
+      STEPS_PER_BEAT
+    );
   const step =
     Math.round(
-      beat * 2
-    ) / 2;
+      beat * grid
+    ) / grid;
   const distance =
     Math.abs(
       beat - step
@@ -7705,6 +7987,22 @@ function worldMusicResponse() {
     songFrameAtBeat(
       step
     );
+  const presentation =
+    songPresentationForSection(
+      frame.section
+    );
+  const beatIndex =
+    Math.round(step);
+  const downbeat =
+    Math.abs(
+      step - beatIndex
+    ) < 0.0001 &&
+    beatIndex %
+      Math.max(
+        1,
+        SONG?.timing?.beatsPerBar ??
+        4
+      ) === 0;
 
   return {
     kick:
@@ -7726,7 +8024,18 @@ function worldMusicResponse() {
         frame.auraMidi
       )
         ? envelope
-        : 0
+        : 0,
+    downbeat:
+      downbeat
+        ? envelope
+        : 0,
+    sectionEnergy:
+      presentation.energy,
+    sectionPulse:
+      presentation.pulse,
+    sectionBloom:
+      presentation.bloom,
+    presentation
   };
 }
 
@@ -7747,8 +8056,15 @@ function drawPresentationAtmosphere(
     );
   const pulse =
     clamp(
-      musicResponse.kick * 0.7 +
-      musicResponse.aura * 0.5,
+      musicResponse.kick * 0.62 +
+      musicResponse.aura * 0.42 +
+      musicResponse.downbeat *
+        (
+          0.30 +
+          musicResponse.sectionPulse *
+            0.28
+        ) +
+      musicSectionPulse * 0.36,
       0,
       1
     );
@@ -7757,7 +8073,7 @@ function drawPresentationAtmosphere(
 
   // Stage halo: a single broad arch adds depth without adding targets.
   ctx.strokeStyle =
-    `rgba(${sr},${sg},${sb},${0.028 + intensity * 0.030 + pulse * 0.020})`;
+    `rgba(${sr},${sg},${sb},${0.028 + intensity * 0.030 + pulse * 0.038 + musicResponse.sectionBloom * 0.022})`;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.ellipse(
@@ -8074,10 +8390,13 @@ function drawGlasshouseDepth(
   const reactorEnergy =
     clamp(
       0.10 +
-      intensity * 0.34 +
-      buildEnergy * 0.24 +
-      musicResponse.lead * 0.14 +
-      musicResponse.aura * 0.18,
+      intensity * 0.30 +
+      buildEnergy * 0.22 +
+      musicResponse.lead * 0.12 +
+      musicResponse.aura * 0.16 +
+      musicResponse.sectionEnergy *
+        0.20 +
+      musicSectionPulse * 0.14,
       0,
       1
     );
@@ -8240,12 +8559,23 @@ function drawGlasshouseDepth(
 }
 
 function drawBackground() {
-  const palette =
-    machinePalette();
   const act =
     currentActMeta();
+  const musicResponse =
+    worldMusicResponse();
+  const palette =
+    musicReactivePalette(
+      machinePalette(),
+      musicResponse.presentation
+    );
   const intensity =
-    act.intensity;
+    clamp(
+      act.intensity * 0.82 +
+      musicResponse.sectionEnergy *
+        0.22,
+      0,
+      1
+    );
   const [ar, ag, ab] =
     palette.accent;
   const [sr, sg, sb] =
@@ -8257,9 +8587,6 @@ function drawBackground() {
       beatPhase,
       1 - beatPhase
     ) * 2;
-  const musicResponse =
-    worldMusicResponse();
-
   ctx.fillStyle = "#070b13";
   ctx.fillRect(
     0,
@@ -8279,7 +8606,7 @@ function drawBackground() {
     );
   glow.addColorStop(
     0,
-    `rgba(${ar},${ag},${ab},${0.030 + intensity * 0.050 + pulse * 0.014 + musicResponse.kick * 0.038})`
+    `rgba(${ar},${ag},${ab},${0.030 + intensity * 0.050 + pulse * 0.014 + musicResponse.kick * 0.038 + musicResponse.downbeat * 0.026 + musicSectionPulse * 0.024})`
   );
   glow.addColorStop(
     0.52,
