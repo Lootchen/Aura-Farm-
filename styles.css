@@ -4745,3 +4745,29 @@ button { font: inherit; }
     opacity: 0;
   }
 }
+
+
+/* v0.44 — internal Chart Lab entry point */
+.settings-tool-card {
+  align-items: center;
+}
+
+.settings-tool-link {
+  flex: 0 0 auto;
+  min-width: 120px;
+  padding: 8px 10px;
+  border: 1px solid rgba(var(--machine-secondary),.20);
+  border-radius: 10px;
+  background: rgba(var(--machine-secondary),.055);
+  color: rgb(var(--machine-secondary));
+  font:
+    900 .54rem/1
+    ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .05em;
+  text-decoration: none;
+  text-align: center;
+}
+
+.settings-tool-link:active {
+  transform: scale(.98);
+}
