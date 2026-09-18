@@ -7023,13 +7023,33 @@ function controlButtonCenter(side) {
 }
 
 function drawControlButton(side, songTime) {
-  const center = controlButtonCenter(side);
+  const center =
+    controlButtonCenter(side);
   const m = view();
-  const pivot = m.pivot[side];
-  const phase = flipperPhase(side, songTime);
-  const slide = activeSlideAt(songTime, side);
-  const control = slideControl[side];
-  const left = side === "left";
+  const pivot =
+    m.pivot[side];
+  const phase =
+    flipperPhase(
+      side,
+      songTime
+    );
+  const slide =
+    activeSlideAt(
+      songTime,
+      side
+    );
+  const control =
+    slideControl[side];
+  const left =
+    side === "left";
+  const palette =
+    machinePalette();
+  const sideRgb =
+    left
+      ? palette.secondary
+      : palette.accent;
+  const sideColor =
+    `rgb(${sideRgb.join(",")})`;
   const slideActive =
     Boolean(
       slide?.started &&
@@ -7037,41 +7057,47 @@ function drawControlButton(side, songTime) {
     );
   const connected =
     slideActive &&
-    slideVisualConnected(slide, songTime);
+    slideVisualConnected(
+      slide,
+      songTime
+    );
 
   const displacement =
-    slideActive || control.held
+    slideActive ||
+    control.held
       ? {
           x: control.x * 30,
           y: control.y * 30
         }
       : { x: 0, y: 0 };
 
-  const pressDepth =
-    !slideActive && phase.active ? 5 : 0;
-
   const cap = {
-    x: center.x + displacement.x,
-    y: center.y + displacement.y + pressDepth
+    x:
+      center.x +
+      displacement.x,
+    y:
+      center.y +
+      displacement.y +
+      (
+        !slideActive &&
+        phase.active
+          ? 4
+          : 0
+      )
   };
 
   ctx.save();
 
-  const palette =
-    machinePalette();
-  const cableRgb =
-    left
-      ? palette.secondary
-      : palette.accent;
-
+  // Cable: one quiet structural line.
   ctx.strokeStyle =
-    `rgba(${cableRgb.join(",")},.22)`;
-  ctx.lineWidth = 9;
+    `rgba(${sideRgb.join(",")},.14)`;
+  ctx.lineWidth = 5;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(
-    center.x + (left ? 24 : -24),
-    center.y - 18
+    center.x +
+      (left ? 22 : -22),
+    center.y - 14
   );
   ctx.quadraticCurveTo(
     left ? 106 : 434,
@@ -7081,97 +7107,70 @@ function drawControlButton(side, songTime) {
   );
   ctx.stroke();
 
-  ctx.shadowBlur = 18;
-  ctx.shadowColor =
-    left
-      ? "rgba(92,204,255,.34)"
-      : "rgba(204,139,255,.32)";
-  ctx.fillStyle = "#0c1420";
+  // Socket: one dark disc, one functional ring.
+  ctx.fillStyle =
+    "#0b121c";
   ctx.strokeStyle =
     slideActive
-      ? connected
-        ? "#fff1a9"
-        : "rgba(255,113,132,.76)"
-      : left
-        ? "rgba(142,222,255,.64)"
-        : "rgba(224,188,255,.62)";
-  ctx.lineWidth = 4;
+      ? (
+          connected
+            ? "#fff1a9"
+            : "rgba(255,125,153,.68)"
+        )
+      : `rgba(${sideRgb.join(",")},.52)`;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(
     center.x,
     center.y,
-    38,
+    35,
     0,
     Math.PI * 2
   );
   ctx.fill();
   ctx.stroke();
 
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = "rgba(255,255,255,.10)";
-  ctx.lineWidth = 2;
+  // Shaft.
+  ctx.strokeStyle =
+    "#3b4856";
+  ctx.lineWidth = 13;
   ctx.beginPath();
-  ctx.arc(
+  ctx.moveTo(
     center.x,
-    center.y,
-    29,
-    0,
-    Math.PI * 2
+    center.y
+  );
+  ctx.lineTo(
+    cap.x,
+    cap.y
   );
   ctx.stroke();
 
-  ctx.strokeStyle = "#435264";
-  ctx.lineWidth = 16;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(center.x, center.y + 2);
-  ctx.lineTo(cap.x, cap.y + 2);
-  ctx.stroke();
-
-  ctx.strokeStyle = "rgba(255,255,255,.18)";
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.moveTo(center.x - 2, center.y - 1);
-  ctx.lineTo(cap.x - 2, cap.y - 1);
-  ctx.stroke();
-
+  // Thumb cap: single material surface.
   ctx.shadowBlur =
-    slideActive || phase.active ? 24 : 12;
+    slideActive ||
+    phase.active
+      ? 10
+      : 4;
   ctx.shadowColor =
     connected
       ? "#fff1a9"
-      : left
-        ? "rgba(92,204,255,.52)"
-        : "rgba(204,139,255,.50)";
-
-  const capGradient =
-    ctx.createRadialGradient(
-      cap.x - 8,
-      cap.y - 10,
-      3,
-      cap.x,
-      cap.y,
-      31
-    );
-  capGradient.addColorStop(0, "#526174");
-  capGradient.addColorStop(0.45, "#2d3948");
-  capGradient.addColorStop(1, "#111924");
-
-  ctx.fillStyle = capGradient;
+      : sideColor;
+  ctx.fillStyle =
+    "#263342";
   ctx.strokeStyle =
     slideActive
-      ? connected
-        ? "#fff1a9"
-        : "#ff8c9b"
-      : left
-        ? "#7fdcff"
-        : "#d9a9ff";
-  ctx.lineWidth = 4;
+      ? (
+          connected
+            ? "#fff1a9"
+            : "#ff8c9b"
+        )
+      : sideColor;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(
     cap.x,
     cap.y,
-    29,
+    27,
     0,
     Math.PI * 2
   );
@@ -7179,29 +7178,38 @@ function drawControlButton(side, songTime) {
   ctx.stroke();
 
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = "rgba(255,255,255,.42)";
-  ctx.lineWidth = 3;
+  ctx.fillStyle =
+    "rgba(255,255,255,.16)";
   ctx.beginPath();
   ctx.arc(
-    cap.x - 5,
-    cap.y - 6,
-    16,
-    Math.PI * 1.12,
-    Math.PI * 1.72
+    cap.x - 7,
+    cap.y - 8,
+    4,
+    0,
+    Math.PI * 2
   );
-  ctx.stroke();
+  ctx.fill();
 
   ctx.restore();
 }
 
 function drawFlipper(side, songTime) {
   const segment =
-    flipperSegment(side, songTime);
-  const phase = segment.phase;
+    flipperSegment(
+      side,
+      songTime
+    );
+  const phase =
+    segment.phase;
   const slide =
-    activeSlideAt(songTime, side);
+    activeSlideAt(
+      songTime,
+      side
+    );
   const slideActive =
-    Boolean(slide?.started);
+    Boolean(
+      slide?.started
+    );
   const palette =
     machinePalette();
   const sideRgb =
@@ -7211,77 +7219,67 @@ function drawFlipper(side, songTime) {
   const sideColor =
     `rgb(${sideRgb.join(",")})`;
   const hot =
-    phase.attack || slideActive;
+    phase.attack ||
+    slideActive;
   const angle =
     Math.atan2(
-      segment.tip.y - segment.pivot.y,
-      segment.tip.x - segment.pivot.x
-    );
-  const mid = {
-    x:
-      lerp(
-        segment.pivot.x,
-        segment.tip.x,
-        0.55
-      ),
-    y:
-      lerp(
+      segment.tip.y -
         segment.pivot.y,
-        segment.tip.y,
-        0.55
-      )
-  };
+      segment.tip.x -
+        segment.pivot.x
+    );
 
-  drawControlButton(side, songTime);
+  drawControlButton(
+    side,
+    songTime
+  );
 
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  // Heavy chassis: the claw should read as a machine, not a neon line.
-  ctx.shadowBlur =
-    hot ? 22 : 8;
-  ctx.shadowColor =
+  // One strong silhouette.
+  ctx.strokeStyle =
+    "#0c131d";
+  ctx.lineWidth =
+    FLIPPER.width + 10;
+  ctx.beginPath();
+  ctx.moveTo(
+    segment.pivot.x,
+    segment.pivot.y
+  );
+  ctx.lineTo(
+    segment.tip.x,
+    segment.tip.y
+  );
+  ctx.stroke();
+
+  // One structural surface.
+  ctx.strokeStyle =
+    hot
+      ? "#d7c98a"
+      : "#394856";
+  ctx.lineWidth =
+    FLIPPER.width;
+  ctx.beginPath();
+  ctx.moveTo(
+    segment.pivot.x,
+    segment.pivot.y
+  );
+  ctx.lineTo(
+    segment.tip.x,
+    segment.tip.y
+  );
+  ctx.stroke();
+
+  // One thin functional accent.
+  ctx.strokeStyle =
     hot
       ? "#fff1a9"
       : sideColor;
-
-  ctx.strokeStyle = "#101824";
-  ctx.lineWidth =
-    FLIPPER.width + 13;
-  ctx.beginPath();
-  ctx.moveTo(
-    segment.pivot.x,
-    segment.pivot.y
-  );
-  ctx.lineTo(
-    segment.tip.x,
-    segment.tip.y
-  );
-  ctx.stroke();
-
-  ctx.strokeStyle =
-    hot
-      ? "#f3e5a4"
-      : "#344252";
-  ctx.lineWidth =
-    FLIPPER.width + 3;
-  ctx.beginPath();
-  ctx.moveTo(
-    segment.pivot.x,
-    segment.pivot.y
-  );
-  ctx.lineTo(
-    segment.tip.x,
-    segment.tip.y
-  );
-  ctx.stroke();
-
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = sideColor;
   ctx.globalAlpha =
-    hot ? 0.94 : 0.58;
-  ctx.lineWidth = 5;
+    hot ? 0.86 : 0.52;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(
     segment.pivot.x,
@@ -7294,63 +7292,24 @@ function drawFlipper(side, songTime) {
   ctx.stroke();
   ctx.globalAlpha = 1;
 
-  // Hydraulic collar midway along the arm.
-  ctx.save();
-  ctx.translate(mid.x, mid.y);
-  ctx.rotate(angle);
-  ctx.fillStyle = "#0c121c";
-  ctx.strokeStyle =
-    "rgba(255,255,255,.24)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(
-    -10,
-    -12,
-    20,
-    24,
-    5
-  );
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = sideColor;
-  ctx.globalAlpha = 0.62;
-  ctx.fillRect(
-    -4,
-    -9,
-    8,
-    18
-  );
-  ctx.restore();
-
-  // Pivot joint.
-  ctx.fillStyle = "#101824";
-  ctx.strokeStyle = sideColor;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(
-    segment.pivot.x,
-    segment.pivot.y,
-    14,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-  ctx.stroke();
-
+  // Pivot.
   ctx.fillStyle =
-    hot ? "#fff1a9" : "#516273";
+    "#0d1520";
+  ctx.strokeStyle =
+    sideColor;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(
     segment.pivot.x,
     segment.pivot.y,
-    5,
+    11,
     0,
     Math.PI * 2
   );
   ctx.fill();
+  ctx.stroke();
 
-  // Pincer assembly at the tip.
+  // Pincer: silhouette first, accent only on the edge.
   ctx.save();
   ctx.translate(
     segment.tip.x,
@@ -7358,56 +7317,60 @@ function drawFlipper(side, songTime) {
   );
   ctx.rotate(angle);
 
-  ctx.shadowBlur =
-    hot ? 22 : 10;
-  ctx.shadowColor =
-    hot ? "#fff1a9" : sideColor;
+  const jawSpread =
+    phase.attack
+      ? 0.18
+      : slideActive
+        ? 0.28
+        : 0.44;
+  const jawLength =
+    hot ? 21 : 19;
 
-  ctx.fillStyle = "#121b28";
+  ctx.fillStyle =
+    "#111a26";
   ctx.strokeStyle =
-    hot ? "#fff1a9" : sideColor;
-  ctx.lineWidth = 3.5;
+    hot
+      ? "#fff1a9"
+      : sideColor;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(
     0,
     0,
-    10,
+    8,
     0,
     Math.PI * 2
   );
   ctx.fill();
   ctx.stroke();
 
-  const jawSpread =
-    phase.attack
-      ? 0.18
-      : slideActive
-        ? 0.30
-        : 0.48;
-  const jawLength =
-    hot ? 22 : 19;
-
-  ctx.lineWidth = 6;
-  ctx.lineCap = "round";
-
   for (const sign of [-1, 1]) {
     const a =
-      sign * jawSpread;
+      sign *
+      jawSpread;
     const elbowX =
-      Math.cos(a) * 11;
+      Math.cos(a) * 10;
     const elbowY =
-      Math.sin(a) * 11;
+      Math.sin(a) * 10;
     const tipX =
-      Math.cos(a * 1.45) *
+      Math.cos(
+        a * 1.45
+      ) *
       jawLength;
     const tipY =
-      Math.sin(a * 1.45) *
+      Math.sin(
+        a * 1.45
+      ) *
       jawLength;
 
-    ctx.strokeStyle = "#121b28";
-    ctx.lineWidth = 10;
+    ctx.strokeStyle =
+      "#111a26";
+    ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.moveTo(3, sign * 4);
+    ctx.moveTo(
+      2,
+      sign * 3
+    );
     ctx.quadraticCurveTo(
       elbowX,
       elbowY,
@@ -7417,10 +7380,15 @@ function drawFlipper(side, songTime) {
     ctx.stroke();
 
     ctx.strokeStyle =
-      hot ? "#fff1a9" : sideColor;
-    ctx.lineWidth = 4.5;
+      hot
+        ? "#fff1a9"
+        : sideColor;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(3, sign * 4);
+    ctx.moveTo(
+      2,
+      sign * 3
+    );
     ctx.quadraticCurveTo(
       elbowX,
       elbowY,
@@ -7430,10 +7398,10 @@ function drawFlipper(side, songTime) {
     ctx.stroke();
   }
 
-  ctx.shadowBlur = 0;
   ctx.restore();
   ctx.restore();
 }
+
 function drawImpactFlashes() {
   for (const flash of impactFlashes) {
     const t = clamp(flash.life / flash.duration, 0, 1);
