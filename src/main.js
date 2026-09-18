@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.16";
+import { loadGameChart } from "./chart.js?v=0.17";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -48,14 +48,14 @@ const FLIPPER = {
 FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
 const SLIDE = {
-  leadSeconds: 2.25,
-  startEarly: 0.25,
-  startLate: 0.25,
-  scrollSpeed: 150,
-  positionTolerance: 0.24,
-  disconnectGrace: 0.12,
-  minCoverage: 0.72,
-  padTravel: 44,
+  leadSeconds: 2.45,
+  startEarly: 0.28,
+  startLate: 0.28,
+  scrollSpeed: 145,
+  positionTolerance: 0.28,
+  disconnectGrace: 0.14,
+  minCoverage: 0.70,
+  padTravel: 46,
   nodeBeats: 0.5
 };
 
@@ -326,7 +326,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.16", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.17", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -1077,7 +1077,7 @@ function slideAngle(side, position) {
   const span =
     Math.abs(m.strikeAngle[side] - m.restAngle[side]) / 2;
 
-  return center - clamp(position, -1, 1) * span;
+  return center + clamp(position, -1, 1) * span;
 }
 
 function slidePositionAtBeat(event, beatOffset) {
@@ -1164,8 +1164,6 @@ function beginSlide(event, side, songTime) {
     event.started = true;
     event.startDelta = songTime - event.targetTime;
     event.lastGoodTime = songTime;
-    slideControl[side].position =
-      event.anchors[0].position;
 
     const receiver = slideTipPoint(
       side,
@@ -1416,8 +1414,215 @@ function drawSlideOrb(
   ctx.restore();
 }
 
+function slideRawError(event, songTime) {
+  if (!event.started) return Infinity;
+
+  return Math.abs(
+    slideControl[event.side].position -
+    slidePositionAtTime(event, songTime)
+  );
+}
+
+function slideVisualConnected(event, songTime) {
+  return (
+    event.started &&
+    slideControl[event.side].held &&
+    slideRawError(event, songTime) <=
+      SLIDE.positionTolerance
+  );
+}
+
+function drawSlideGuideArc(event, songTime) {
+  const m = view();
+  const pivot = m.pivot[event.side];
+  const targetPosition =
+    slidePositionAtTime(
+      event,
+      Math.max(songTime, event.targetTime)
+    );
+  const targetAngle =
+    slideAngle(event.side, targetPosition);
+  const targetTip =
+    slideTipPoint(
+      event.side,
+      targetPosition
+    );
+
+  const startAngle =
+    Math.min(
+      m.restAngle[event.side],
+      m.strikeAngle[event.side]
+    );
+  const endAngle =
+    Math.max(
+      m.restAngle[event.side],
+      m.strikeAngle[event.side]
+    );
+
+  const connected =
+    slideVisualConnected(event, songTime);
+
+  ctx.save();
+
+  ctx.strokeStyle =
+    event.started
+      ? "rgba(255,255,255,.20)"
+      : "rgba(255,255,255,.11)";
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(
+    pivot.x,
+    pivot.y,
+    FLIPPER.length,
+    startAngle,
+    endAngle
+  );
+  ctx.stroke();
+
+  // Target ghost flipper: this is where the real flipper should align.
+  ctx.strokeStyle =
+    event.started
+      ? connected
+        ? "rgba(255,241,169,.66)"
+        : "rgba(255,113,132,.58)"
+      : "rgba(255,241,169,.34)";
+  ctx.lineWidth = 7;
+  ctx.setLineDash([7, 7]);
+  ctx.beginPath();
+  ctx.moveTo(pivot.x, pivot.y);
+  ctx.lineTo(targetTip.x, targetTip.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.shadowBlur =
+    event.started ? 20 : 10;
+  ctx.shadowColor =
+    connected ? "#fff1a9" : "#ff7184";
+  ctx.strokeStyle =
+    event.started
+      ? connected
+        ? "#fff1a9"
+        : "#ff7184"
+      : "rgba(255,241,169,.70)";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(
+    targetTip.x,
+    targetTip.y,
+    event.started ? 17 : 13,
+    0,
+    Math.PI * 2
+  );
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawSlidePadLegend(event, songTime) {
+  const center =
+    controlButtonCenter(event.side);
+  const control =
+    slideControl[event.side];
+  const target =
+    event.started
+      ? slidePositionAtTime(event, songTime)
+      : event.anchors[0].position;
+  const travel = 28;
+  const tolerance =
+    SLIDE.positionTolerance * travel;
+  const connected =
+    slideVisualConnected(event, songTime);
+
+  ctx.save();
+
+  // Mini trackpad inside the circular control.
+  ctx.fillStyle =
+    "rgba(5,9,16,.52)";
+  ctx.strokeStyle =
+    "rgba(255,255,255,.28)";
+  ctx.lineWidth = 2;
+
+  const x0 = center.x - 31;
+  const y0 = center.y - 8;
+  const w = 62;
+  const h = 16;
+  const r = 8;
+
+  ctx.beginPath();
+  ctx.roundRect(x0, y0, w, h, r);
+  ctx.fill();
+  ctx.stroke();
+
+  const targetX =
+    center.x + target * travel;
+
+  ctx.fillStyle =
+    event.started
+      ? connected
+        ? "rgba(255,241,169,.24)"
+        : "rgba(255,113,132,.20)"
+      : "rgba(255,241,169,.16)";
+
+  ctx.fillRect(
+    targetX - tolerance,
+    y0 + 2,
+    tolerance * 2,
+    h - 4
+  );
+
+  ctx.strokeStyle =
+    event.started
+      ? connected
+        ? "#fff1a9"
+        : "#ff7184"
+      : "#fff1a9";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(targetX, y0 - 5);
+  ctx.lineTo(targetX, y0 + h + 5);
+  ctx.stroke();
+
+  const playerX =
+    center.x +
+    control.position * travel;
+
+  ctx.shadowBlur =
+    control.held ? 14 : 6;
+  ctx.shadowColor =
+    "#eaf7ff";
+  ctx.fillStyle =
+    control.held
+      ? "#eaf7ff"
+      : "rgba(234,247,255,.70)";
+  ctx.beginPath();
+  ctx.arc(
+    playerX,
+    center.y,
+    7,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle =
+    "rgba(255,255,255,.60)";
+  ctx.font =
+    "900 9px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("‹", center.x - 28, center.y - 21);
+  ctx.fillText("›", center.x + 28, center.y - 21);
+
+  ctx.restore();
+}
+
 function drawSlide(event, songTime) {
   ctx.save();
+
+  // Always show the angular target around the actual flipper.
+  drawSlideGuideArc(event, songTime);
 
   if (!event.started) {
     const distance =
@@ -1428,22 +1633,32 @@ function drawSlide(event, songTime) {
     const head =
       pointAtDistance(event.path, distance);
 
-    ctx.strokeStyle =
-      event.side === "left"
-        ? "rgba(110,215,255,.34)"
-        : "rgba(216,139,255,.34)";
-
-    ctx.lineWidth = 10;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(head.x, head.y);
-
     const behind =
       pointAtDistance(
         event.path,
-        Math.max(0, distance - 55)
+        Math.max(0, distance - 92)
       );
 
+    ctx.lineCap = "round";
+
+    // Wider incoming ribbon so it does not look like a normal Tap.
+    ctx.strokeStyle =
+      event.side === "left"
+        ? "rgba(110,215,255,.18)"
+        : "rgba(216,139,255,.18)";
+    ctx.lineWidth = 28;
+    ctx.beginPath();
+    ctx.moveTo(head.x, head.y);
+    ctx.lineTo(behind.x, behind.y);
+    ctx.stroke();
+
+    ctx.strokeStyle =
+      event.side === "left"
+        ? "rgba(160,232,255,.72)"
+        : "rgba(230,187,255,.72)";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(head.x, head.y);
     ctx.lineTo(behind.x, behind.y);
     ctx.stroke();
 
@@ -1451,20 +1666,59 @@ function drawSlide(event, songTime) {
       head.x,
       head.y,
       event.side,
-      22,
+      24,
       1,
       false
     );
 
+    // Preview the future angular path around the pivot.
+    const previewPoints = [];
+    for (
+      let beat = 0;
+      beat <= event.durationBeats + 0.001;
+      beat += SLIDE.nodeBeats
+    ) {
+      const position =
+        slidePositionAtBeat(event, beat);
+      const tip =
+        slideTipPoint(event.side, position);
+      previewPoints.push(tip);
+    }
+
+    ctx.strokeStyle =
+      "rgba(255,241,169,.15)";
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    previewPoints.forEach((point, index) => {
+      if (index === 0) {
+        ctx.moveTo(point.x, point.y);
+      } else {
+        ctx.lineTo(point.x, point.y);
+      }
+    });
+    ctx.stroke();
+
+    drawSlidePadLegend(event, songTime);
+
     ctx.fillStyle =
-      "rgba(240,248,255,.78)";
+      "rgba(240,248,255,.82)";
     ctx.font =
       "900 14px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(
-      "ATRAPA Y ARRASTRA",
+      "SLIDE · TOCA LA CABEZA Y MANTÉN",
       DESIGN.width / 2,
-      650
+      640
+    );
+
+    ctx.font =
+      "800 11px system-ui, sans-serif";
+    ctx.fillStyle =
+      "rgba(240,248,255,.55)";
+    ctx.fillText(
+      "después mueve el pulgar ← →",
+      DESIGN.width / 2,
+      661
     );
 
     ctx.restore();
@@ -1487,7 +1741,7 @@ function drawSlide(event, songTime) {
 
     if (
       point.radius >= FLIPPER.length - 18 &&
-      point.radius <= 360
+      point.radius <= 390
     ) {
       nodes.push({
         beat,
@@ -1496,18 +1750,47 @@ function drawSlide(event, songTime) {
     }
   }
 
+  const connected =
+    slideVisualConnected(event, songTime);
+
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
   if (nodes.length > 1) {
+    // Thick ribbon first, bright core second.
     ctx.strokeStyle =
-      event.side === "left"
-        ? "rgba(110,215,255,.40)"
-        : "rgba(216,139,255,.40)";
+      connected
+        ? "rgba(255,241,169,.20)"
+        : "rgba(255,113,132,.14)";
+    ctx.lineWidth = 28;
+    ctx.beginPath();
 
-    ctx.lineWidth = 12;
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = ctx.strokeStyle;
+    nodes.forEach((node, index) => {
+      if (index === 0) {
+        ctx.moveTo(node.x, node.y);
+      } else {
+        ctx.lineTo(node.x, node.y);
+      }
+    });
+
+    ctx.stroke();
+
+    ctx.strokeStyle =
+      connected
+        ? "rgba(255,241,169,.78)"
+        : event.side === "left"
+          ? "rgba(110,215,255,.58)"
+          : "rgba(216,139,255,.58)";
+    ctx.lineWidth = 7;
+    ctx.shadowBlur =
+      connected ? 18 : 8;
+    ctx.shadowColor =
+      connected
+        ? "#fff1a9"
+        : event.side === "left"
+          ? "#6ed7ff"
+          : "#d88bff";
+
     ctx.beginPath();
 
     nodes.forEach((node, index) => {
@@ -1528,9 +1811,9 @@ function drawSlide(event, songTime) {
       node.x,
       node.y,
       event.side,
-      node.beat === 0 ? 15 : 9,
-      0.82,
-      false
+      node.beat === 0 ? 15 : 8,
+      node.beat === 0 ? 1 : 0.68,
+      connected && node.beat === 0
     );
   }
 
@@ -1543,37 +1826,52 @@ function drawSlide(event, songTime) {
       targetPosition
     );
 
-  const connected =
-    slideConnected(event, songTime);
+  const actual =
+    flipperSegment(
+      event.side,
+      songTime
+    ).tip;
 
+  // Show the error spatially instead of as a hidden number.
   ctx.strokeStyle =
     connected
-      ? "#fff1a9"
-      : "#ff7184";
-
-  ctx.lineWidth = 5;
-  ctx.shadowBlur = 22;
-  ctx.shadowColor = ctx.strokeStyle;
-  ctx.beginPath();
-  ctx.arc(
-    target.x,
-    target.y,
-    19,
-    0,
-    Math.PI * 2
+      ? "rgba(255,241,169,.60)"
+      : "rgba(255,113,132,.75)";
+  ctx.lineWidth = 4;
+  ctx.setLineDash(
+    connected ? [] : [5, 5]
   );
+  ctx.beginPath();
+  ctx.moveTo(actual.x, actual.y);
+  ctx.lineTo(target.x, target.y);
   ctx.stroke();
+  ctx.setLineDash([]);
 
-  ctx.shadowBlur = 0;
+  drawSlidePadLegend(event, songTime);
+
   ctx.fillStyle =
-    "rgba(240,248,255,.82)";
+    connected
+      ? "#fff1a9"
+      : "#ff9aa7";
   ctx.font =
-    "900 14px system-ui, sans-serif";
+    "900 15px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(
-    "DESLIZA EL PULGAR · SIGUE LA CINTA",
+    connected
+      ? "CONECTADO · SIGUE LA MARCA"
+      : "ALINEA LA PINZA CON LA MARCA",
     DESIGN.width / 2,
-    650
+    640
+  );
+
+  ctx.font =
+    "800 11px system-ui, sans-serif";
+  ctx.fillStyle =
+    "rgba(240,248,255,.55)";
+  ctx.fillText(
+    "el punto blanco eres tú · la línea amarilla es el objetivo",
+    DESIGN.width / 2,
+    661
   );
 
   ctx.restore();
@@ -2064,57 +2362,15 @@ function drawControlButton(side, songTime) {
   ctx.shadowBlur = 0;
 
   if (slide) {
-    ctx.strokeStyle =
-      "rgba(255,255,255,.34)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(
-      center.x - 27,
-      center.y
-    );
-    ctx.lineTo(
-      center.x + 27,
-      center.y
-    );
-    ctx.stroke();
-
-    const targetPos =
-      slide.started
-        ? slidePositionAtTime(
-            slide,
-            songTime
-          )
-        : slide.anchors[0].position;
-
-    ctx.strokeStyle =
-      "rgba(255,241,169,.82)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(
-      center.x +
-        targetPos * 27,
-      center.y - 10
-    );
-    ctx.lineTo(
-      center.x +
-        targetPos * 27,
-      center.y + 10
-    );
-    ctx.stroke();
-
     ctx.fillStyle =
-      control.held && slide.started
-        ? "#fff1a9"
-        : "#e8f5ff";
-
+      "rgba(255,255,255,.07)";
     ctx.beginPath();
-    ctx.arc(
-      center.x +
-        control.position * 27,
-      center.y,
-      8,
-      0,
-      Math.PI * 2
+    ctx.roundRect(
+      center.x - 31,
+      center.y - 8,
+      62,
+      16,
+      8
     );
     ctx.fill();
   } else {
@@ -2423,9 +2679,9 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.16 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.17 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap: impacto = PERFECT · slide: pad analógico · magic: figura/deadline`,
+    `tap: impacto = PERFECT · slide: lectura visual + pad analógico · magic: pausado`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `slide L:${slideControl.left.position.toFixed(2)} R:${slideControl.right.position.toFixed(2)} · draw ${drawGesture ? "ACTIVO" : "—"}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
@@ -2541,16 +2797,18 @@ function handleSidePress(
         pointerEvent.pointerId;
     }
 
+    if (pointerEvent) {
+      updateSlidePadPosition(
+        side,
+        pointerEvent
+      );
+    }
+
     if (!slide.started) {
       beginSlide(
         slide,
         side,
         songTime
-      );
-    } else if (pointerEvent) {
-      updateSlidePadPosition(
-        side,
-        pointerEvent
       );
     }
 
