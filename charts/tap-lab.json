@@ -1,5 +1,5 @@
 {
-  "name": "Vertical Slice 01 · Musical Phrasing v0.31",
+  "name": "Vertical Slice 01 · Direct Trace v0.32",
   "bpm": 110,
   "loopBeats": 68,
   "countInBeats": 4,
@@ -260,7 +260,7 @@
     },
     {
       "type": "slide",
-      "mode": "follow",
+      "mode": "trace",
       "beat": 20,
       "side": "right",
       "route": 1,
@@ -576,7 +576,7 @@
     },
     {
       "type": "slide",
-      "mode": "follow",
+      "mode": "trace",
       "beat": 48,
       "side": "left",
       "route": 2,
