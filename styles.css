@@ -2212,3 +2212,283 @@ button { font: inherit; }
     font-size: .48rem;
   }
 }
+
+
+/* v0.30 — Module Bay 2.0 + finite loadout */
+.build-dock {
+  pointer-events: auto;
+}
+
+.build-open {
+  flex: 0 0 auto;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 999px;
+  background: rgba(255,255,255,.035);
+  color: rgba(255,255,255,.62);
+  font: 900 .46rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .04em;
+  touch-action: manipulation;
+}
+
+.module-bay-status {
+  width: min(100%, 500px);
+  min-height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: rgba(255,255,255,.42);
+  font: 900 .47rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.module-bay-status button {
+  padding: 5px 8px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 999px;
+  background: rgba(255,255,255,.035);
+  color: rgba(255,255,255,.68);
+  font: inherit;
+}
+
+.upgrade-cards {
+  gap: 10px;
+}
+
+.upgrade-card {
+  height: 220px;
+  padding: 9px 8px 11px;
+  grid-template-rows: auto 112px auto 1fr !important;
+  gap: 7px;
+  border: 1px solid rgba(255,255,255,.095);
+  border-radius: 15px;
+  background: #0c131e;
+}
+
+.upgrade-card::after {
+  display: none;
+}
+
+.module-head {
+  min-height: 13px;
+}
+
+.module-head > span {
+  color: rgba(255,255,255,.33);
+}
+
+.module-preview,
+.module-preview::before,
+.module-preview > * {
+  display: none !important;
+}
+
+.module-preview-canvas {
+  width: 100%;
+  height: 112px;
+  display: block;
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 11px;
+  background: #070d15;
+}
+
+.upgrade-card > strong {
+  font-size: .82rem;
+  letter-spacing: .025em;
+}
+
+.upgrade-effect {
+  display: none !important;
+}
+
+.upgrade-desc {
+  align-self: start;
+  max-width: 21ch;
+  font-size: .57rem;
+  line-height: 1.30;
+  color: rgba(255,255,255,.65);
+}
+
+.upgrade-card.is-maxed .module-head > span {
+  color: #ffe56d;
+}
+
+.build-panel {
+  position: absolute;
+  z-index: 72;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(4,7,13,.96);
+  backdrop-filter: blur(12px);
+}
+
+.build-panel[hidden] {
+  display: none;
+}
+
+.build-manager-shell {
+  width: min(100%, 470px);
+  max-height: 94%;
+  overflow: auto;
+  display: grid;
+  gap: 11px;
+  padding: 15px;
+  border: 1px solid rgba(255,255,255,.085);
+  border-radius: 18px;
+  background: #0a1019;
+}
+
+.build-manager-shell h2,
+.build-manager-shell p {
+  margin: 0;
+  text-align: center;
+}
+
+.build-manager-shell h2 {
+  font-size: 1.18rem;
+}
+
+.build-manager-shell p {
+  margin-inline: auto;
+  max-width: 42ch;
+  color: rgba(255,255,255,.50);
+  font-size: .66rem;
+  line-height: 1.42;
+}
+
+.loadout-section {
+  display: grid;
+  gap: 6px;
+}
+
+.loadout-section > header {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(255,255,255,.43);
+  font: 900 .48rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+}
+
+.loadout-grid {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 6px;
+}
+
+.loadout-slot {
+  --accent: 255,255,255;
+  min-height: 82px;
+  padding: 7px 5px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  border: 1px solid rgba(var(--accent),.17);
+  border-radius: 11px;
+  background: rgba(var(--accent),.035);
+  color: rgba(255,255,255,.78);
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.loadout-slot.empty {
+  border-style: dashed;
+  opacity: .42;
+}
+
+.loadout-slot.is-selected {
+  border-color: rgba(var(--accent),.72);
+  background: rgba(var(--accent),.08);
+  box-shadow: 0 0 16px rgba(var(--accent),.08);
+}
+
+.loadout-slot i {
+  font-style: normal;
+  font-size: 1.1rem;
+  color: rgb(var(--accent));
+}
+
+.loadout-slot strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .56rem;
+}
+
+.loadout-slot small {
+  font: 900 .43rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(255,255,255,.42);
+}
+
+.build-manager-detail {
+  min-height: 67px;
+  padding: 9px 11px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+}
+
+.build-manager-detail > strong {
+  font-size: .72rem;
+}
+
+.build-manager-detail > span,
+.build-manager-detail > small {
+  color: rgba(255,255,255,.58);
+  font-size: .58rem;
+  line-height: 1.35;
+}
+
+.build-manager-detail button {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 5px 8px;
+  border: 1px solid rgba(var(--machine-secondary),.18);
+  border-radius: 999px;
+  background: rgba(var(--machine-secondary),.055);
+  color: rgb(var(--machine-secondary));
+  font: 900 .47rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.build-manager-synergy {
+  min-height: 1.2em;
+  text-align: center;
+  color: #ffe56d;
+  font: 900 .49rem/1.25 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.build-manager-actions {
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 390px) {
+  .upgrade-card {
+    height: 205px;
+    padding-inline: 6px;
+    grid-template-rows: auto 98px auto 1fr !important;
+  }
+
+  .module-preview-canvas {
+    height: 98px;
+  }
+
+  .loadout-grid {
+    gap: 4px;
+  }
+
+  .loadout-slot {
+    min-height: 72px;
+    padding-inline: 3px;
+  }
+
+  .loadout-slot strong {
+    font-size: .50rem;
+  }
+}
