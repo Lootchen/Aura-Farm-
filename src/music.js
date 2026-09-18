@@ -1,6 +1,6 @@
 import {
   songFrameFromData
-} from "./song.js?v=0.44";
+} from "./song.js?v=0.45";
 
 let ACTIVE_SONG = null;
 
@@ -40,9 +40,18 @@ export function midiToHz(midi) {
 export function songFrameAtBeat(
   beat
 ) {
-  if (!ACTIVE_SONG) {
+  if (
+    !ACTIVE_SONG ||
+    ACTIVE_SONG.audio?.mode !==
+      "procedural"
+  ) {
     return {
-      ...EMPTY_FRAME
+      ...EMPTY_FRAME,
+      section:
+        ACTIVE_SONG?.audio?.mode ===
+          "file"
+          ? "AUDIO"
+          : "LOADING"
     };
   }
 
