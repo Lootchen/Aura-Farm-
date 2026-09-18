@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.40
+# Aura Farm — Vertical Slice v0.41
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,50 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.41 — Presentation / Module Cards / Flowing TRACE
+
+v0.41 applies a presentation pass informed by current mobile roguelite upgrade-selection patterns while preserving Aura Farm's own Living Circuit identity.
+
+### Module cards
+
+The animated gameplay preview is no longer the main visual hierarchy.
+
+Each choice now presents:
+
+1. a clear state badge (`NUEVO`, `MEJORA`, `SINERGIA` or `RESERVA`);
+2. a large family-colored module emblem;
+3. visible level pips;
+4. family + module name;
+5. one short effect promise;
+6. supporting description;
+7. a small animated `EN JUEGO` strip.
+
+This keeps the useful preview but makes the upgrade understandable before the animation is interpreted.
+
+### Main menu
+
+The front menu now acts more like key art:
+
+- larger hero area;
+- animated Living Circuit reactor made from glass rings, petals and the Aura mark;
+- stronger depth, lighting and material separation;
+- more premium primary and secondary mode cards.
+
+### Playfield background
+
+A distant five-petal glasshouse canopy and reactor core now sit behind gameplay. Soft shafts and slow pollen motes add depth while staying behind note silhouettes.
+
+### TRACE correction
+
+The v0.39 pre-catch idea no longer parks the head at the claw.
+
+- the incoming TRACE head moves continuously to the claw and reaches it on the authored beat;
+- the input window still opens 1.05 s early;
+- touching the moving head can arm the same pointer in advance;
+- no second touch is required at the beat;
+- pickup radius is 104 px, rail tolerance 38 px, disconnect grace 0.26 s and required coverage 56%;
+- a subtle capture halo appears during the early-grab window but never stops the head.
 
 ## v0.40 — Living Circuit visual identity pass
 
