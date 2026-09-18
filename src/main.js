@@ -1428,6 +1428,25 @@ function explosionSound() {
   playTone(260, 0.04, 0.025, "triangle");
 }
 
+function chainSound(value = 1) {
+  const scale =
+    [523.25, 587.33, 659.25, 783.99, 880];
+  const frequency =
+    scale[
+      Math.min(
+        scale.length - 1,
+        Math.max(0, value - 1)
+      )
+    ];
+
+  playTone(
+    frequency,
+    0.075,
+    0.045,
+    "triangle"
+  );
+}
+
 function showMessage(text, color, milliseconds = 420) {
   message = text;
   messageColor = color;
@@ -1856,12 +1875,38 @@ function resolveProjectileCollisions() {
       if (chain) {
         resolved.add(other.key);
         chainCount += 1;
-        awardScore(100 * comboMultiplier(combo));
-        showMessage(
-          pierces ? "CHAIN · PERFORA" : "CHAIN +100",
-          "#ffe985",
-          300
+        recordLifetimeMetric("totalChains", 1);
+
+        if (
+          runStats &&
+          runStats.firstChainMs === null
+        ) {
+          runStats.firstChainMs =
+            performance.now() -
+            runStats.startedAt;
+        }
+
+        awardScore(
+          100 * comboMultiplier(combo)
         );
+        showMessage(
+          pierces
+            ? "CHAIN · PERFORA"
+            : `CHAIN ×${chainCount}`,
+          "#ffe985",
+          360
+        );
+        chainSound(
+          Math.min(5, chainCount)
+        );
+
+        if (navigator.vibrate) {
+          navigator.vibrate(
+            chainCount >= 3
+              ? [7, 12, 10]
+              : 8
+          );
+        }
       } else {
         collisionCount += 1;
         awardScore(50 * comboMultiplier(combo));
@@ -1930,6 +1975,118 @@ function resolveProjectileCollisions() {
 
       if (!active.has(projectile.key)) break;
     }
+  }
+}
+
+function bossCenter() {
+  return {
+    x: DESIGN.width / 2,
+    y: 182
+  };
+}
+
+function resolveBossCollisions() {
+  if (
+    !bossState.active ||
+    bossState.broken
+  ) {
+    return;
+  }
+
+  const center = bossCenter();
+  const radius = 58;
+
+  for (const projectile of [...active.values()]) {
+    if (
+      projectile.type !== "tap" ||
+      !projectile.launched
+    ) {
+      continue;
+    }
+
+    const distance =
+      Math.hypot(
+        projectile.x - center.x,
+        projectile.y - center.y
+      );
+
+    if (
+      distance >
+      radius + noteRadius(projectile)
+    ) {
+      continue;
+    }
+
+    const damage =
+      projectile.power ? 3 : 1;
+
+    active.delete(projectile.key);
+    bossState.health =
+      Math.max(
+        0,
+        bossState.health - damage
+      );
+    bossState.damage += damage;
+    bossState.hitFlash = 0.18;
+
+    awardScore(
+      125 *
+      damage *
+      comboMultiplier(combo)
+    );
+
+    createExplosion(
+      projectile.x,
+      projectile.y,
+      projectile.power ? 1.75 : 1.2,
+      {
+        emitFragments:
+          !projectile.fragment,
+        side: projectile.side
+      }
+    );
+
+    showMessage(
+      `CORE -${damage}`,
+      "#ffdf85",
+      320
+    );
+
+    if (navigator.vibrate) {
+      navigator.vibrate(
+        projectile.power
+          ? [10, 18, 14]
+          : 7
+      );
+    }
+
+    if (bossState.health <= 0) {
+      bossState.broken = true;
+      createExplosion(
+        center.x,
+        center.y,
+        2.7,
+        {
+          emitFragments: true,
+          side: "neutral"
+        }
+      );
+      awardScore(2500);
+      showMessage(
+        "CORE BREAK +2500",
+        "#fff1a9",
+        1000
+      );
+      successTone(1046.5);
+
+      if (navigator.vibrate) {
+        navigator.vibrate(
+          [14, 28, 18, 28, 24]
+        );
+      }
+    }
+
+    break;
   }
 }
 
@@ -3445,6 +3602,12 @@ function updateEffects(dt) {
     flash.life += dt;
   }
 
+  bossState.hitFlash =
+    Math.max(
+      0,
+      bossState.hitFlash - dt
+    );
+
   explosions = explosions.filter(
     (explosion) => explosion.life < explosion.duration
   );
@@ -3455,9 +3618,14 @@ function updateEffects(dt) {
 }
 
 function updateHud() {
+  maxCombo =
+    Math.max(maxCombo, combo);
+
   scoreEl.textContent = String(score);
   comboEl.textContent =
     combo ? `${combo} · x${comboMultiplier(combo)}` : "0";
+  actEl.textContent =
+    `${Math.min(wave, RUN_ACTS)}/${RUN_ACTS}`;
 
   lastHitEl.textContent =
     lastDeltaMs === null
@@ -3466,17 +3634,266 @@ function updateHud() {
 }
 
 function drawBackground() {
-  ctx.fillStyle = "#0a1020";
-  ctx.fillRect(0, 0, DESIGN.width, DESIGN.height);
+  const palette =
+    machinePalette();
+  const [ar, ag, ab] =
+    palette.accent;
+  const [sr, sg, sb] =
+    palette.secondary;
+  const beatPhase =
+    ((clock.beat % 1) + 1) % 1;
+  const pulse =
+    1 - Math.min(
+      beatPhase,
+      1 - beatPhase
+    ) * 2;
 
-  ctx.fillStyle = "rgba(255,255,255,.13)";
+  ctx.fillStyle = "#070b13";
+  ctx.fillRect(
+    0,
+    0,
+    DESIGN.width,
+    DESIGN.height
+  );
 
-  for (let i = 0; i < 28; i += 1) {
-    const x = (((i * 73) % 521) / 521) * DESIGN.width;
-    const y = (((i * 113) % 601) / 601) * DESIGN.height * 0.60;
-    ctx.fillRect(x, y, 1.15, 1.15);
+  const glow =
+    ctx.createRadialGradient(
+      DESIGN.width / 2,
+      390,
+      20,
+      DESIGN.width / 2,
+      390,
+      390
+    );
+  glow.addColorStop(
+    0,
+    `rgba(${ar},${ag},${ab},${0.055 + pulse * 0.025})`
+  );
+  glow.addColorStop(
+    0.52,
+    `rgba(${sr},${sg},${sb},.025)`
+  );
+  glow.addColorStop(
+    1,
+    "rgba(4,7,13,0)"
+  );
+  ctx.fillStyle = glow;
+  ctx.fillRect(
+    0,
+    70,
+    DESIGN.width,
+    720
+  );
+
+  // Chassis rails.
+  ctx.strokeStyle =
+    `rgba(${ar},${ag},${ab},.13)`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(28, 105);
+  ctx.lineTo(28, 820);
+  ctx.lineTo(105, 905);
+  ctx.moveTo(512, 105);
+  ctx.lineTo(512, 820);
+  ctx.lineTo(435, 905);
+  ctx.stroke();
+
+  ctx.strokeStyle =
+    "rgba(255,255,255,.035)";
+  ctx.lineWidth = 1;
+
+  for (let y = 130; y < 800; y += 72) {
+    ctx.beginPath();
+    ctx.moveTo(35, y);
+    ctx.lineTo(505, y);
+    ctx.stroke();
   }
+
+  // Mechanical fasteners.
+  for (const x of [42, 498]) {
+    for (let y = 150; y < 770; y += 122) {
+      ctx.fillStyle =
+        `rgba(${sr},${sg},${sb},.18)`;
+      ctx.beginPath();
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Dust/energy motes.
+  for (let i = 0; i < 24; i += 1) {
+    const x =
+      (((i * 73) % 521) / 521) *
+      DESIGN.width;
+    const y =
+      (((i * 113) % 601) / 601) *
+      DESIGN.height *
+      0.62;
+
+    ctx.fillStyle =
+      i % 4 === 0
+        ? `rgba(${ar},${ag},${ab},.18)`
+        : "rgba(255,255,255,.10)";
+    ctx.fillRect(x, y, 1.2, 1.2);
+  }
+
+  // Act energy meter embedded in the machine.
+  const progress =
+    clamp(
+      (wave - 1) /
+        Math.max(1, RUN_ACTS - 1),
+      0,
+      1
+    );
+
+  ctx.fillStyle =
+    "rgba(255,255,255,.055)";
+  ctx.fillRect(214, 84, 112, 4);
+  ctx.fillStyle =
+    `rgba(${ar},${ag},${ab},.72)`;
+  ctx.fillRect(
+    214,
+    84,
+    112 * progress,
+    4
+  );
 }
+
+function drawBossCore(songTime) {
+  if (!bossState.active) return;
+
+  const palette =
+    machinePalette();
+  const center =
+    bossCenter();
+  const healthRatio =
+    bossState.health /
+    bossState.maxHealth;
+  const beatPulse =
+    0.5 +
+    0.5 *
+      Math.sin(
+        songTime *
+        BPM /
+        60 *
+        Math.PI *
+        2
+      );
+  const flash =
+    bossState.hitFlash > 0
+      ? 1
+      : 0;
+
+  ctx.save();
+  ctx.translate(
+    center.x,
+    center.y
+  );
+
+  ctx.shadowBlur =
+    bossState.broken
+      ? 8
+      : 26 + beatPulse * 14;
+  ctx.shadowColor =
+    bossState.broken
+      ? "#ff637d"
+      : `rgb(${palette.accent.join(",")})`;
+
+  ctx.fillStyle =
+    bossState.broken
+      ? "rgba(45,17,24,.92)"
+      : flash
+        ? "#fff4d0"
+        : "#111b27";
+  ctx.strokeStyle =
+    bossState.broken
+      ? "#ff637d"
+      : `rgb(${palette.accent.join(",")})`;
+  ctx.lineWidth = 5;
+
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    58,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+
+  for (let i = 0; i < 6; i += 1) {
+    const angle =
+      (Math.PI * 2 * i) / 6 +
+      songTime * 0.22;
+    ctx.strokeStyle =
+      "rgba(255,255,255,.18)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(
+      Math.cos(angle) * 35,
+      Math.sin(angle) * 35
+    );
+    ctx.lineTo(
+      Math.cos(angle) * 49,
+      Math.sin(angle) * 49
+    );
+    ctx.stroke();
+  }
+
+  ctx.fillStyle =
+    bossState.broken
+      ? "#ff637d"
+      : `rgb(${palette.secondary.join(",")})`;
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    bossState.broken
+      ? 9
+      : 18 + beatPulse * 3,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  ctx.restore();
+
+  ctx.fillStyle =
+    "rgba(5,8,14,.82)";
+  ctx.fillRect(
+    190,
+    252,
+    160,
+    14
+  );
+  ctx.fillStyle =
+    bossState.broken
+      ? "#ff637d"
+      : `rgb(${palette.accent.join(",")})`;
+  ctx.fillRect(
+    193,
+    255,
+    154 * healthRatio,
+    8
+  );
+
+  ctx.fillStyle =
+    "rgba(255,255,255,.62)";
+  ctx.font =
+    "900 10px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(
+    bossState.broken
+      ? "CORE BREAK"
+      : "AURA CORE",
+    DESIGN.width / 2,
+    278
+  );
+}
+
 
 function drawTrail(note) {
   if (note.launched) {
@@ -3532,6 +3949,57 @@ function drawTrail(note) {
   }
 }
 
+function drawChainOpportunities() {
+  const groups = new Map();
+
+  for (const note of active.values()) {
+    if (
+      note.type !== "tap" ||
+      note.launched ||
+      !note.chainGroup
+    ) {
+      continue;
+    }
+
+    if (!groups.has(note.chainGroup)) {
+      groups.set(
+        note.chainGroup,
+        []
+      );
+    }
+
+    groups.get(note.chainGroup).push(note);
+  }
+
+  for (const notes of groups.values()) {
+    if (notes.length < 2) continue;
+
+    notes.sort(
+      (a, b) =>
+        a.targetTime - b.targetTime
+    );
+
+    ctx.save();
+    ctx.strokeStyle =
+      "rgba(255,229,109,.24)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath();
+
+    notes.forEach((note, index) => {
+      if (index === 0) {
+        ctx.moveTo(note.x, note.y);
+      } else {
+        ctx.lineTo(note.x, note.y);
+      }
+    });
+
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
+
 function drawTap(note) {
   drawTrail(note);
 
@@ -3564,6 +4032,27 @@ function drawTap(note) {
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fill();
+
+  if (
+    note.chainGroup &&
+    !note.launched
+  ) {
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle =
+      "rgba(255,229,109,.78)";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius + 7,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 
   if (note.power) {
     ctx.shadowBlur = 0;
@@ -3944,7 +4433,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.23 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.24 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -3970,6 +4459,7 @@ function drawDebug(songTime) {
 function render(songTime) {
   clearCanvas();
   drawBackground();
+  drawBossCore(songTime);
   drawBumpers();
 
   for (const event of active.values()) {
@@ -3977,6 +4467,8 @@ function render(songTime) {
       drawSlide(event, songTime);
     }
   }
+
+  drawChainOpportunities();
 
   for (const event of active.values()) {
     if (event.type === "tap") {
@@ -4148,6 +4640,7 @@ function frame(now) {
   updateEvents(dt, songTime);
   resolveFlipperCollisions(songTime);
   resolveBumperCollisions();
+  resolveBossCollisions();
   resolveProjectileCollisions();
   updateEffects(dt);
   render(songTime);
