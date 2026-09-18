@@ -1793,3 +1793,76 @@ button { font: inherit; }
   box-shadow:
     0 0 18px rgba(var(--pick-accent),.30);
 }
+
+
+/* v0.28 — run closure / Flow Rank */
+.summary-meta {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font: 900 .48rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .06em;
+  opacity: .42;
+}
+
+.summary-rank {
+  --rank-accent: var(--machine-secondary);
+  width: 118px;
+  height: 118px;
+  margin: 0 auto;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 2px;
+  border: 2px solid rgba(var(--rank-accent),.42);
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      rgba(var(--rank-accent),.12),
+      rgba(6,10,17,.82) 64%
+    );
+  box-shadow:
+    0 0 28px rgba(var(--rank-accent),.11),
+    inset 0 0 18px rgba(var(--rank-accent),.05);
+}
+
+.summary-rank[data-rank="S"] {
+  --rank-accent: 255,229,109;
+}
+
+.summary-rank[data-rank="A"] {
+  --rank-accent: 94,226,215;
+}
+
+.summary-rank[data-rank="B"] {
+  --rank-accent: 110,215,255;
+}
+
+.summary-rank[data-rank="C"] {
+  --rank-accent: 211,139,255;
+}
+
+.summary-rank[data-rank="D"] {
+  --rank-accent: 255,125,153;
+}
+
+.summary-rank > span,
+.summary-rank > small {
+  font: 900 .48rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .09em;
+  opacity: .48;
+}
+
+.summary-rank > strong {
+  color: rgb(var(--rank-accent));
+  font: 950 2.9rem/.95 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-shadow:
+    0 0 18px rgba(var(--rank-accent),.32);
+}
+
+.summary-rank > small {
+  color: rgb(var(--rank-accent));
+  opacity: .66;
+}
