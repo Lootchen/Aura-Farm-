@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.29";
+import { loadGameChart } from "./chart.js?v=0.30";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.29";
+} from "./music.js?v=0.30";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -30,8 +30,18 @@ const upgradeCards = document.querySelector("#upgradeCards");
 const buildDock = document.querySelector("#buildDock");
 const buildDockItems = document.querySelector("#buildDockItems");
 const synergyBadge = document.querySelector("#synergyBadge");
-const currentBuildList = document.querySelector("#currentBuildList");
+const buildButton = document.querySelector("#buildButton");
+const moduleSlotStatus = document.querySelector("#moduleSlotStatus");
+const upgradeManageButton = document.querySelector("#upgradeManageButton");
 const currentSynergy = document.querySelector("#currentSynergy");
+const buildPanel = document.querySelector("#buildPanel");
+const activeSlotCount = document.querySelector("#activeSlotCount");
+const reserveSlotCount = document.querySelector("#reserveSlotCount");
+const activeModuleSlots = document.querySelector("#activeModuleSlots");
+const reserveModuleSlots = document.querySelector("#reserveModuleSlots");
+const buildManagerDetail = document.querySelector("#buildManagerDetail");
+const buildManagerSynergy = document.querySelector("#buildManagerSynergy");
+const buildCloseButton = document.querySelector("#buildCloseButton");
 const pausePanel = document.querySelector("#pausePanel");
 const pauseButton = document.querySelector("#pauseButton");
 const pauseBuildList = document.querySelector("#pauseBuildList");
@@ -70,9 +80,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.29";
+  "./assets/world/glasshouse-far.svg?v=0.30";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.29";
+  "./assets/world/growth-bays.svg?v=0.30";
 
 function drawWorldAsset(
   image,
@@ -154,6 +164,9 @@ const BUMPER_LAYOUT = [
 const RUN_ACTS = 7;
 const FINAL_ACT = RUN_ACTS;
 const BOSS_MAX_HEALTH = 18;
+const ACTIVE_MODULE_LIMIT = 4;
+const RESERVE_MODULE_LIMIT = 4;
+const MODULE_MAX_LEVEL = 3;
 
 const ACTS = [
   null,
@@ -271,6 +284,15 @@ let runPaused = false;
 let runSeed = 1;
 let rngState = 1;
 let buildHistory = [];
+let moduleInventory = new Map();
+let activeModuleIds = [];
+let reserveModuleIds = [];
+let selectedBuildModule = null;
+let buildPanelContext = "run";
+let modulePreviewFrame = null;
+const runConsumables = {
+  comboShieldSpent: 0
+};
 let runStartedAt = 0;
 let maxCombo = 0;
 let runStats = null;
@@ -888,8 +910,8 @@ class RhythmClock {
     const buildEnergy =
       Math.min(
         1,
-        buildHistory.length /
-          6
+        activeModulePower() /
+          8
       );
     const slideBuild =
       Math.min(
@@ -1786,21 +1808,61 @@ function upgradeById(id) {
   ) ?? null;
 }
 
-function buildCounts() {
+function moduleMaxLevel(upgrade) {
+  if (!upgrade) return MODULE_MAX_LEVEL;
+
+  return [
+    "wall-charge",
+    "bumper-split"
+  ].includes(upgrade.id)
+    ? 1
+    : MODULE_MAX_LEVEL;
+}
+
+function moduleLevel(id) {
+  return Number(
+    moduleInventory.get(id) || 0
+  );
+}
+
+function activeBuildCounts() {
   const counts = new Map();
 
-  for (const item of buildHistory) {
-    counts.set(
-      item.id,
-      (counts.get(item.id) || 0) + 1
-    );
+  for (const id of activeModuleIds) {
+    const level =
+      moduleLevel(id);
+
+    if (level > 0) {
+      counts.set(id, level);
+    }
   }
 
   return counts;
 }
 
+function inventoryCounts() {
+  return new Map(
+    moduleInventory
+  );
+}
+
+function buildCounts() {
+  return activeBuildCounts();
+}
+
+function activeModulePower() {
+  let total = 0;
+
+  for (const id of activeModuleIds) {
+    total += moduleLevel(id);
+  }
+
+  return total;
+}
+
 function activeBuildSynergies() {
-  const counts = buildCounts();
+  const counts =
+    activeBuildCounts();
 
   return BUILD_SYNERGIES.filter(
     (synergy) =>
@@ -1816,37 +1878,255 @@ function hasActiveSynergy(id) {
   );
 }
 
+function simulatedActiveIdsForUpgrade(
+  upgrade
+) {
+  const ids =
+    [...activeModuleIds];
+
+  if (
+    ids.includes(upgrade.id) ||
+    reserveModuleIds.includes(
+      upgrade.id
+    )
+  ) {
+    return ids;
+  }
+
+  if (
+    ids.length <
+    ACTIVE_MODULE_LIMIT
+  ) {
+    ids.push(upgrade.id);
+  }
+
+  return ids;
+}
+
 function synergyHintsForUpgrade(upgrade) {
-  const counts =
-    buildCounts();
-  const alreadyActive =
+  const current =
     new Set(
       activeBuildSynergies()
         .map(
           (synergy) => synergy.id
         )
     );
-
-  counts.set(
-    upgrade.id,
-    (counts.get(upgrade.id) || 0) + 1
-  );
+  const simulated =
+    new Set(
+      simulatedActiveIdsForUpgrade(
+        upgrade
+      )
+    );
 
   return BUILD_SYNERGIES.filter(
     (synergy) =>
-      !alreadyActive.has(
-        synergy.id
-      ) &&
+      !current.has(synergy.id) &&
       synergy.requires.every(
-        (id) => counts.has(id)
+        (id) => simulated.has(id)
       )
   );
+}
+
+function resetModuleLoadout() {
+  moduleInventory =
+    new Map();
+  activeModuleIds = [];
+  reserveModuleIds = [];
+  selectedBuildModule = null;
+  runConsumables.comboShieldSpent = 0;
+}
+
+function rebuildRunMods() {
+  resetRunMods();
+
+  for (const id of activeModuleIds) {
+    const upgrade =
+      upgradeById(id);
+    const level =
+      moduleLevel(id);
+
+    if (!upgrade || level <= 0) {
+      continue;
+    }
+
+    for (
+      let rank = 0;
+      rank < level;
+      rank += 1
+    ) {
+      upgrade.apply();
+    }
+  }
+
+  runMods.comboShieldCharges =
+    Math.max(
+      0,
+      runMods.comboShieldCharges -
+        runConsumables.comboShieldSpent
+    );
+}
+
+function acquireModule(upgrade) {
+  const current =
+    moduleLevel(upgrade.id);
+  const maxLevel =
+    moduleMaxLevel(upgrade);
+  const next =
+    Math.min(
+      maxLevel,
+      current + 1
+    );
+
+  if (next === current) {
+    return {
+      upgraded: false,
+      active:
+        activeModuleIds.includes(
+          upgrade.id
+        ),
+      reserve:
+        reserveModuleIds.includes(
+          upgrade.id
+        ),
+      level: current
+    };
+  }
+
+  moduleInventory.set(
+    upgrade.id,
+    next
+  );
+
+  let placement =
+    "upgrade";
+
+  if (current === 0) {
+    if (
+      activeModuleIds.length <
+      ACTIVE_MODULE_LIMIT
+    ) {
+      activeModuleIds.push(
+        upgrade.id
+      );
+      placement = "active";
+    } else if (
+      reserveModuleIds.length <
+      RESERVE_MODULE_LIMIT
+    ) {
+      reserveModuleIds.push(
+        upgrade.id
+      );
+      placement = "reserve";
+    }
+  }
+
+  buildHistory.push({
+    id: upgrade.id,
+    title: upgrade.title,
+    family: upgrade.family,
+    icon: upgrade.icon,
+    effect: upgrade.effect,
+    desc: upgrade.desc,
+    level: next,
+    placement
+  });
+
+  rebuildRunMods();
+
+  return {
+    upgraded: current > 0,
+    active:
+      activeModuleIds.includes(
+        upgrade.id
+      ),
+    reserve:
+      reserveModuleIds.includes(
+        upgrade.id
+      ),
+    level: next,
+    placement
+  };
+}
+
+function moveActiveToReserve(id) {
+  if (
+    !activeModuleIds.includes(id) ||
+    reserveModuleIds.length >=
+      RESERVE_MODULE_LIMIT
+  ) {
+    return false;
+  }
+
+  activeModuleIds =
+    activeModuleIds.filter(
+      (item) => item !== id
+    );
+  reserveModuleIds.push(id);
+  selectedBuildModule = id;
+  rebuildRunMods();
+  clock.applyRunMix(0.28);
+  return true;
+}
+
+function equipReserveModule(id) {
+  if (
+    !reserveModuleIds.includes(id) ||
+    activeModuleIds.length >=
+      ACTIVE_MODULE_LIMIT
+  ) {
+    return false;
+  }
+
+  reserveModuleIds =
+    reserveModuleIds.filter(
+      (item) => item !== id
+    );
+  activeModuleIds.push(id);
+  selectedBuildModule = id;
+  rebuildRunMods();
+  clock.applyRunMix(0.28);
+  return true;
+}
+
+function swapReserveWithActive(
+  reserveId,
+  activeId
+) {
+  const reserveIndex =
+    reserveModuleIds.indexOf(
+      reserveId
+    );
+  const activeIndex =
+    activeModuleIds.indexOf(
+      activeId
+    );
+
+  if (
+    reserveIndex < 0 ||
+    activeIndex < 0
+  ) {
+    return false;
+  }
+
+  reserveModuleIds[
+    reserveIndex
+  ] = activeId;
+  activeModuleIds[
+    activeIndex
+  ] = reserveId;
+  selectedBuildModule =
+    reserveId;
+
+  rebuildRunMods();
+  clock.applyRunMix(0.28);
+  return true;
 }
 
 function renderBuildVisibility({
   announce = false
 } = {}) {
-  const counts = buildCounts();
+  const counts =
+    activeBuildCounts();
   const synergies =
     activeBuildSynergies();
 
@@ -1855,11 +2135,15 @@ function renderBuildVisibility({
   if (counts.size === 0) {
     const empty =
       document.createElement("span");
-    empty.className = "build-empty";
-    empty.textContent = "SIN MODS";
-    buildDockItems.append(empty);
+    empty.className =
+      "build-empty";
+    empty.textContent =
+      "SIN MODS";
+    buildDockItems.append(
+      empty
+    );
   } else {
-    for (const [id, count] of counts) {
+    for (const [id, level] of counts) {
       const upgrade =
         upgradeById(id);
 
@@ -1870,10 +2154,12 @@ function renderBuildVisibility({
       chip.className =
         `build-chip family-${upgrade.family}`;
       chip.innerHTML =
-        `<span>${upgrade.icon}</span>${count > 1 ? `<b>×${count}</b>` : ""}`;
+        `<span>${upgrade.icon}</span><b>LV${level}</b>`;
       chip.title =
-        `${upgrade.title}: ${upgrade.desc}`;
-      buildDockItems.append(chip);
+        `${upgrade.title} · Nivel ${level}: ${upgrade.desc}`;
+      buildDockItems.append(
+        chip
+      );
     }
   }
 
@@ -1888,41 +2174,18 @@ function renderBuildVisibility({
       primary.title;
   }
 
-  currentBuildList.innerHTML = "";
-
-  if (counts.size === 0) {
-    const empty =
-      document.createElement("span");
-    empty.className = "build-empty";
-    empty.textContent =
-      "Todavía no has instalado ningún módulo.";
-    currentBuildList.append(empty);
-  } else {
-    for (const [id, count] of counts) {
-      const upgrade =
-        upgradeById(id);
-
-      if (!upgrade) continue;
-
-      const item =
-        document.createElement("div");
-      item.className =
-        `current-build-item family-${upgrade.family}`;
-      item.innerHTML =
-        `<i>${upgrade.icon}</i><strong>${upgrade.title}${count > 1 ? ` ×${count}` : ""}</strong><small>${upgrade.desc}</small>`;
-      currentBuildList.append(item);
-    }
-  }
+  moduleSlotStatus.textContent =
+    `ACTIVOS ${activeModuleIds.length}/${ACTIVE_MODULE_LIMIT} · RESERVA ${reserveModuleIds.length}/${RESERVE_MODULE_LIMIT}`;
 
   currentSynergy.textContent =
     synergies.length
-      ? synergies
+      ? `SYNERGY · ${synergies
           .map(
             (synergy) =>
               synergy.title
           )
-          .join(" · ")
-      : "SIN SINERGIA COMPLETA";
+          .join(" · ")}`
+      : "SIN SINERGIA ACTIVA";
 
   if (!announce) return;
 
@@ -1952,6 +2215,273 @@ function renderBuildVisibility({
     );
   }
 }
+
+function moduleSlotElement(
+  id,
+  source,
+  index
+) {
+  const button =
+    document.createElement("button");
+  button.type = "button";
+
+  if (!id) {
+    button.className =
+      "loadout-slot empty";
+    button.disabled = true;
+    button.innerHTML =
+      `<i>＋</i><strong>VACÍO</strong><small>SLOT ${index + 1}</small>`;
+    return button;
+  }
+
+  const upgrade =
+    upgradeById(id);
+  const level =
+    moduleLevel(id);
+
+  button.className =
+    `loadout-slot family-${upgrade.family}`;
+  button.classList.toggle(
+    "is-selected",
+    selectedBuildModule === id
+  );
+  button.innerHTML =
+    `<i>${upgrade.icon}</i><strong>${upgrade.title}</strong><small>LV${level}</small>`;
+
+  button.addEventListener(
+    "click",
+    () => {
+      if (
+        source === "active" &&
+        selectedBuildModule &&
+        reserveModuleIds.includes(
+          selectedBuildModule
+        )
+      ) {
+        swapReserveWithActive(
+          selectedBuildModule,
+          id
+        );
+        renderBuildVisibility({
+          announce: true
+        });
+        renderBuildManager();
+        return;
+      }
+
+      selectedBuildModule = id;
+      renderBuildManager();
+    }
+  );
+
+  return button;
+}
+
+function renderBuildManager() {
+  activeModuleSlots.innerHTML =
+    "";
+  reserveModuleSlots.innerHTML =
+    "";
+
+  for (
+    let index = 0;
+    index < ACTIVE_MODULE_LIMIT;
+    index += 1
+  ) {
+    activeModuleSlots.append(
+      moduleSlotElement(
+        activeModuleIds[index],
+        "active",
+        index
+      )
+    );
+  }
+
+  for (
+    let index = 0;
+    index < RESERVE_MODULE_LIMIT;
+    index += 1
+  ) {
+    reserveModuleSlots.append(
+      moduleSlotElement(
+        reserveModuleIds[index],
+        "reserve",
+        index
+      )
+    );
+  }
+
+  activeSlotCount.textContent =
+    `${activeModuleIds.length} / ${ACTIVE_MODULE_LIMIT}`;
+  reserveSlotCount.textContent =
+    `${reserveModuleIds.length} / ${RESERVE_MODULE_LIMIT}`;
+
+  const synergies =
+    activeBuildSynergies();
+  buildManagerSynergy.textContent =
+    synergies.length
+      ? `SYNERGY · ${synergies
+          .map(
+            (item) => item.title
+          )
+          .join(" · ")}`
+      : "SIN SINERGIA ACTIVA";
+
+  const id =
+    selectedBuildModule;
+  const upgrade =
+    upgradeById(id);
+
+  if (!upgrade) {
+    buildManagerDetail.innerHTML =
+      "<span>Selecciona un módulo para ver su función.</span>";
+    return;
+  }
+
+  const level =
+    moduleLevel(id);
+  const active =
+    activeModuleIds.includes(id);
+  const reserve =
+    reserveModuleIds.includes(id);
+  const atMax =
+    level >=
+    moduleMaxLevel(upgrade);
+  const action =
+    document.createElement("button");
+
+  buildManagerDetail.innerHTML =
+    `<strong>${upgrade.icon} ${upgrade.title} · LV${level}${atMax ? " MAX" : ""}</strong><span>${upgrade.desc}</span><small>${active ? "ACTIVO · modifica física, sinergias y música." : "RESERVA · no modifica la run hasta equiparlo."}</small>`;
+
+  if (
+    active &&
+    reserveModuleIds.length <
+      RESERVE_MODULE_LIMIT
+  ) {
+    action.textContent =
+      "MOVER A RESERVA";
+    action.addEventListener(
+      "click",
+      () => {
+        moveActiveToReserve(id);
+        renderBuildVisibility({
+          announce: true
+        });
+        renderBuildManager();
+      }
+    );
+    buildManagerDetail.append(
+      action
+    );
+  } else if (
+    reserve &&
+    activeModuleIds.length <
+      ACTIVE_MODULE_LIMIT
+  ) {
+    action.textContent =
+      "EQUIPAR";
+    action.addEventListener(
+      "click",
+      () => {
+        equipReserveModule(id);
+        renderBuildVisibility({
+          announce: true
+        });
+        renderBuildManager();
+      }
+    );
+    buildManagerDetail.append(
+      action
+    );
+  } else if (
+    reserve &&
+    activeModuleIds.length >=
+      ACTIVE_MODULE_LIMIT
+  ) {
+    const hint =
+      document.createElement(
+        "small"
+      );
+    hint.textContent =
+      "Toca un módulo ACTIVO para intercambiarlo con éste.";
+    buildManagerDetail.append(
+      hint
+    );
+  }
+}
+
+async function openBuildManager(
+  context = "run"
+) {
+  if (
+    context === "run" &&
+    !running
+  ) {
+    return;
+  }
+
+  buildPanelContext =
+    context;
+
+  if (context === "run") {
+    running = false;
+    runPaused = true;
+    await clock.pause();
+  }
+
+  if (context === "pause") {
+    pausePanel.hidden = true;
+  }
+
+  if (context === "upgrade") {
+    upgradePanel.hidden = true;
+  }
+
+  selectedBuildModule =
+    activeModuleIds[0] ??
+    reserveModuleIds[0] ??
+    null;
+  renderBuildManager();
+  buildPanel.hidden = false;
+}
+
+async function closeBuildManager() {
+  buildPanel.hidden = true;
+
+  if (
+    buildPanelContext ===
+    "upgrade"
+  ) {
+    upgradePanel.hidden = false;
+    startModulePreviewLoop();
+    return;
+  }
+
+  if (
+    buildPanelContext ===
+    "pause"
+  ) {
+    renderPauseBuild();
+    pausePanel.hidden = false;
+    return;
+  }
+
+  if (
+    buildPanelContext ===
+    "run" &&
+    runPaused
+  ) {
+    await clock.resumePaused();
+    runPaused = false;
+    running = true;
+    lastFrame =
+      performance.now();
+    requestAnimationFrame(
+      frame
+    );
+  }
+}
+
 
 const slideControl = {
   left: {
@@ -2014,7 +2544,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.29", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.30", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -2738,6 +3268,7 @@ function failEvent(event, label = "MISS") {
 
   if (protectedCombo) {
     runMods.comboShieldCharges -= 1;
+    runConsumables.comboShieldSpent += 1;
   } else {
     combo = 0;
   }
@@ -6169,7 +6700,7 @@ function drawOperatorSocket(songTime) {
   // AURI's sprout antenna grows with the current build.
   const growth =
     clamp(
-      buildHistory.length / 6,
+      activeModulePower() / 8,
       0,
       1
     );
@@ -6210,7 +6741,7 @@ function drawOperatorSocket(songTime) {
   const leafPairs =
     1 +
     (
-      buildHistory.length >= 3
+      activeModulePower() >= 3
         ? 1
         : 0
     ) +
@@ -7675,7 +8206,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.29 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.30 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -7807,8 +8338,12 @@ function pickUpgradeChoices() {
     shuffledUpgrades(
       UPGRADES.filter(
         (upgrade) =>
-          !upgrade.available ||
-          upgrade.available()
+          moduleLevel(upgrade.id) <
+            moduleMaxLevel(upgrade) &&
+          (
+            !upgrade.available ||
+            upgrade.available()
+          )
       )
     );
   const choices = [];
@@ -7816,9 +8351,12 @@ function pickUpgradeChoices() {
     new Set();
   const ownedFamilies =
     new Set(
-      buildHistory.map(
-        (item) => item.family
-      )
+      activeModuleIds
+        .map(
+          (id) =>
+            upgradeById(id)?.family
+        )
+        .filter(Boolean)
     );
 
   const add = (
@@ -7867,7 +8405,7 @@ function pickUpgradeChoices() {
 
   // Slot 2: reinforce a family already being built.
   if (
-    buildHistory.length > 0 &&
+    activeModuleIds.length > 0 &&
     choices.length < 2
   ) {
     const continuation =
@@ -7940,38 +8478,626 @@ const MODULE_FAMILY_LABELS = {
   defense: "GUARD"
 };
 
-function upgradePreviewMarkup(upgrade) {
-  const templates = {
-    "twin-shot":
-      '<span class="demo-orb"></span><span class="demo-orb"></span>',
-    ricochet:
-      '<span class="demo-wall"></span><span class="demo-wall"></span><span class="demo-orb"></span>',
-    pierce:
-      '<span class="demo-node"></span><span class="demo-node"></span><span class="demo-orb"></span>',
-    fragments:
-      '<span class="demo-orb"></span><span class="demo-node"></span><span class="demo-node"></span><span class="demo-node"></span><span class="demo-node"></span>',
-    bumper:
-      '<span class="demo-ring"></span><span class="demo-orb"></span>',
-    nova:
-      '<span class="demo-ring"></span><span class="demo-orb"></span>',
-    "mirror-slide":
-      '<span class="demo-orb"></span><span class="demo-orb"></span>',
-    "chain-relay":
-      '<span class="demo-node"></span><span class="demo-node"></span><span class="demo-node"></span><span class="demo-beam"></span><span class="demo-beam"></span>',
-    shockwave:
-      '<span class="demo-ring"></span><span class="demo-orb"></span>',
-    fusion:
-      '<span class="demo-orb"></span><span class="demo-orb"></span><span class="demo-ring"></span>',
-    "wall-charge":
-      '<span class="demo-wall"></span><span class="demo-orb"></span><span class="demo-ring"></span>',
-    "bumper-split":
-      '<span class="demo-ring"></span><span class="demo-orb"></span><span class="demo-orb"></span><span class="demo-orb"></span>',
-    "combo-shield":
-      '<span class="demo-ring"></span><span class="demo-orb"></span>'
+const MODULE_PREVIEW_COLORS = {
+  shot: "#6ed7ff",
+  collision: "#5ee2d7",
+  explosion: "#ffc45c",
+  arena: "#d38bff",
+  slide: "#72b7ff",
+  chain: "#ffe56d",
+  wall: "#ff7d99",
+  defense: "#ccecff"
+};
+
+function previewEase(t) {
+  return (
+    0.5 -
+    Math.cos(
+      Math.min(1, Math.max(0, t)) *
+      Math.PI
+    ) /
+      2
+  );
+}
+
+function drawPreviewOrb(
+  context,
+  x,
+  y,
+  radius,
+  color
+) {
+  context.save();
+  context.shadowBlur = 9;
+  context.shadowColor = color;
+  context.fillStyle = color;
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    radius,
+    0,
+    Math.PI * 2
+  );
+  context.fill();
+  context.restore();
+}
+
+function drawPreviewTarget(
+  context,
+  x,
+  y,
+  color
+) {
+  context.strokeStyle = color;
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    8,
+    0,
+    Math.PI * 2
+  );
+  context.stroke();
+  context.fillStyle =
+    "rgba(255,255,255,.22)";
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    2.5,
+    0,
+    Math.PI * 2
+  );
+  context.fill();
+}
+
+function drawModulePreview(
+  canvas,
+  upgrade,
+  now
+) {
+  const context =
+    canvas.getContext("2d");
+  const width =
+    canvas.width;
+  const height =
+    canvas.height;
+  const color =
+    MODULE_PREVIEW_COLORS[
+      upgrade.family
+    ] ?? "#ffffff";
+  const cycle =
+    (now % 1600) / 1600;
+  const t =
+    cycle < 0.86
+      ? cycle / 0.86
+      : 0;
+
+  context.clearRect(
+    0,
+    0,
+    width,
+    height
+  );
+  context.fillStyle =
+    "#070d15";
+  context.fillRect(
+    0,
+    0,
+    width,
+    height
+  );
+  context.strokeStyle =
+    "rgba(255,255,255,.035)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(14, height / 2);
+  context.lineTo(
+    width - 14,
+    height / 2
+  );
+  context.stroke();
+
+  const midY =
+    height / 2;
+
+  switch (upgrade.id) {
+    case "twin-shot": {
+      const p =
+        previewEase(t);
+      drawPreviewOrb(
+        context,
+        width * 0.50 -
+          p * 31,
+        midY +
+          26 -
+          p * 48,
+        5.5,
+        color
+      );
+      drawPreviewOrb(
+        context,
+        width * 0.50 +
+          p * 31,
+        midY +
+          26 -
+          p * 48,
+        5.5,
+        color
+      );
+      break;
+    }
+
+    case "ricochet": {
+      context.strokeStyle =
+        "rgba(255,255,255,.22)";
+      context.lineWidth = 3;
+      context.beginPath();
+      context.moveTo(22, 18);
+      context.lineTo(22, height - 18);
+      context.moveTo(
+        width - 22,
+        18
+      );
+      context.lineTo(
+        width - 22,
+        height - 18
+      );
+      context.stroke();
+
+      const phase =
+        t * 2;
+      const p =
+        phase <= 1
+          ? phase
+          : 2 - phase;
+      drawPreviewOrb(
+        context,
+        28 +
+          p *
+            (width - 56),
+        midY +
+          (phase <= 1
+            ? 18 - p * 35
+            : -17 + p * 35),
+        5.5,
+        color
+      );
+      break;
+    }
+
+    case "pierce": {
+      drawPreviewTarget(
+        context,
+        width * 0.42,
+        midY,
+        color
+      );
+      drawPreviewTarget(
+        context,
+        width * 0.68,
+        midY,
+        color
+      );
+      drawPreviewOrb(
+        context,
+        18 +
+          t *
+            (width - 36),
+        midY,
+        5.5,
+        color
+      );
+      break;
+    }
+
+    case "fragments": {
+      const p =
+        previewEase(t);
+      drawPreviewOrb(
+        context,
+        width / 2,
+        midY,
+        6,
+        color
+      );
+
+      if (t > 0.42) {
+        const burst =
+          (t - 0.42) /
+          0.58;
+
+        for (
+          let index = 0;
+          index < 5;
+          index += 1
+        ) {
+          const angle =
+            -Math.PI / 2 +
+            index *
+              (Math.PI * 2 / 5);
+          drawPreviewOrb(
+            context,
+            width / 2 +
+              Math.cos(angle) *
+                burst * 42,
+            midY +
+              Math.sin(angle) *
+                burst * 34,
+            3.2,
+            color
+          );
+        }
+      }
+
+      context.globalAlpha =
+        1 - p * 0.25;
+      break;
+    }
+
+    case "bumper":
+    case "bumper-split": {
+      const bx =
+        width * 0.58;
+      context.strokeStyle =
+        color;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(
+        bx,
+        midY,
+        18,
+        0,
+        Math.PI * 2
+      );
+      context.stroke();
+
+      const before =
+        Math.min(
+          1,
+          t / 0.48
+        );
+      drawPreviewOrb(
+        context,
+        18 +
+          before *
+            (bx - 37),
+        midY,
+        5.5,
+        color
+      );
+
+      if (
+        upgrade.id ===
+          "bumper-split" &&
+        t > 0.50
+      ) {
+        const split =
+          (t - 0.50) /
+          0.50;
+        drawPreviewOrb(
+          context,
+          bx +
+            split * 48,
+          midY -
+            split * 28,
+          4.5,
+          color
+        );
+        drawPreviewOrb(
+          context,
+          bx +
+            split * 48,
+          midY +
+            split * 28,
+          4.5,
+          color
+        );
+      }
+      break;
+    }
+
+    case "nova":
+    case "shockwave": {
+      const p =
+        previewEase(t);
+      drawPreviewOrb(
+        context,
+        width / 2,
+        midY,
+        6,
+        color
+      );
+      context.strokeStyle =
+        color;
+      context.globalAlpha =
+        1 - p;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(
+        width / 2,
+        midY,
+        9 + p * 45,
+        0,
+        Math.PI * 2
+      );
+      context.stroke();
+      context.globalAlpha = 1;
+      break;
+    }
+
+    case "mirror-slide": {
+      const p =
+        previewEase(t);
+      drawPreviewOrb(
+        context,
+        34 +
+          p * 62,
+        height - 20 -
+          p * 58,
+        5,
+        color
+      );
+      drawPreviewOrb(
+        context,
+        width - 34 -
+          p * 62,
+        height - 20 -
+          p * 58,
+        5,
+        color
+      );
+      break;
+    }
+
+    case "chain-relay": {
+      const points = [
+        [width * 0.25, height * 0.66],
+        [width * 0.50, height * 0.36],
+        [width * 0.75, height * 0.62]
+      ];
+
+      context.strokeStyle =
+        "rgba(255,229,109,.30)";
+      context.beginPath();
+      context.moveTo(
+        points[0][0],
+        points[0][1]
+      );
+      context.lineTo(
+        points[1][0],
+        points[1][1]
+      );
+      context.lineTo(
+        points[2][0],
+        points[2][1]
+      );
+      context.stroke();
+
+      for (
+        const [x, y] of points
+      ) {
+        drawPreviewTarget(
+          context,
+          x,
+          y,
+          color
+        );
+      }
+
+      const segment =
+        t * 2;
+      const a =
+        segment < 1
+          ? points[0]
+          : points[1];
+      const b =
+        segment < 1
+          ? points[1]
+          : points[2];
+      const q =
+        segment % 1;
+      drawPreviewOrb(
+        context,
+        a[0] +
+          (b[0] - a[0]) * q,
+        a[1] +
+          (b[1] - a[1]) * q,
+        4.5,
+        color
+      );
+      break;
+    }
+
+    case "fusion": {
+      const p =
+        Math.min(
+          1,
+          t / 0.62
+        );
+      drawPreviewOrb(
+        context,
+        26 +
+          p *
+            (width / 2 - 26),
+        midY,
+        5,
+        color
+      );
+      drawPreviewOrb(
+        context,
+        width - 26 -
+          p *
+            (width / 2 - 26),
+        midY,
+        5,
+        color
+      );
+
+      if (t > 0.62) {
+        const burst =
+          (t - 0.62) /
+          0.38;
+        context.strokeStyle =
+          color;
+        context.globalAlpha =
+          1 - burst;
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(
+          width / 2,
+          midY,
+          8 +
+            burst * 38,
+          0,
+          Math.PI * 2
+        );
+        context.stroke();
+        context.globalAlpha = 1;
+      }
+      break;
+    }
+
+    case "wall-charge": {
+      context.strokeStyle =
+        "rgba(255,255,255,.26)";
+      context.lineWidth = 3;
+      context.beginPath();
+      context.moveTo(
+        width - 28,
+        18
+      );
+      context.lineTo(
+        width - 28,
+        height - 18
+      );
+      context.stroke();
+      const p =
+        Math.min(
+          1,
+          t / 0.70
+        );
+      drawPreviewOrb(
+        context,
+        20 +
+          p *
+            (width - 53),
+        midY,
+        5.5,
+        color
+      );
+
+      if (t > 0.70) {
+        const burst =
+          (t - 0.70) /
+          0.30;
+        context.strokeStyle =
+          color;
+        context.globalAlpha =
+          1 - burst;
+        context.beginPath();
+        context.arc(
+          width - 28,
+          midY,
+          7 +
+            burst * 31,
+          0,
+          Math.PI * 2
+        );
+        context.stroke();
+        context.globalAlpha = 1;
+      }
+      break;
+    }
+
+    case "combo-shield": {
+      const pulse =
+        0.5 +
+        0.5 *
+          Math.sin(
+            now / 180
+          );
+      context.strokeStyle =
+        color;
+      context.globalAlpha =
+        0.55 +
+        pulse * 0.35;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(
+        width / 2,
+        midY,
+        27 +
+          pulse * 4,
+        0,
+        Math.PI * 2
+      );
+      context.stroke();
+      context.globalAlpha = 1;
+      drawPreviewOrb(
+        context,
+        width / 2,
+        midY,
+        6,
+        color
+      );
+      break;
+    }
+
+    default:
+      drawPreviewOrb(
+        context,
+        width / 2,
+        midY,
+        6,
+        color
+      );
+  }
+}
+
+function startModulePreviewLoop() {
+  if (modulePreviewFrame) {
+    cancelAnimationFrame(
+      modulePreviewFrame
+    );
+  }
+
+  const tick = (now) => {
+    if (!awaitingUpgrade) {
+      modulePreviewFrame = null;
+      return;
+    }
+
+    for (
+      const canvas of
+      upgradeCards.querySelectorAll(
+        ".module-preview-canvas"
+      )
+    ) {
+      const upgrade =
+        upgradeById(
+          canvas.dataset.module
+        );
+
+      if (upgrade) {
+        drawModulePreview(
+          canvas,
+          upgrade,
+          now
+        );
+      }
+    }
+
+    modulePreviewFrame =
+      requestAnimationFrame(
+        tick
+      );
   };
 
-  return templates[upgrade.id] ??
-    '<span class="demo-orb"></span>';
+  modulePreviewFrame =
+    requestAnimationFrame(tick);
 }
 
 function renderUpgradeChoices() {
@@ -7987,41 +9113,44 @@ function renderUpgradeChoices() {
     button.type = "button";
     button.className =
       `upgrade-card family-${upgrade.family}`;
+
     const owned =
-      buildCounts().get(upgrade.id) || 0;
+      moduleLevel(upgrade.id);
+    const nextLevel =
+      Math.min(
+        moduleMaxLevel(upgrade),
+        owned + 1
+      );
     const hints =
-      synergyHintsForUpgrade(upgrade);
-    const hintText =
-      hints.length
-        ? `→ ${hints.map((item) => item.title).join(" / ")}`
-        : "";
+      synergyHintsForUpgrade(
+        upgrade
+      );
     const ownedFamily =
-      buildHistory.some(
-        (item) =>
-          item.family ===
+      activeModuleIds.some(
+        (id) =>
+          upgradeById(id)?.family ===
           upgrade.family
       );
     const fitLabel =
-      hints.length
-        ? `SINERGIA · ${hints[0].title}`
-        : ownedFamily
-          ? "TU RUTA"
-          : "NUEVA RUTA";
+      owned > 0
+        ? `MEJORA · LV${nextLevel}`
+        : hints.length
+          ? `SINERGIA · ${hints[0].title}`
+          : ownedFamily
+            ? "TU RUTA"
+            : activeModuleIds.length >=
+                ACTIVE_MODULE_LIMIT
+              ? "NUEVO · RESERVA"
+              : "NUEVA RUTA";
 
     button.classList.toggle(
       "is-synergy",
       hints.length > 0
     );
-    button.classList.toggle(
-      "is-continuation",
-      !hints.length &&
-        ownedFamily
-    );
-
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"><em><i></i>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em><span>${fitLabel}</span></span><span class="module-preview" data-module="${upgrade.id}" aria-hidden="true">${upgradePreviewMarkup(upgrade)}</span><strong>${upgrade.title}${owned > 0 ? ` ×${owned + 1}` : ""}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span>`;
+      `<span class="module-head"><em><i></i>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="220" height="112" data-module="${upgrade.id}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
 
     button.addEventListener(
       "click",
@@ -8051,16 +9180,8 @@ function renderUpgradeChoices() {
           );
         }
 
-        upgrade.apply();
-
-        buildHistory.push({
-          id: upgrade.id,
-          title: upgrade.title,
-          family: upgrade.family,
-          icon: upgrade.icon,
-          effect: upgrade.effect,
-          desc: upgrade.desc
-        });
+        const result =
+          acquireModule(upgrade);
 
         renderBuildVisibility({
           announce: true
@@ -8074,6 +9195,18 @@ function renderUpgradeChoices() {
             upgrade.id
           );
         }
+
+        showMessage(
+          result.upgraded
+            ? `${upgrade.title.toUpperCase()} · LV${result.level}`
+            : result.reserve
+              ? `${upgrade.title.toUpperCase()} · RESERVA`
+              : `${upgrade.title.toUpperCase()} · ACTIVO`,
+          result.reserve
+            ? "#9cb0c4"
+            : "#ffe56d",
+          650
+        );
 
         wave += 1;
 
@@ -8096,7 +9229,10 @@ function renderUpgradeChoices() {
 
     upgradeCards.append(button);
   }
+
+  startModulePreviewLoop();
 }
+
 
 async function beginAct() {
   resetWaveState();
@@ -8962,6 +10098,7 @@ async function startRun(mode = "standard") {
   wave = 1;
   awaitingUpgrade = false;
   buildHistory = [];
+  resetModuleLoadout();
   announcedSynergies =
     new Set();
   renderBuildVisibility();
@@ -8973,7 +10110,7 @@ async function startRun(mode = "standard") {
   lastInputType = "—";
   message = "";
 
-  resetRunMods();
+  rebuildRunMods();
   resetWaveState();
 
   bossState = {
@@ -8998,6 +10135,7 @@ async function startRun(mode = "standard") {
     "INICIANDO…";
 
   upgradePanel.hidden = true;
+  buildPanel.hidden = true;
   summaryPanel.hidden = true;
 
   await ensureChartLoaded();
@@ -9508,6 +10646,7 @@ function abandonRun() {
   impactFlashes = [];
 
   pausePanel.hidden = true;
+  buildPanel.hidden = true;
   upgradePanel.hidden = true;
   summaryPanel.hidden = true;
   buildDock.hidden = true;
@@ -9518,6 +10657,21 @@ function abandonRun() {
   updateHud();
   render(clock.songTime);
 }
+
+buildButton.addEventListener(
+  "click",
+  () => openBuildManager("run")
+);
+
+upgradeManageButton.addEventListener(
+  "click",
+  () => openBuildManager("upgrade")
+);
+
+buildCloseButton.addEventListener(
+  "click",
+  () => closeBuildManager()
+);
 
 pauseButton.addEventListener(
   "click",
