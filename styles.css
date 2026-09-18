@@ -481,6 +481,7 @@ button { font: inherit; }
 .start-actions,
 .summary-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
   width: 100%;
