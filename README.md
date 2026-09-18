@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.32
+# Aura Farm — Vertical Slice v0.33
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,85 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.33 — Shield Notes / Rhythm Relay
+
+v0.33 adds a new note state designed to solve a core rhythm-action conflict:
+
+> projectile interactions should create gameplay without deleting the beats the player was about to perform.
+
+### Shield Notes
+
+Selected Tap notes can now be authored with:
+
+```json
+"shield": true
+```
+
+A Shield Note has one restrained segmented outer ring.
+
+The ring protects the note from projectiles and projectile-derived shockwaves. It does **not** protect the note from the player's claw.
+
+The intended sequence is:
+
+**Tap → projectile → break future shield → future note keeps travelling → player still taps it → new projectile**
+
+This preserves rhythmic input while rewarding physical projectile routing.
+
+### Armor break rules
+
+When a projectile hits an intact Shield Note:
+
+- the outer ring breaks;
+- the note remains active;
+- its original target beat does not change;
+- the player must still hit it normally;
+- the projectile is consumed unless it has Perfora;
+- Perfora spends one pierce and continues.
+
+After the ring breaks, that authored Shield Note becomes transparent to further projectiles until the player hits it. Multiple projectiles therefore cannot accidentally erase the preserved beat.
+
+### CHAIN · BREAK
+
+If the projectile and Shield Note belong to the same authored `music.phrase`, the break is counted as:
+
+**CHAIN · BREAK**
+
+This links the physical interaction to the musical phrase rather than treating every projectile collision as an equivalent event.
+
+A non-matching projectile produces a normal **ARMOR BREAK**.
+
+### Shock
+
+Shock now respects the same rhythm-preservation rule:
+
+- ordinary notes inside the AOE can still be removed;
+- an intact Shield Note loses its ring;
+- a prepared Shield Note remains for the player's Tap.
+
+Its Module Bay preview now shows armored neighboring notes surviving after their shields break.
+
+### Current chart
+
+The current 51-event chart contains **11 Shield Notes** across:
+
+- `spark-a`
+- `current-answer`
+- `relay-a`
+- `overdrive-a`
+- `bloom-fan`
+- `finale`
+- `core-fan`
+
+The opening GERMINATE pulse remains unshielded to keep onboarding clean.
+
+### Teaching
+
+New players learn the rule during the first CHAIN section:
+
+> **ESCUDO: TU BOLA ROMPE EL ARO · TÚ AÚN GOLPEAS LA NOTA**
+
+Returning players who already completed the previous tutorial receive one contextual AURI explanation the first time a new Shield Note appears.
 
 ## v0.32 — lobby, TRACE and balance
 
