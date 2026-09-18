@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.41";
+import { loadGameChart } from "./chart.js?v=0.42";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.41";
+} from "./music.js?v=0.42";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.41";
+const GAME_VERSION = "0.42";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.41";
+  "./assets/world/glasshouse-far.svg?v=0.42";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.41";
+  "./assets/world/growth-bays.svg?v=0.42";
 
 function drawWorldAsset(
   image,
@@ -156,14 +156,16 @@ const SLIDE = {
   leadSeconds: 2.45,
   startEarly: 1.05,
   startLate: 0.52,
+  clawCatchEarly: 0.40,
+  clawCatchLate: 0.52,
   scrollSpeed: 145,
-  railTolerance: 38,
-  disconnectGrace: 0.26,
-  minCoverage: 0.56,
+  railTolerance: 40,
+  disconnectGrace: 0.28,
+  minCoverage: 0.54,
   reachMin: 0.88,
   reachMax: 1.15,
   nodeBeats: 0.5,
-  traceGrabRadius: 104
+  traceGrabRadius: 112
 };
 
 const POWER_ORB_BASE_SCALE = 1.55;
@@ -3122,7 +3124,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.41", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.42", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -3485,7 +3487,8 @@ function spawnReady(songTime) {
           traceHeld: false,
           tracePointerId: null,
           traceArmed: false,
-          traceArmedAt: null
+          traceArmedAt: null,
+          traceCaptureMode: null
         });
       }
 
@@ -5877,15 +5880,9 @@ function beginSlide(event, side, songTime) {
   );
 
   showMessage(
-    songTime <
-      event.targetTime
-      ? "TRACE ARMADO · MANTÉN Y PREPÁRATE"
-      : "TRACE · ARRASTRA POR EL RIEL",
+    "TRACE ACTIVO · ARRASTRA",
     "#fff1a9",
-    songTime <
-      event.targetTime
-      ? 520
-      : 620
+    720
   );
 
   successTone(620);
@@ -7386,6 +7383,96 @@ function worldMusicResponse() {
   };
 }
 
+function drawPresentationAtmosphere(
+  palette,
+  intensity,
+  musicResponse
+) {
+  const [ar, ag, ab] =
+    palette.accent;
+  const [sr, sg, sb] =
+    palette.secondary;
+  const buildEnergy =
+    clamp(
+      activeModulePower() / 8,
+      0,
+      1
+    );
+  const pulse =
+    clamp(
+      musicResponse.kick * 0.7 +
+      musicResponse.aura * 0.5,
+      0,
+      1
+    );
+
+  ctx.save();
+
+  // Stage halo: a single broad arch adds depth without adding targets.
+  ctx.strokeStyle =
+    `rgba(${sr},${sg},${sb},${0.028 + intensity * 0.030 + pulse * 0.020})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(
+    DESIGN.width / 2,
+    442,
+    205,
+    300,
+    0,
+    Math.PI * 1.05,
+    Math.PI * 1.95
+  );
+  ctx.stroke();
+
+  ctx.strokeStyle =
+    `rgba(${ar},${ag},${ab},${0.018 + buildEnergy * 0.028})`;
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.ellipse(
+    DESIGN.width / 2,
+    450,
+    220,
+    318,
+    0,
+    Math.PI * 1.08,
+    Math.PI * 1.92
+  );
+  ctx.stroke();
+
+  // Low reflection / bloom makes the cockpit feel grounded in the same machine.
+  const floorGlow =
+    ctx.createRadialGradient(
+      DESIGN.width / 2,
+      850,
+      16,
+      DESIGN.width / 2,
+      850,
+      210
+    );
+  floorGlow.addColorStop(
+    0,
+    `rgba(${ar},${ag},${ab},${0.035 + buildEnergy * 0.035})`
+  );
+  floorGlow.addColorStop(
+    0.48,
+    `rgba(${sr},${sg},${sb},${0.018 + pulse * 0.016})`
+  );
+  floorGlow.addColorStop(
+    1,
+    "rgba(0,0,0,0)"
+  );
+  ctx.fillStyle =
+    floorGlow;
+  ctx.fillRect(
+    70,
+    710,
+    400,
+    230
+  );
+
+  ctx.restore();
+}
+
 function drawGlasshouseCanopy(
   palette,
   intensity,
@@ -7870,6 +7957,12 @@ function drawBackground() {
   drawWorldAsset(
     WORLD_ASSETS.mid,
     0.42
+  );
+
+  drawPresentationAtmosphere(
+    palette,
+    intensity,
+    musicResponse
   );
 
   drawGlasshouseCanopy(
@@ -13237,7 +13330,7 @@ function renderUpgradeChoices() {
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"><span>${fitLabel}</span></span><div class="upgrade-card-art" aria-hidden="true"><i class="upgrade-card-orbit"></i><span class="upgrade-card-icon">${upgrade.icon}</span><small class="upgrade-card-stars">${levelStars}</small></div><div class="upgrade-card-copy"><span class="upgrade-family">${moduleFamilyLabel(upgrade.family)}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span></div><div class="upgrade-preview-strip"><span>EN JUEGO</span><canvas class="module-preview-canvas" width="360" height="96" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas></div>`;
+      `<span class="module-head"><span>${fitLabel}</span></span><div class="upgrade-card-art" aria-hidden="true"><i class="upgrade-card-orbit"></i><span class="upgrade-card-icon">${upgrade.icon}</span><small class="upgrade-card-stars">${levelStars}</small></div><div class="upgrade-card-copy"><span class="upgrade-family">${moduleFamilyLabel(upgrade.family)}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span></div><div class="upgrade-preview-strip"><span>ASÍ CAMBIA TU RUN</span><canvas class="module-preview-canvas" width="420" height="150" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas></div>`;
 
     button.addEventListener(
       "click",
@@ -13306,7 +13399,7 @@ function renderUpgradeChoices() {
           (resolve) =>
             window.setTimeout(
               resolve,
-              390
+              470
             )
         );
 
@@ -13914,145 +14007,239 @@ function traceTargetPoint(event, songTime) {
   );
 }
 
-canvas.addEventListener(
-  "pointerdown",
-  (pointerEvent) => {
-    if (!running) return;
+function traceControlSideFromTarget(
+  target
+) {
+  if (
+    target === leftButton ||
+    leftButton?.contains?.(target)
+  ) {
+    return "left";
+  }
 
-    const songTime =
-      eventSongTime(pointerEvent.timeStamp);
-    const slide =
-      activeTraceSlideCandidate(songTime);
+  if (
+    target === rightButton ||
+    rightButton?.contains?.(target)
+  ) {
+    return "right";
+  }
 
-    if (!slide) return;
+  return null;
+}
 
-    const point =
-      eventToDesign(pointerEvent);
-    const target =
-      traceTargetPoint(slide, songTime);
-    const grabRadius =
-      slide.started
-        ? SLIDE.traceGrabRadius * 1.35
-        : SLIDE.traceGrabRadius;
+function captureTracePointer(
+  pointerEvent
+) {
+  if (!running) return false;
 
-    if (
-      Math.hypot(
-        point.x - target.x,
-        point.y - target.y
-      ) > grabRadius
-    ) {
-      return;
-    }
-
-    pointerEvent.preventDefault();
-    canvas.setPointerCapture?.(
-      pointerEvent.pointerId
+  const songTime =
+    eventSongTime(
+      pointerEvent.timeStamp
+    );
+  const slide =
+    activeTraceSlideCandidate(
+      songTime
     );
 
-    const beforeBeat =
-      !slide.started &&
-      songTime <
-        slide.targetTime;
+  if (!slide) return false;
 
-    slide.traceHeld = true;
-    slide.tracePointerId =
-      pointerEvent.pointerId;
+  const point =
+    eventToDesign(
+      pointerEvent
+    );
+  const target =
+    traceTargetPoint(
+      slide,
+      songTime
+    );
+  const grabRadius =
+    slide.started
+      ? SLIDE.traceGrabRadius *
+        1.35
+      : SLIDE.traceGrabRadius;
+  const spatialCatch =
+    Math.hypot(
+      point.x - target.x,
+      point.y - target.y
+    ) <= grabRadius;
 
-    if (beforeBeat) {
-      slide.traceArmed = true;
-      slide.traceArmedAt =
-        songTime;
-      slide.playerVector =
+  const controlSide =
+    traceControlSideFromTarget(
+      pointerEvent.target
+    );
+  const delta =
+    songTime -
+    slide.targetTime;
+  const clawCatch =
+    !slide.started &&
+    controlSide === slide.side &&
+    delta >=
+      -SLIDE.clawCatchEarly &&
+    delta <=
+      SLIDE.clawCatchLate;
+
+  if (
+    !spatialCatch &&
+    !clawCatch
+  ) {
+    return false;
+  }
+
+  pointerEvent.preventDefault();
+  pointerEvent.stopPropagation();
+
+  app.setPointerCapture?.(
+    pointerEvent.pointerId
+  );
+
+  const beforeBeat =
+    !slide.started &&
+    songTime <
+      slide.targetTime;
+
+  slide.traceHeld = true;
+  slide.tracePointerId =
+    pointerEvent.pointerId;
+  slide.traceCaptureMode =
+    clawCatch &&
+    !spatialCatch
+      ? "claw"
+      : "direct";
+
+  if (beforeBeat) {
+    slide.traceArmed = true;
+    slide.traceArmedAt =
+      songTime;
+    slide.playerVector =
+      slideVectorAtBeat(
+        slide,
+        0
+      );
+
+    const receiver =
+      slideTipPoint(
+        slide.side,
         slideVectorAtBeat(
           slide,
           0
-        );
+        )
+      );
 
-      showMessage(
-        "TRACE ARMADO · MANTÉN",
-        "#fff1a9",
-        520
-      );
-      setOperatorMood(
-        "slide",
-        0.48
-      );
-      setOperatorLean(
-        slide.side,
-        0.52
-      );
-      successTone(520);
+    createImpactFlash(
+      receiver.x,
+      receiver.y,
+      JUDGEMENTS.perfect
+    );
+    showMessage(
+      "TRACE CAPTURADO · MANTÉN",
+      "#fff1a9",
+      620
+    );
+    setOperatorMood(
+      "slide",
+      0.62
+    );
+    setOperatorLean(
+      slide.side,
+      0.66
+    );
+    successTone(560);
 
-      if (navigator.vibrate) {
-        navigator.vibrate(4);
-      }
-    } else if (!slide.started) {
-      slide.playerVector =
-        pointToSlideVector(
-          slide.side,
-          point
-        );
-      beginSlide(
-        slide,
-        slide.side,
-        songTime
+    if (navigator.vibrate) {
+      navigator.vibrate(
+        [5, 18, 6]
       );
-    } else {
-      slide.playerVector =
-        pointToSlideVector(
-          slide.side,
-          point
-        );
     }
+  } else if (!slide.started) {
+    slide.playerVector =
+      clawCatch
+        ? slideVectorAtBeat(
+            slide,
+            0
+          )
+        : pointToSlideVector(
+            slide.side,
+            point
+          );
 
-    lastInputType = "trace";
-  },
-  { passive: false }
-);
-
-canvas.addEventListener(
-  "pointermove",
-  (pointerEvent) => {
-    const slide =
-      [...active.values()]
-        .find(
-          (event) =>
-            event.type === "slide" &&
-            slideMode(event) === "trace" &&
-            event.traceHeld &&
-            event.tracePointerId ===
-              pointerEvent.pointerId
-        );
-
-    if (!slide) return;
-
-    pointerEvent.preventDefault();
-
+    beginSlide(
+      slide,
+      slide.side,
+      songTime
+    );
+  } else {
     slide.playerVector =
       pointToSlideVector(
         slide.side,
-        eventToDesign(pointerEvent)
+        point
       );
-  },
-  { passive: false }
-);
+  }
 
-function releaseTracePointer(pointerEvent) {
+  lastInputType = "trace";
+  return true;
+}
+
+function moveTracePointer(
+  pointerEvent
+) {
   const slide =
     [...active.values()]
       .find(
         (event) =>
           event.type === "slide" &&
-          slideMode(event) === "trace" &&
+          slideMode(event) ===
+            "trace" &&
+          event.traceHeld &&
           event.tracePointerId ===
             pointerEvent.pointerId
       );
 
-  if (!slide) return;
+  if (!slide) return false;
 
   pointerEvent.preventDefault();
+  pointerEvent.stopPropagation();
+
+  if (slide.started) {
+    slide.playerVector =
+      pointToSlideVector(
+        slide.side,
+        eventToDesign(
+          pointerEvent
+        )
+      );
+  } else {
+    slide.playerVector =
+      slideVectorAtBeat(
+        slide,
+        0
+      );
+  }
+
+  return true;
+}
+
+function releaseTracePointer(
+  pointerEvent
+) {
+  const slide =
+    [...active.values()]
+      .find(
+        (event) =>
+          event.type === "slide" &&
+          slideMode(event) ===
+            "trace" &&
+          event.tracePointerId ===
+            pointerEvent.pointerId
+      );
+
+  if (!slide) return false;
+
+  pointerEvent.preventDefault();
+  pointerEvent.stopPropagation();
+
   slide.traceHeld = false;
   slide.tracePointerId = null;
+  slide.traceCaptureMode = null;
 
   if (!slide.started) {
     slide.traceArmed = false;
@@ -14063,23 +14250,53 @@ function releaseTracePointer(pointerEvent) {
         0
       );
   }
+
+  if (
+    app.hasPointerCapture?.(
+      pointerEvent.pointerId
+    )
+  ) {
+    app.releasePointerCapture?.(
+      pointerEvent.pointerId
+    );
+  }
+
+  return true;
 }
 
-canvas.addEventListener(
+app.addEventListener(
+  "pointerdown",
+  captureTracePointer,
+  {
+    capture: true,
+    passive: false
+  }
+);
+
+app.addEventListener(
+  "pointermove",
+  moveTracePointer,
+  {
+    capture: true,
+    passive: false
+  }
+);
+
+for (const eventName of [
   "pointerup",
-  releaseTracePointer,
-  { passive: false }
-);
-canvas.addEventListener(
   "pointercancel",
-  releaseTracePointer,
-  { passive: false }
-);
-canvas.addEventListener(
-  "lostpointercapture",
-  releaseTracePointer,
-  { passive: false }
-);
+  "lostpointercapture"
+]) {
+  app.addEventListener(
+    eventName,
+    releaseTracePointer,
+    {
+      capture: true,
+      passive: false
+    }
+  );
+}
+
 
 window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
