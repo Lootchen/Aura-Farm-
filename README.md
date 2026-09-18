@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.39.1
+# Aura Farm — Vertical Slice v0.40
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,32 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.40 — Living Circuit visual identity pass
+
+v0.40 establishes a stronger shared material language without changing gameplay geometry.
+
+The visual rule is now **dark ceramic + glass + bioluminescent living circuit**.
+
+### World / build
+
+- equipped modules feed low-contrast colored conduits from AURI into the glasshouse chassis;
+- energy packets travel through those conduits on the beat;
+- module cards, loadout slots and build chips share the same luminous family material;
+- module-family colors now read as installed technologies instead of isolated UI accents.
+
+### Gameplay assets
+
+- launched projectiles gain paired luminous filaments, making them feel like energized seeds rather than plain balls;
+- incoming Tap notes receive a restrained seed/sprout inner motif while preserving the standard circle silhouette;
+- TRACE rails gain sparse moving light nodes that communicate current/flow without changing judged geometry;
+- claws gain a bioluminescent internal vein and beat-reactive nodes;
+- thumb controls gain a glass iris detail;
+- bumpers are rebuilt visually as six-petal reactor flowers with an illuminated seed core.
+
+### Principle
+
+The foreground gameplay silhouettes remain unchanged. The thematic pass is expressed through material, internal energy and secondary motion so readability remains stronger than decoration.
 
 ## v0.39.1 — TRACE armed-state hotfix
 
