@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
-  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.31" type="image/svg+xml">
+  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.32" type="image/svg+xml">
   <title>Aura Farm — Build the Beat</title>
-  <link rel="stylesheet" href="./styles.css?v=0.31">
+  <link rel="stylesheet" href="./styles.css?v=0.32">
 </head>
 <body>
   <main class="app" data-machine="forge">
@@ -52,48 +52,114 @@
     </div>
 
     <section id="startPanel" class="start-panel">
-      <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.31" alt=""></div>
-      <span class="eyebrow">AURA FARM · VERTICAL SLICE</span>
-      <h1>BUILD THE BEAT</h1>
-      <p>Golpea notas, conviértelas en proyectiles y construye una máquina musical distinta en cada run.</p>
+      <div class="menu-shell">
+        <header class="menu-top">
+          <div class="menu-brand">
+            <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.32" alt=""></div>
+            <span><strong>AURA FARM</strong><small>BUILD THE BEAT</small></span>
+          </div>
+          <button id="menuSettingsButton" class="menu-icon-button" type="button" aria-label="Abrir ajustes">⚙</button>
+        </header>
 
-      <div class="operator-intro" aria-label="Operadora AURI">
-        <span class="auri-badge" aria-hidden="true"><i></i></span>
-        <span><strong>AURI</strong><small>FIELD TECH · CULTIVA EL FLUJO, NO EL SCORE</small></span>
-      </div>
+        <section class="menu-hero">
+          <div class="menu-auri" aria-label="Operadora AURI">
+            <span class="auri-badge menu-auri-badge" aria-hidden="true"><i></i></span>
+            <div>
+              <span class="eyebrow">AURI · FIELD TECH</span>
+              <strong id="menuAuriLine">La máquina está lista. Hazla crecer.</strong>
+            </div>
+          </div>
 
-      <div class="track-intro">
-        <span>TRACK 01</span>
-        <strong>GLASSHOUSE CIRCUIT</strong>
-        <small>6 STEMS · 110 BPM</small>
-      </div>
+          <div class="menu-title">
+            <span class="eyebrow">TRACK 01 · 110 BPM</span>
+            <h1>GLASSHOUSE<br>CIRCUIT</h1>
+            <p>Golpea el beat. Convierte notas en proyectiles. Construye una máquina distinta en cada run.</p>
+          </div>
+        </section>
 
-      <div class="machine-picker" aria-label="Máquina">
-        <button class="machine-option is-selected" type="button" data-machine="forge">
-          <span>01</span><i class="machine-mini" aria-hidden="true"><b></b></i><strong>FORGE</strong><small>Impacto cálido</small>
+        <button id="startButton" class="run-card" type="button">
+          <span class="run-card-kicker">RUN PRINCIPAL</span>
+          <span class="run-card-core">
+            <strong id="startButtonLabel">INICIAR RUN</strong>
+            <i aria-hidden="true">▶</i>
+          </span>
+          <small>7 ACTOS · AURA CORE · BUILD 4 SLOTS</small>
         </button>
-        <button class="machine-option" type="button" data-machine="prism">
-          <span>02</span><i class="machine-mini" aria-hidden="true"><b></b></i><strong>PRISM</strong><small>Completa 1 run</small>
-        </button>
-        <button class="machine-option" type="button" data-machine="pulse">
-          <span>03</span><i class="machine-mini" aria-hidden="true"><b></b></i><strong>PULSE</strong><small>Completa 3 runs</small>
-        </button>
+
+        <div class="mode-grid" aria-label="Modos de juego">
+          <button id="dailyButton" class="mode-card" type="button">
+            <i aria-hidden="true">◇</i>
+            <span><strong>DAILY</strong><small>Seed del día · una build distinta</small></span>
+          </button>
+          <button id="practiceButton" class="mode-card" type="button">
+            <i aria-hidden="true">◎</i>
+            <span><strong>PRACTICE</strong><small>1 acto · entrena Tap y Slide</small></span>
+          </button>
+        </div>
+
+        <section class="menu-garage">
+          <header>
+            <span class="eyebrow">MÁQUINA</span>
+            <small>Toca para cambiar el chasis visual</small>
+          </header>
+          <div class="machine-picker" aria-label="Máquina">
+            <button class="machine-option is-selected" type="button" data-machine="forge">
+              <span>01</span><i class="machine-mini" aria-hidden="true"><b></b></i><strong>FORGE</strong><small>Impacto cálido</small>
+            </button>
+            <button class="machine-option" type="button" data-machine="prism">
+              <span>02</span><i class="machine-mini" aria-hidden="true"><b></b></i><strong>PRISM</strong><small>Completa 1 run</small>
+            </button>
+            <button class="machine-option" type="button" data-machine="pulse">
+              <span>03</span><i class="machine-mini" aria-hidden="true"><b></b></i><strong>PULSE</strong><small>Completa 3 runs</small>
+            </button>
+          </div>
+        </section>
+
+        <footer class="menu-profile">
+          <div><span>BEST</span><strong id="menuBestScore">0</strong></div>
+          <div><span>RUNS</span><strong id="menuRuns">0</strong></div>
+          <div><span>SLIDE</span><strong>TRACE</strong></div>
+        </footer>
       </div>
 
-      <div class="start-actions">
-        <button id="startButton" class="primary-action" type="button">RUN · 7 ACTOS</button>
-        <button id="dailyButton" class="secondary-action" type="button">DAILY SEED</button>
-        <button id="practiceButton" class="secondary-action" type="button">PRACTICE · 1 ACTO</button>
-      </div>
+      <aside id="menuSettings" class="menu-settings" hidden>
+        <div class="menu-settings-shell">
+          <header>
+            <div>
+              <span class="eyebrow">SYSTEM</span>
+              <h2>AJUSTES</h2>
+            </div>
+            <button id="menuSettingsClose" class="menu-icon-button" type="button" aria-label="Cerrar ajustes">×</button>
+          </header>
 
-      <div class="calibration-row" aria-label="Calibración de audio">
-        <button id="calibrationMinus" type="button">−15ms</button>
-        <span>OFFSET <strong id="calibrationValue">0ms</strong></span>
-        <button id="calibrationPlus" type="button">+15ms</button>
-        <button id="autoCalibration" type="button">CALIBRAR</button>
-      </div>
+          <section class="settings-card">
+            <div>
+              <strong>LATENCIA</strong>
+              <small>Ajusta el golpe a tu dispositivo o auriculares.</small>
+            </div>
+            <div class="calibration-row" aria-label="Calibración de audio">
+              <button id="calibrationMinus" type="button">−15</button>
+              <span>OFFSET <strong id="calibrationValue">0ms</strong></span>
+              <button id="calibrationPlus" type="button">+15</button>
+              <button id="autoCalibration" type="button">AUTO</button>
+            </div>
+          </section>
 
-      <small>Tap = contacto físico. TRACE = sigue la cuerda con el dedo. FOLLOW = mueve la garra con el stick. Auriculares Bluetooth: calibra el offset antes de una run seria.</small>
+          <section class="settings-card">
+            <div>
+              <strong>SLIDE · TRACE</strong>
+              <small>Toca el inicio del riel y arrastra el dedo siguiendo la frase. El stick ya no controla Slide.</small>
+            </div>
+          </section>
+
+          <section class="settings-card settings-help">
+            <div>
+              <strong>CONTROLES</strong>
+              <small>Tap: toca la zona de cada garra. Slide: arrastra directamente sobre el riel. H: debug en teclado.</small>
+            </div>
+          </section>
+        </div>
+      </aside>
     </section>
 
     <section id="upgradePanel" class="upgrade-panel" hidden>
@@ -195,6 +261,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.31"></script>
+  <script type="module" src="./src/main.js?v=0.32"></script>
 </body>
 </html>
