@@ -1586,3 +1586,27 @@ button { font: inherit; }
     opacity: 0;
   }
 }
+
+
+/* v0.28 — brand asset */
+.brand-mark {
+  border: 0;
+  background:
+    radial-gradient(
+      circle,
+      rgba(var(--machine-accent),.08),
+      transparent 68%
+    );
+  box-shadow: none;
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter:
+    drop-shadow(
+      0 0 12px
+      rgba(var(--machine-accent),.18)
+    );
+}
