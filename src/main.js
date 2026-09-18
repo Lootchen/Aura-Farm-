@@ -149,12 +149,9 @@ const SLIDE = {
   railTolerance: 25,
   disconnectGrace: 0.15,
   minCoverage: 0.68,
-  joystickRadius: 40,
-  inputRadius: 62,
   reachMin: 0.88,
   reachMax: 1.15,
   nodeBeats: 0.5,
-  followSpeed: 2.25,
   traceGrabRadius: 48
 };
 
@@ -2765,17 +2762,13 @@ async function closeBuildManager() {
 const slideControl = {
   left: {
     held: false,
-    pointerId: null,
     x: 0,
-    y: 0,
-    releasedAt: -Infinity
+    y: 0
   },
   right: {
     held: false,
-    pointerId: null,
     x: 0,
-    y: 0,
-    releasedAt: -Infinity
+    y: 0
   }
 };
 
@@ -5175,37 +5168,6 @@ function activeSlideAt(songTime, side = null) {
     )[0] ?? null;
 }
 
-function slidePressReserved() {
-  return false;
-}
-
-function updateSlidePadPosition(side, event) {
-  if (!event) return;
-
-  const point = eventToDesign(event);
-  const center = controlButtonCenter(side);
-  const dx = point.x - center.x;
-  const dy = point.y - center.y;
-  const length = Math.hypot(dx, dy);
-  const control = slideControl[side];
-
-  if (length < 2) {
-    control.x = 0;
-    control.y = 0;
-    return;
-  }
-
-  const clamped =
-    Math.min(length, SLIDE.inputRadius);
-
-  control.x =
-    (dx / length) *
-    (clamped / SLIDE.inputRadius);
-
-  control.y =
-    (dy / length) *
-    (clamped / SLIDE.inputRadius);
-}
 function beginSlide(event, side, songTime) {
   if (event.started) return;
 
@@ -8857,7 +8819,7 @@ function drawDebug(songTime) {
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE directo · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
-    `stick L:${slideControl.left.x.toFixed(2)},${slideControl.left.y.toFixed(2)} R:${slideControl.right.x.toFixed(2)},${slideControl.right.y.toFixed(2)}`,
+    "tap zonas L/R · slide trace directo en canvas",
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`,
     `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0}`
@@ -8947,10 +8909,8 @@ function resetWaveState() {
   impactFlashes = [];
   for (const side of ["left", "right"]) {
     slideControl[side].held = false;
-    slideControl[side].pointerId = null;
     slideControl[side].x = 0;
     slideControl[side].y = 0;
-    slideControl[side].releasedAt = -Infinity;
   }
 
   flippers.left.startTime = -Infinity;
@@ -11538,50 +11498,9 @@ function pressVisual(button, state) {
 function handleSidePress(
   side,
   eventTimestamp,
-  inputType = "unknown",
-  pointerEvent = null
+  inputType = "unknown"
 ) {
   if (!running) return;
-
-  const songTime =
-    eventSongTime(eventTimestamp);
-
-  const slide =
-    activeSlideAt(songTime, side);
-
-  if (
-    slide &&
-    slidePressReserved(
-      slide,
-      side,
-      songTime
-    )
-  ) {
-    slideControl[side].held = true;
-
-    if (pointerEvent) {
-      slideControl[side].pointerId =
-        pointerEvent.pointerId;
-    }
-
-    if (pointerEvent) {
-      updateSlidePadPosition(
-        side,
-        pointerEvent
-      );
-    }
-
-    if (!slide.started) {
-      beginSlide(
-        slide,
-        side,
-        songTime
-      );
-    }
-
-    lastInputType = "slide";
-    return;
-  }
 
   triggerFlipper(
     side,
@@ -11590,95 +11509,64 @@ function handleSidePress(
   );
 }
 
-function handleSideMove(
-  side,
-  event
-) {
-  const control =
-    slideControl[side];
-
-  if (
-    control.pointerId !== event.pointerId
-  ) {
-    return;
-  }
-
-  const slide =
-    activeSlideAt(
-      eventSongTime(event.timeStamp),
-      side
-    );
-
-  if (!slide?.started) return;
-
-  updateSlidePadPosition(
-    side,
-    event
-  );
-}
-
 function handleSideRelease(
-  side,
-  eventTimestamp,
-  pointerId = null
+  side
 ) {
-  const songTime =
-    eventSongTime(eventTimestamp);
-
   const control =
     slideControl[side];
-
-  if (
-    pointerId !== null &&
-    control.pointerId !== null &&
-    pointerId !== control.pointerId
-  ) {
-    return;
-  }
 
   control.held = false;
-  control.pointerId = null;
   control.x = 0;
   control.y = 0;
-  control.releasedAt = songTime;
 }
 
+
 function bindButton(button, side) {
-  button.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    button.setPointerCapture?.(event.pointerId);
-    pressVisual(button, true);
+  button.addEventListener(
+    "pointerdown",
+    (event) => {
+      event.preventDefault();
+      button.setPointerCapture?.(
+        event.pointerId
+      );
+      pressVisual(
+        button,
+        true
+      );
 
-    handleSidePress(
-      side,
-      event.timeStamp,
-      event.pointerType || "touch",
-      event
-    );
-  });
+      handleSidePress(
+        side,
+        event.timeStamp,
+        event.pointerType ||
+          "touch"
+      );
+    }
+  );
 
-  button.addEventListener("pointermove", (event) => {
-    event.preventDefault();
-    handleSideMove(
-      side,
-      event
-    );
-  });
+  const release =
+    (event) => {
+      event?.preventDefault?.();
+      pressVisual(
+        button,
+        false
+      );
+      handleSideRelease(
+        side
+      );
+    };
 
-  const release = (event) => {
-    event?.preventDefault?.();
-    pressVisual(button, false);
-
-    handleSideRelease(
-      side,
-      event?.timeStamp,
-      event?.pointerId ?? null
-    );
-  };
-
-  button.addEventListener("pointerup", release);
-  button.addEventListener("pointercancel", release);
-  button.addEventListener("lostpointercapture", release);
+  button.addEventListener(
+    "pointerup",
+    release
+  );
+  button.addEventListener(
+    "pointercancel",
+    release
+  );
+  button.addEventListener(
+    "lostpointercapture",
+    release
+  );
 }
 
 bindButton(leftButton, "left");
@@ -11903,16 +11791,14 @@ window.addEventListener("keyup", (event) => {
   if (key === "a" || event.key === "ArrowLeft") {
     pressVisual(leftButton, false);
     handleSideRelease(
-      "left",
-      event.timeStamp
+      "left"
     );
   }
 
   if (key === "d" || event.key === "ArrowRight") {
     pressVisual(rightButton, false);
     handleSideRelease(
-      "right",
-      event.timeStamp
+      "right"
     );
   }
 });
