@@ -303,6 +303,8 @@ const runMods = {
   chainRelay: 0,
   shockwave: 0,
   fusionBlast: 0,
+  wallCharge: 0,
+  bumperSplit: 0,
   comboShieldCharges: 0
 };
 
@@ -419,6 +421,32 @@ const UPGRADES = [
     desc: "Choques entre proyectiles detonan como Power.",
     apply: () => {
       runMods.fusionBlast += 1;
+    }
+  },
+  {
+    id: "wall-charge",
+    family: "wall",
+    icon: "⬡",
+    title: "Carga",
+    effect: "PARED → POWER",
+    desc: "Los impactos de pared detonan como Power.",
+    available: () => runMods.wallCharge === 0,
+    apply: () => {
+      runMods.wallCharge = 1;
+    }
+  },
+  {
+    id: "bumper-split",
+    family: "arena",
+    icon: "⋔",
+    title: "Duplicador",
+    effect: "BUMPER ×2",
+    desc: "El primer rebote en bumper duplica la bola.",
+    available: () =>
+      runMods.bumperCount > 0 &&
+      runMods.bumperSplit === 0,
+    apply: () => {
+      runMods.bumperSplit = 1;
     }
   },
   {
@@ -1496,6 +1524,41 @@ function resolveBumperCollisions() {
         projectile.y,
         JUDGEMENTS.perfect
       );
+
+      if (
+        runMods.bumperSplit > 0 &&
+        !projectile.bumperSplitUsed
+      ) {
+        projectile.bumperSplitUsed = true;
+
+        const angle =
+          Math.atan2(
+            projectile.vy,
+            projectile.vx
+          );
+        const child =
+          spawnLaunchedProjectile({
+            x: projectile.x,
+            y: projectile.y,
+            angle: angle + 0.28,
+            side: projectile.side,
+            symbol: "⋔",
+            power: Boolean(projectile.power),
+            radiusScale:
+              projectile.power
+                ? POWER_ORB_BASE_SCALE * 0.78
+                : 0.78,
+            speed:
+              Math.hypot(
+                projectile.vx,
+                projectile.vy
+              ),
+            inheritMods: false
+          });
+
+        child.bumperSplitUsed = true;
+      }
+
       playTone(245, 0.04, 0.045, "triangle");
       break;
     }
@@ -1594,7 +1657,9 @@ function updateTap(note, dt, songTime) {
       createExplosion(
         clamp(note.x, radius, DESIGN.width - radius),
         clamp(note.y, 72, DESIGN.height - radius),
-        note.power ? 1.65 : 1,
+        note.power || runMods.wallCharge > 0
+          ? 1.65
+          : 1,
         {
           emitFragments: !note.fragment,
           side: note.side
@@ -3317,6 +3382,8 @@ function resetRunMods() {
   runMods.chainRelay = 0;
   runMods.shockwave = 0;
   runMods.fusionBlast = 0;
+  runMods.wallCharge = 0;
+  runMods.bumperSplit = 0;
   runMods.comboShieldCharges = 0;
 }
 
