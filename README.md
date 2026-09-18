@@ -106,7 +106,7 @@ Las 13 mejoras tienen una mini-demostración animada de su comportamiento:
 - Duplicador — una bola se divide en dos.
 - Shield — campo protector.
 
-La build persistente, stacks y sinergias de v0.26 siguen visibles.
+La build persistente, sus stacks y sinergias siguen visibles durante toda la run.
 
 ## Track 01 — GLASSHOUSE CIRCUIT
 
