@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.17";
+import { loadGameChart } from "./chart.js?v=0.18";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -9,6 +9,9 @@ const rightButton = document.querySelector("#rightButton");
 const scoreEl = document.querySelector("#score");
 const comboEl = document.querySelector("#combo");
 const lastHitEl = document.querySelector("#lastHit");
+const upgradePanel = document.querySelector("#upgradePanel");
+const upgradeTitle = document.querySelector("#upgradeTitle");
+const upgradeCards = document.querySelector("#upgradeCards");
 
 const DESIGN = { width: 540, height: 960 };
 
@@ -55,9 +58,11 @@ const SLIDE = {
   positionTolerance: 0.28,
   disconnectGrace: 0.14,
   minCoverage: 0.70,
-  padTravel: 46,
+  joystickRadius: 27,
   nodeBeats: 0.5
 };
+
+const POWER_ORB_BASE_SCALE = 1.55;
 
 const DRAW = {
   previewSeconds: 1.35,
@@ -289,8 +294,101 @@ let messageUntil = 0;
 let calibrationOffsetMs = 0;
 let lastInputType = "—";
 let showDebug = false;
+let wave = 1;
+let awaitingUpgrade = false;
+let perfectTapCount = 0;
 
 let drawGesture = null;
+
+const runMods = {
+  slideToleranceBonus: 0,
+  slideGraceBonus: 0,
+  flipperHitBonus: 0,
+  powerOrbScale: 1,
+  powerOrbSpeed: 1,
+  powerExplosionScale: 1,
+  scoreMultiplier: 1,
+  comboShieldCharges: 0,
+  tapPowerEvery: 0
+};
+
+const UPGRADES = [
+  {
+    id: "aim-assist",
+    title: "Mira Amplia",
+    description: "La zona válida del Slide crece.",
+    apply: () => {
+      runMods.slideToleranceBonus += 0.05;
+    }
+  },
+  {
+    id: "stable-stick",
+    title: "Palanca Estable",
+    description: "Más gracia si pierdes la ruta por un instante.",
+    apply: () => {
+      runMods.slideGraceBonus += 0.04;
+    }
+  },
+  {
+    id: "wide-flipper",
+    title: "Pinza Ancha",
+    description: "Aumenta el área física de impacto del Tap.",
+    apply: () => {
+      runMods.flipperHitBonus += 3;
+    }
+  },
+  {
+    id: "big-core",
+    title: "Núcleo Gigante",
+    description: "Las Power Orbs salen más grandes.",
+    apply: () => {
+      runMods.powerOrbScale *= 1.18;
+    }
+  },
+  {
+    id: "shockwave",
+    title: "Onda de Choque",
+    description: "Las explosiones de Power Orb crecen.",
+    apply: () => {
+      runMods.powerExplosionScale *= 1.20;
+    }
+  },
+  {
+    id: "thruster",
+    title: "Propulsor",
+    description: "Las Power Orbs vuelan más rápido, siempre a velocidad constante.",
+    apply: () => {
+      runMods.powerOrbSpeed *= 1.10;
+    }
+  },
+  {
+    id: "aura-amp",
+    title: "Aura Amplificada",
+    description: "+15% de puntos a partir de ahora.",
+    apply: () => {
+      runMods.scoreMultiplier *= 1.15;
+    }
+  },
+  {
+    id: "combo-shield",
+    title: "Escudo de Combo",
+    description: "Absorbe un MISS sin romper tu combo.",
+    apply: () => {
+      runMods.comboShieldCharges += 1;
+    }
+  },
+  {
+    id: "tap-overload",
+    title: "Sobrecarga Tap",
+    description: "Cada pocos PERFECT, un Tap se convierte en Power Orb.",
+    apply: () => {
+      runMods.tapPowerEvery =
+        runMods.tapPowerEvery === 0
+          ? 4
+          : Math.max(2, runMods.tapPowerEvery - 1);
+    }
+  }
+];
 
 const slideControl = {
   left: {
@@ -315,6 +413,31 @@ const flippers = {
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const lerp = (a, b, t) => a + (b - a) * t;
 
+function normalizeAngle(angle) {
+  let value = angle;
+
+  while (value <= -Math.PI) value += Math.PI * 2;
+  while (value > Math.PI) value -= Math.PI * 2;
+
+  return value;
+}
+
+function awardScore(points) {
+  score += Math.round(points * runMods.scoreMultiplier);
+}
+
+function noteRadius(note) {
+  return NOTE_RADIUS * (note.radiusScale || 1);
+}
+
+function slideTolerance() {
+  return SLIDE.positionTolerance + runMods.slideToleranceBonus;
+}
+
+function slideGrace() {
+  return SLIDE.disconnectGrace + runMods.slideGraceBonus;
+}
+
 function beatToSeconds(beat) {
   return beat * (60 / BPM);
 }
@@ -326,7 +449,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.17", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.18", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -555,7 +678,8 @@ function eventSongTime(eventTimestamp) {
 function spawnReady(songTime) {
   const duration = loopDuration();
   const currentLoop = songTime < 0 ? 0 : Math.floor(songTime / duration);
-  const loops = currentLoop === 0 ? [0, 1] : [currentLoop, currentLoop + 1];
+  if (currentLoop > 0) return;
+  const loops = [0];
 
   for (const loop of loops) {
     CHART.forEach((event, index) => {
@@ -805,8 +929,18 @@ function resolveTapHit(note, side, songTime) {
   combo += 1;
   const multiplier = comboMultiplier(combo);
 
-  score += JUDGEMENTS.perfect.points * multiplier;
+  awardScore(JUDGEMENTS.perfect.points * multiplier);
   hitCount += 1;
+  perfectTapCount += 1;
+
+  if (
+    runMods.tapPowerEvery > 0 &&
+    perfectTapCount % runMods.tapPowerEvery === 0
+  ) {
+    note.power = true;
+    note.radiusScale =
+      POWER_ORB_BASE_SCALE * runMods.powerOrbScale;
+  }
 
   lastDeltaMs = null;
   lastJudgement = "PERFECT";
@@ -832,7 +966,11 @@ function resolveTapHit(note, side, songTime) {
     JUDGEMENTS.perfect
   );
 
-  showMessage("PERFECT", JUDGEMENTS.perfect.color, 360);
+  showMessage(
+    note.power ? "PERFECT · POWER ORB" : "PERFECT",
+    JUDGEMENTS.perfect.color,
+    note.power ? 500 : 360
+  );
   hitSound(side, JUDGEMENTS.perfect);
 
   if (navigator.vibrate) {
@@ -844,7 +982,15 @@ function resolveTapHit(note, side, songTime) {
 }
 
 function failEvent(event, label = "MISS") {
-  combo = 0;
+  const protectedCombo =
+    combo > 0 && runMods.comboShieldCharges > 0;
+
+  if (protectedCombo) {
+    runMods.comboShieldCharges -= 1;
+  } else {
+    combo = 0;
+  }
+
   missCount += 1;
   lastDeltaMs = null;
   lastJudgement = label;
@@ -852,7 +998,13 @@ function failEvent(event, label = "MISS") {
   active.delete(event.key);
   resolved.add(event.key);
 
-  showMessage(label, "#ff7184", 360);
+  showMessage(
+    protectedCombo
+      ? `${label} · ESCUDO`
+      : label,
+    protectedCombo ? "#9edcff" : "#ff7184",
+    protectedCombo ? 480 : 360
+  );
 
   if (navigator.vibrate) navigator.vibrate(12);
 
@@ -887,7 +1039,9 @@ function resolveFlipperCollisions(songTime) {
       );
 
       const collisionDistance =
-        NOTE_RADIUS + FLIPPER.width * 0.5;
+        noteRadius(note) +
+        FLIPPER.width * 0.5 +
+        runMods.flipperHitBonus;
 
       if (
         distance <= collisionDistance &&
@@ -899,18 +1053,19 @@ function resolveFlipperCollisions(songTime) {
   }
 }
 
-function createExplosion(x, y) {
+function createExplosion(x, y, scale = 1) {
   explosions.push({
     x,
     y,
+    scale,
     life: 0,
-    duration: 0.28,
+    duration: 0.28 + 0.05 * Math.max(0, scale - 1),
     particles: Array.from({ length: 7 }, (_, index) => {
       const angle = (Math.PI * 2 * index) / 7;
 
       return {
         angle,
-        speed: 70 + index * 8
+        speed: (70 + index * 8) * scale
       };
     })
   });
@@ -918,6 +1073,10 @@ function createExplosion(x, y) {
   if (explosions.length > 12) explosions.shift();
 
   explosionSound();
+
+  if (scale > 1.2) {
+    playTone(105, 0.09, 0.045, "sine");
+  }
 }
 
 function sweptProjectileHit(a, b) {
@@ -953,7 +1112,8 @@ function sweptProjectileHit(a, b) {
 
   const separationX = relativeStartX + relativeStepX * t;
   const separationY = relativeStartY + relativeStepY * t;
-  const collisionRadius = NOTE_RADIUS * 2.15;
+  const collisionRadius =
+    noteRadius(a) + noteRadius(b) + 3;
 
   if (
     separationX * separationX +
@@ -1013,15 +1173,24 @@ function resolveProjectileCollisions() {
       if (chain) {
         resolved.add(other.key);
         chainCount += 1;
-        score += 100 * comboMultiplier(combo);
+        awardScore(100 * comboMultiplier(combo));
         showMessage("CHAIN +100", "#ffe985", 300);
       } else {
         collisionCount += 1;
-        score += 50 * comboMultiplier(combo);
+        awardScore(50 * comboMultiplier(combo));
         showMessage("COLISIÓN +50", "#ffffff", 260);
       }
 
-      createExplosion(collision.x, collision.y);
+      const powerScale =
+        projectile.power || other.power
+          ? 1.65 * runMods.powerExplosionScale
+          : 1;
+
+      createExplosion(
+        collision.x,
+        collision.y,
+        powerScale
+      );
       updateHud();
       break;
     }
@@ -1036,19 +1205,24 @@ function updateTap(note, dt, songTime) {
     note.x += note.vx * dt;
     note.y += note.vy * dt;
 
+    const radius = noteRadius(note);
+
     const hitWall =
-      note.x <= NOTE_RADIUS ||
-      note.x >= DESIGN.width - NOTE_RADIUS ||
+      note.x <= radius ||
+      note.x >= DESIGN.width - radius ||
       note.y <= 72 ||
-      note.y >= DESIGN.height - NOTE_RADIUS;
+      note.y >= DESIGN.height - radius;
 
     if (hitWall) {
       active.delete(note.key);
       wallExplosionCount += 1;
 
       createExplosion(
-        clamp(note.x, NOTE_RADIUS, DESIGN.width - NOTE_RADIUS),
-        clamp(note.y, 72, DESIGN.height - NOTE_RADIUS)
+        clamp(note.x, radius, DESIGN.width - radius),
+        clamp(note.y, 72, DESIGN.height - radius),
+        note.power
+          ? 1.65 * runMods.powerExplosionScale
+          : 1
       );
     }
 
@@ -1151,9 +1325,20 @@ function updateSlidePadPosition(side, event) {
 
   const point = eventToDesign(event);
   const center = controlButtonCenter(side);
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+
+  if (Math.hypot(dx, dy) < 5) return;
+
+  const pointerAngle = Math.atan2(dy, dx);
+  const m = view();
+  const centerAngle =
+    (m.restAngle[side] + m.strikeAngle[side]) / 2;
+  const span =
+    Math.abs(m.strikeAngle[side] - m.restAngle[side]) / 2;
 
   slideControl[side].position = clamp(
-    (point.x - center.x) / SLIDE.padTravel,
+    normalizeAngle(pointerAngle - centerAngle) / span,
     -1,
     1
   );
@@ -1215,7 +1400,7 @@ function slideConnected(event, songTime) {
 
   if (
     control.held &&
-    error <= SLIDE.positionTolerance
+    error <= slideTolerance()
   ) {
     event.lastGoodTime = songTime;
     return true;
@@ -1223,7 +1408,7 @@ function slideConnected(event, songTime) {
 
   return (
     songTime - event.lastGoodTime <=
-    SLIDE.disconnectGrace
+    slideGrace()
   );
 }
 
@@ -1276,8 +1461,18 @@ function spawnSlideProjectile(event) {
     y: point.y,
     prevX: point.x,
     prevY: point.y,
-    vx: Math.cos(angle) * POST_HIT_SPEED,
-    vy: Math.sin(angle) * POST_HIT_SPEED
+    vx:
+      Math.cos(angle) *
+      POST_HIT_SPEED *
+      runMods.powerOrbSpeed,
+    vy:
+      Math.sin(angle) *
+      POST_HIT_SPEED *
+      runMods.powerOrbSpeed,
+    power: true,
+    radiusScale:
+      POWER_ORB_BASE_SCALE *
+      runMods.powerOrbScale
   });
 }
 
@@ -1295,7 +1490,7 @@ function finishSlide(event) {
 
   const connectedAtEnd =
     event.endTime - event.lastGoodTime <=
-    SLIDE.disconnectGrace;
+    slideGrace();
 
   if (
     coverage < SLIDE.minCoverage ||
@@ -1306,8 +1501,9 @@ function finishSlide(event) {
   }
 
   combo += 1;
-  score +=
-    450 * comboMultiplier(combo);
+  awardScore(
+    450 * comboMultiplier(combo)
+  );
 
   lastDeltaMs = null;
   lastJudgement = "SLIDE PERFECT";
@@ -1330,9 +1526,9 @@ function finishSlide(event) {
   spawnSlideProjectile(event);
 
   showMessage(
-    "SLIDE PERFECT",
+    "SLIDE PERFECT · POWER ORB",
     JUDGEMENTS.perfect.color,
-    580
+    620
   );
 
   successTone(820);
@@ -1410,7 +1606,7 @@ function drawSlideOrb(
     `900 ${Math.max(11, radius - 1)}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("↔", x, y + 1);
+  ctx.fillText("◎", x, y + 1);
   ctx.restore();
 }
 
@@ -1428,7 +1624,7 @@ function slideVisualConnected(event, songTime) {
     event.started &&
     slideControl[event.side].held &&
     slideRawError(event, songTime) <=
-      SLIDE.positionTolerance
+      slideTolerance()
   );
 }
 
@@ -1519,57 +1715,76 @@ function drawSlideGuideArc(event, songTime) {
   ctx.restore();
 }
 
+function joystickPoint(side, position, radius) {
+  const center = controlButtonCenter(side);
+  const angle = slideAngle(side, position);
+
+  return {
+    x: center.x + Math.cos(angle) * radius,
+    y: center.y + Math.sin(angle) * radius
+  };
+}
+
 function drawSlidePadLegend(event, songTime) {
-  const center =
-    controlButtonCenter(event.side);
-  const control =
-    slideControl[event.side];
+  const center = controlButtonCenter(event.side);
+  const control = slideControl[event.side];
   const target =
     event.started
       ? slidePositionAtTime(event, songTime)
       : event.anchors[0].position;
-  const travel = 28;
-  const tolerance =
-    SLIDE.positionTolerance * travel;
+  const targetPoint =
+    joystickPoint(
+      event.side,
+      target,
+      SLIDE.joystickRadius
+    );
+  const playerPoint =
+    joystickPoint(
+      event.side,
+      control.position,
+      SLIDE.joystickRadius - 3
+    );
   const connected =
     slideVisualConnected(event, songTime);
+  const m = view();
+  const startAngle =
+    Math.min(
+      m.restAngle[event.side],
+      m.strikeAngle[event.side]
+    );
+  const endAngle =
+    Math.max(
+      m.restAngle[event.side],
+      m.strikeAngle[event.side]
+    );
 
   ctx.save();
 
-  // Mini trackpad inside the circular control.
-  ctx.fillStyle =
-    "rgba(5,9,16,.52)";
-  ctx.strokeStyle =
-    "rgba(255,255,255,.28)";
+  ctx.fillStyle = "rgba(5,9,16,.54)";
+  ctx.strokeStyle = "rgba(255,255,255,.24)";
   ctx.lineWidth = 2;
-
-  const x0 = center.x - 31;
-  const y0 = center.y - 8;
-  const w = 62;
-  const h = 16;
-  const r = 8;
-
   ctx.beginPath();
-  ctx.roundRect(x0, y0, w, h, r);
+  ctx.arc(
+    center.x,
+    center.y,
+    SLIDE.joystickRadius + 5,
+    0,
+    Math.PI * 2
+  );
   ctx.fill();
   ctx.stroke();
 
-  const targetX =
-    center.x + target * travel;
-
-  ctx.fillStyle =
-    event.started
-      ? connected
-        ? "rgba(255,241,169,.24)"
-        : "rgba(255,113,132,.20)"
-      : "rgba(255,241,169,.16)";
-
-  ctx.fillRect(
-    targetX - tolerance,
-    y0 + 2,
-    tolerance * 2,
-    h - 4
+  ctx.strokeStyle = "rgba(255,255,255,.20)";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(
+    center.x,
+    center.y,
+    SLIDE.joystickRadius,
+    startAngle,
+    endAngle
   );
+  ctx.stroke();
 
   ctx.strokeStyle =
     event.started
@@ -1577,47 +1792,57 @@ function drawSlidePadLegend(event, songTime) {
         ? "#fff1a9"
         : "#ff7184"
       : "#fff1a9";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(targetX, y0 - 5);
-  ctx.lineTo(targetX, y0 + h + 5);
+  ctx.moveTo(center.x, center.y);
+  ctx.lineTo(targetPoint.x, targetPoint.y);
   ctx.stroke();
 
-  const playerX =
-    center.x +
-    control.position * travel;
+  ctx.shadowBlur = 14;
+  ctx.shadowColor = ctx.strokeStyle;
+  ctx.fillStyle = ctx.strokeStyle;
+  ctx.beginPath();
+  ctx.arc(
+    targetPoint.x,
+    targetPoint.y,
+    5,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
 
-  ctx.shadowBlur =
-    control.held ? 14 : 6;
-  ctx.shadowColor =
-    "#eaf7ff";
+  ctx.shadowBlur = control.held ? 16 : 7;
+  ctx.shadowColor = "#eaf7ff";
+  ctx.strokeStyle = "rgba(234,247,255,.76)";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(center.x, center.y);
+  ctx.lineTo(playerPoint.x, playerPoint.y);
+  ctx.stroke();
+
   ctx.fillStyle =
     control.held
       ? "#eaf7ff"
-      : "rgba(234,247,255,.70)";
+      : "rgba(234,247,255,.72)";
   ctx.beginPath();
   ctx.arc(
-    playerX,
-    center.y,
-    7,
+    playerPoint.x,
+    playerPoint.y,
+    8,
     0,
     Math.PI * 2
   );
   ctx.fill();
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle =
-    "rgba(255,255,255,.60)";
-  ctx.font =
-    "900 9px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,.58)";
+  ctx.font = "900 9px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("‹", center.x - 28, center.y - 21);
-  ctx.fillText("›", center.x + 28, center.y - 21);
+  ctx.fillText("PALANCA", center.x, center.y + 22);
 
   ctx.restore();
 }
-
 function drawSlide(event, songTime) {
   ctx.save();
 
@@ -1715,7 +1940,7 @@ function drawSlide(event, songTime) {
     ctx.fillStyle =
       "rgba(240,248,255,.55)";
     ctx.fillText(
-      "después mueve el pulgar ← →",
+      "después apunta con la palanca",
       DESIGN.width / 2,
       661
     );
@@ -1856,8 +2081,8 @@ function drawSlide(event, songTime) {
   ctx.textAlign = "center";
   ctx.fillText(
     connected
-      ? "CONECTADO · SIGUE LA MARCA"
-      : "ALINEA LA PINZA CON LA MARCA",
+      ? "CONECTADO · SIGUE APUNTANDO"
+      : "APUNTA LA PINZA A LA MARCA",
     DESIGN.width / 2,
     640
   );
@@ -1867,7 +2092,7 @@ function drawSlide(event, songTime) {
   ctx.fillStyle =
     "rgba(240,248,255,.55)";
   ctx.fillText(
-    "el punto blanco eres tú · la línea amarilla es el objetivo",
+    "palanca blanca = tú · marca amarilla = objetivo",
     DESIGN.width / 2,
     661
   );
@@ -2209,7 +2434,9 @@ function drawTrail(note) {
         ? "rgba(110,215,255,.20)"
         : "rgba(216,139,255,.20)";
 
-    ctx.lineWidth = 6;
+    ctx.lineWidth = note.power ? 12 : 6;
+    ctx.shadowBlur = note.power ? 18 : 0;
+    ctx.shadowColor = note.power ? "#fff1a9" : "transparent";
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(note.x, note.y);
@@ -2248,6 +2475,8 @@ function drawTrail(note) {
 function drawTap(note) {
   drawTrail(note);
 
+  const radius = noteRadius(note);
+
   ctx.save();
   ctx.translate(note.x, note.y);
 
@@ -2255,24 +2484,43 @@ function drawTap(note) {
     ctx.rotate(Math.atan2(note.vy, note.vx) + Math.PI / 2);
   }
 
-  ctx.fillStyle =
-    note.side === "left"
-      ? "#6ed7ff"
-      : "#d88bff";
+  if (note.power) {
+    ctx.shadowBlur = 28;
+    ctx.shadowColor = "#fff1a9";
+    ctx.fillStyle = "#fff1a9";
+  } else {
+    ctx.fillStyle =
+      note.side === "left"
+        ? "#6ed7ff"
+        : "#d88bff";
+  }
 
   ctx.beginPath();
-  ctx.arc(0, 0, NOTE_RADIUS, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fill();
 
+  if (note.power) {
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255,255,255,.88)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   ctx.fillStyle = "#08101d";
-  ctx.font = "900 25px system-ui, sans-serif";
+  ctx.font =
+    `900 ${Math.round(note.power ? 31 : 25)}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(note.symbol || "♪", 0, 1);
+  ctx.fillText(
+    note.power ? "✦" : (note.symbol || "♪"),
+    0,
+    1
+  );
 
   ctx.restore();
 }
-
 function controlButtonCenter(side) {
   return side === "left"
     ? { x: 60, y: 892 }
@@ -2607,7 +2855,7 @@ function drawExplosions() {
     ctx.arc(
       explosion.x,
       explosion.y,
-      8 + t * 30,
+      (8 + t * 30) * explosion.scale,
       0,
       Math.PI * 2
     );
@@ -2670,9 +2918,9 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.17 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.18 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap: impacto = PERFECT · slide: lectura visual + pad analógico · magic: pausado`,
+    `tap: impacto = PERFECT · slide: palanca radial · wave ${wave} · cartas activas`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `slide L:${slideControl.left.position.toFixed(2)} R:${slideControl.right.position.toFixed(2)} · draw ${drawGesture ? "ACTIVO" : "—"}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
@@ -2728,6 +2976,107 @@ function render(songTime) {
   if (showDebug) drawDebug(songTime);
 }
 
+function resetRunMods() {
+  runMods.slideToleranceBonus = 0;
+  runMods.slideGraceBonus = 0;
+  runMods.flipperHitBonus = 0;
+  runMods.powerOrbScale = 1;
+  runMods.powerOrbSpeed = 1;
+  runMods.powerExplosionScale = 1;
+  runMods.scoreMultiplier = 1;
+  runMods.comboShieldCharges = 0;
+  runMods.tapPowerEvery = 0;
+}
+
+function resetWaveState() {
+  active.clear();
+  resolved.clear();
+  explosions = [];
+  impactFlashes = [];
+  drawGesture = null;
+
+  for (const side of ["left", "right"]) {
+    slideControl[side].held = false;
+    slideControl[side].pointerId = null;
+    slideControl[side].position = 0;
+    slideControl[side].releasedAt = -Infinity;
+  }
+
+  flippers.left.startTime = -Infinity;
+  flippers.left.hitThisSwing = false;
+  flippers.right.startTime = -Infinity;
+  flippers.right.hitThisSwing = false;
+}
+
+function pickUpgradeChoices() {
+  const pool = [...UPGRADES];
+
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  return pool.slice(0, 3);
+}
+
+function renderUpgradeChoices() {
+  const choices = pickUpgradeChoices();
+
+  upgradeCards.innerHTML = "";
+
+  for (const upgrade of choices) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "upgrade-card";
+    button.innerHTML =
+      `<strong>${upgrade.title}</strong><span>${upgrade.description}</span>`;
+
+    button.addEventListener("click", async () => {
+      if (!awaitingUpgrade) return;
+
+      awaitingUpgrade = false;
+      upgrade.apply();
+      wave += 1;
+
+      upgradePanel.hidden = true;
+      resetWaveState();
+
+      showMessage(
+        `${upgrade.title.toUpperCase()} · OLEADA ${wave}`,
+        "#fff1a9",
+        800
+      );
+
+      await clock.start();
+
+      running = true;
+      lastFrame = performance.now();
+      requestAnimationFrame(frame);
+    });
+
+    upgradeCards.append(button);
+  }
+}
+
+function openUpgradePanel() {
+  if (awaitingUpgrade) return;
+
+  awaitingUpgrade = true;
+  running = false;
+  clock.stopScheduler();
+
+  active.clear();
+  explosions = [];
+  impactFlashes = [];
+
+  upgradeTitle.textContent =
+    `OLEADA ${wave} COMPLETA · ELIGE 1`;
+
+  render(clock.songTime);
+  renderUpgradeChoices();
+  upgradePanel.hidden = false;
+}
+
 function frame(now) {
   if (!running) return;
 
@@ -2751,6 +3100,11 @@ function frame(now) {
   resolveProjectileCollisions();
   updateEffects(dt);
   render(songTime);
+
+  if (clock.beat >= LOOP_BEATS) {
+    openUpgradePanel();
+    return;
+  }
 
   requestAnimationFrame(frame);
 }
@@ -3060,34 +3414,24 @@ startButton.addEventListener("click", async () => {
   chainCount = 0;
   collisionCount = 0;
   wallExplosionCount = 0;
+  perfectTapCount = 0;
+  wave = 1;
+  awaitingUpgrade = false;
 
   lastDeltaMs = null;
   lastJudgement = "—";
   lastInputType = "—";
   message = "";
 
-  active.clear();
-  resolved.clear();
-  explosions = [];
-  impactFlashes = [];
-  drawGesture = null;
-
-  for (const side of ["left", "right"]) {
-    slideControl[side].held = false;
-    slideControl[side].pointerId = null;
-    slideControl[side].position = 0;
-    slideControl[side].releasedAt = -Infinity;
-  }
-
-  flippers.left.startTime = -Infinity;
-  flippers.left.hitThisSwing = false;
-  flippers.right.startTime = -Infinity;
-  flippers.right.hitThisSwing = false;
+  resetRunMods();
+  resetWaveState();
 
   updateHud();
 
   startButton.disabled = true;
   startButton.textContent = "INICIANDO…";
+
+  upgradePanel.hidden = true;
 
   await ensureChartLoaded();
   buildPaths();
