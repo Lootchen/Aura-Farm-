@@ -1,208 +1,160 @@
-# Aura Farm — Vertical Slice v0.25
+# Aura Farm — Vertical Slice v0.26
 
 **BUILD THE BEAT.**
 
-Aura Farm continúa desarrollándose como **rhythm-action roguelite / hybrid arcade**. La prioridad de v0.25 es que la vertical slice se sienta como una run con escalada, lectura y presencia, no como siete repeticiones de un laboratorio.
+v0.26 se centra en hacer que una run sea más legible como **build roguelite**, mejorar la continuidad móvil real y preparar el espacio del futuro personaje sin convertirlo todavía en arte final.
 
-## Run
+## Build visible durante gameplay
 
-Una run completa mantiene **7 actos** de unos 68 beats a 110 BPM.
+La build ya no desaparece después de elegir una carta.
 
-Los actos ahora tienen identidad propia:
+Existe un **Build Dock** persistente bajo el HUD:
 
-1. **IGNITION** — enciende la máquina.
-2. **CURRENT** — mantén el flujo.
-3. **RELAY** — empieza a buscar CHAIN.
-4. **OVERDRIVE** — construye momento.
-5. **FRACTURE** — rompe patrones más densos.
-6. **ASCENT** — prepara el clímax.
-7. **AURA CORE** — boss final.
+- muestra el icono de cada mejora instalada;
+- agrupa stacks como `×2`, `×3`, etc.;
+- usa el color de familia;
+- muestra la sinergia principal activa.
 
-Cada acto ilumina más circuitería y celdas del chasis. La escalada visual y musical aumenta sin acelerar las bolas: el movimiento gameplay sigue siendo constante.
+Durante la pantalla de elección aparece además **TU BUILD** con:
 
-## Tap / proyectiles / CHAIN
+- icono;
+- nombre;
+- stack;
+- descripción breve;
+- sinergias completadas.
 
-- Contacto físico = PERFECT.
-- La nota golpeada sobrevive como proyectil.
-- Rebotes, perforaciones, fragmentos, duplicación y Power Orbs mantienen velocidades constantes.
-- Los grupos `chainGroup` tienen ahora:
-  - conexión discontinua;
-  - chevrons de dirección;
-  - objetivo líder pulsante;
-  - etiqueta `CHAIN ×N` en oportunidades grandes.
+El resumen final también agrupa stacks y sinergias.
 
-La intención es que CHAIN pase de accidente espectacular a decisión previsible.
+## Sinergias
 
-## Firmas visuales de upgrades
+v0.26 reconoce combinaciones de mejoras existentes. No añade porcentajes ocultos: las sinergias describen builds que ya emergen de las reglas físicas.
 
-Las cartas todavía recibirán un rediseño visual dedicado más adelante. En gameplay, sin embargo, las mejoras empiezan a reconocerse sin leer UI:
+Ejemplos actuales:
 
-- **Rebote** — aro/trail turquesa mientras quedan rebotes.
-- **Perfora** — eje/trail rosa mientras quedan perforaciones.
-- **Shock** — onda expansiva con el radio real del AOE.
-- **Fusión** — anillo discontinuo violeta en detonaciones de fusión.
-- **Astillas / Duplicador / Relevo** — proyectiles secundarios con símbolos y escala propios.
-- **Nova / Espejo** — Power Orbs con lenguaje dorado.
+- **PINBALL** — Bumper + Duplicador + Rebote.
+- **WALLSTORM** — Rebote + Carga + Shock.
+- **CHAIN REACTOR** — Relevo + Astillas + Fusión.
+- **TWIN NOVA** — Nova + Espejo.
+- **NEEDLE STORM** — Gemela + Perfora + Astillas.
+- **CORE BREAKER** — Perfora + Fusión + Shock.
 
-## AURA CORE v0.25
+Cuando una carta completaría una sinergia, la propia opción muestra una pista `→ NOMBRE` antes de elegirla.
 
-El boss deja de ser únicamente una barra de vida.
+Al completar una sinergia:
 
-### Fase 1
+- aparece feedback audiovisual;
+- el operador reacciona;
+- algunas sinergias añaden una pequeña capa musical extra;
+- no se modifica silenciosamente ninguna estadística.
 
-- Tres nodos de armadura orbitan el Core.
-- Cada nodo es una hitbox física.
-- Mientras quede armadura, el Core está protegido.
-- Un proyectil que golpea directamente el Core protegido **rebota físicamente** conservando su velocidad.
-- Romper los tres nodos expone el Core.
+## Operator / futuro PJ
 
-### Fase 2
+La posición del operador se ha movido hacia abajo e integrado como una **cabina central entre los dos sticks**.
 
-Al bajar el Core a 50% de vida:
+Esto es intencional:
 
-- la armadura se recarga;
-- aumenta la velocidad orbital;
-- cambia la lectura visual del reactor;
-- hay una transición audiovisual/háptica clara.
+- no ocupa el centro del campo jugable;
+- no cruza rutas de Tap/Slide;
+- no vive debajo de ninguno de los pulgares;
+- funciona como HUD diegético;
+- permite que el futuro PJ sea un busto/cara/cabina reactiva en vez de un cuerpo entero flotando sobre las notas.
 
-Romper el Core produce el clímax de la run.
+El gráfico actual sigue siendo un placeholder reactivo. La arquitectura de estados emocionales queda preparada para sustituirlo por el personaje definitivo.
 
-## Game feel
+## Música / stems provisionales
 
-v0.25 introduce una jerarquía de impacto puramente visual/háptica, sin alterar el reloj maestro:
+El sistema procedural se acerca un paso más al futuro enfoque por stems.
 
-- PERFECT normal;
-- PERFECT en combo alto;
-- Slide PERFECT;
-- CHAIN;
-- explosión;
-- nodo de armadura;
-- cambio de fase;
-- CORE BREAK.
+Cada acto tiene ahora una pequeña identidad armónica:
 
-El mundo puede hacer shake y flash, pero la simulación de notas/proyectiles no se pausa ni acelera.
+- bajo y lead se transpongan progresivamente con el acto;
+- entra un pad armónico al inicio de cada compás;
+- la energía de la mezcla sigue creciendo con actos y upgrades;
+- algunas sinergias añaden una respuesta melódica propia;
+- el boss mantiene su drone específico.
 
-## Operator Socket — base para el futuro PJ
+Esto no sustituye una composición final. Sirve para validar la idea de que **la misma run debe sonar transformada por build + progreso** antes de producir un OST en stems.
 
-Se añadió una presencia reactiva en el centro inferior de la máquina.
+## Mobile pause / resume
 
-No es el personaje final. Es deliberadamente un **operator prototype** abstracto para validar si una presencia expresiva mejora vínculo y legibilidad antes de invertir en diseño definitivo.
+Cambiar de app, bloquear pantalla o entrar en background ya no destruye automáticamente la run.
 
-Reacciona a:
+Cuando la app pierde visibilidad durante gameplay:
 
-- PERFECT;
-- FLOW/combo;
-- CHAIN;
-- MISS;
-- escudo;
-- Slide;
-- boss;
-- victoria.
+- se detiene el scheduler;
+- se suspende el `AudioContext`;
+- `currentTime` del reloj queda congelado;
+- aparece una pantalla de pausa.
 
-La arquitectura separa ya la reacción del operador del dibujo actual, por lo que un futuro PJ animado podrá sustituir esta silueta sin rehacer el core jugable.
+Al tocar **CONTINUAR**:
+
+- se reanuda el mismo contexto;
+- se recupera el scheduler desde el mismo beat;
+- no se reinicia acto, build ni score.
+
+## AURA CORE
+
+Se mantiene el encuentro de dos fases de v0.25:
+
+- tres nodos de armadura orbitantes;
+- Core protegido mientras quede armadura;
+- los impactos directos contra Core protegido rebotan conservando velocidad;
+- al 50% se recarga la armadura y empieza Phase 2;
+- CORE BREAK cierra la run.
+
+## CHAIN y firmas de build
+
+Siguen activos:
+
+- grupos CHAIN con dirección, líder y `CHAIN ×N`;
+- Rebote con firma turquesa;
+- Perfora con firma rosa;
+- Shock con radio AOE visible;
+- Fusión con detonación diferenciada;
+- Power/Nova/Espejo con lenguaje dorado.
 
 ## Practice
 
-La pantalla inicial incluye **PRACTICE · 1 ACTO**.
+`PRACTICE · 1 ACTO` sigue siendo el modo rápido para evaluar:
 
-- Dura aproximadamente un acto.
-- Permite probar Tap, TRACE y FOLLOW rápidamente.
-- No incrementa runs completadas.
-- No desbloquea máquinas.
-- No altera best score ni Daily record.
-- Sí registra localmente intentos/éxitos TRACE y FOLLOW.
-- El resumen de Practice muestra directamente ambos ratios.
+- Tap;
+- TRACE;
+- FOLLOW;
+- game feel.
 
-Esto permite iterar sobre Slide sin jugar una run completa.
+No altera unlocks ni récords de run.
 
-## Slide experimental
+## Cartas
 
-Seguimos comparando dos modelos, sin añadir un tercero:
+Las cartas **todavía no han recibido su rediseño visual definitivo**.
 
-### TRACE · DEDO
+v0.26 sólo mejora su información:
 
-El dedo controla directamente la punta de la garra sobre el riel.
+- build actual visible;
+- stacks;
+- pista de sinergia;
+- descripción.
 
-### FOLLOW · STICK
-
-El joystick funciona como velocidad 2D: izquierda mueve físicamente la garra a la izquierda, derecha a la derecha, etc.
-
-La decisión futura debe ser eliminar uno, fusionarlos sólo si existe una razón fuerte, o retirar Slide si ninguno consigue desaparecer de la cabeza del jugador.
-
-## Música reactiva
-
-Web Audio sigue siendo reloj maestro y generador del groove.
-
-La mezcla responde a:
-
-- acto actual;
-- cantidad de upgrades;
-- familias de build;
-- CHAIN;
-- boss;
-- cambio de fase.
-
-La meta sigue siendo que la misma pieza se sienta progresivamente transformada por la run.
-
-## Máquinas / progresión
-
-- **FORGE** — inicial.
-- **PRISM** — 1 run completada.
-- **PULSE** — 3 runs completadas.
-
-Son progresión cosmética, no stat boosts.
-
-## Daily
-
-Daily Seed permanece determinista por fecha local y guarda Daily Best en el dispositivo. Es la base para un leaderboard futuro; aún no existe backend.
-
-## Métricas locales
-
-No se transmite información a servidores.
-
-Se guardan localmente:
-
-- sesiones;
-- runs iniciadas/completadas;
-- Practice iniciados/completados;
-- total CHAIN;
-- intentos/éxitos TRACE;
-- intentos/éxitos FOLLOW;
-- best score;
-- Daily best;
-- calibración;
-- máquina seleccionada.
-
-## Chart
-
-El chart data-driven mantiene:
-
-- `tap`;
-- `slide`;
-- `mode: trace | follow`;
-- `chainGroup`;
-- `minAct: 1..7`.
-
-La densidad progresa desde 26 eventos base hasta 41 en el acto final.
+La próxima pasada visual de cartas debería tratarlas como objetos del universo del juego —módulos, chips, piezas o artefactos— y no como simples botones rectangulares.
 
 ## Física
 
-Regla no negociable:
+Sigue siendo no negociable:
 
-**las bolas se mueven con velocidad constante entre colisiones.**
+**las notas y proyectiles se mueven a velocidad constante entre colisiones.**
 
-La armadura orbitante del boss es un objeto del encuentro; no cambia la cinemática constante de bolas/notas.
+Shake, flashes, operator reactions y UI no alteran el reloj ni la simulación.
 
-## Próximas decisiones
+## Siguiente producción
 
-Después de probar v0.25, las siguientes áreas de producción son:
+Las siguientes áreas maduras para trabajo son:
 
-1. decidir TRACE vs FOLLOW con sensación + métricas;
-2. diseñar el PJ/operator definitivo;
-3. hacer una pasada visual específica de cartas/upgrades;
-4. sustituir/profundizar el groove provisional con una canción vertical-slice compuesta en stems;
-5. ajustar boss/CHAIN para que las oportunidades sean intencionales y no RNG visual;
-6. después estudiar backend Daily/leaderboards y contenido adicional.
+1. evaluar TRACE vs FOLLOW con Practice y telemetría local;
+2. definir dirección artística y personalidad del PJ definitivo;
+3. rediseñar completamente la selección de upgrades;
+4. producir una primera canción real en stems;
+5. continuar afinando oportunidades CHAIN y el boss;
+6. sólo después ampliar contenido/backend/live ops.
 
 ## GitHub Pages
 
