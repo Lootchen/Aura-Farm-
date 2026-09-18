@@ -45,6 +45,11 @@ const summaryBuild = document.querySelector("#summaryBuild");
 const summaryUnlock = document.querySelector("#summaryUnlock");
 const calibrationMinus = document.querySelector("#calibrationMinus");
 const calibrationPlus = document.querySelector("#calibrationPlus");
+const autoCalibration = document.querySelector("#autoCalibration");
+const calibrationPanel = document.querySelector("#calibrationPanel");
+const calibrationTap = document.querySelector("#calibrationTap");
+const calibrationStatus = document.querySelector("#calibrationStatus");
+const calibrationClose = document.querySelector("#calibrationClose");
 const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
@@ -245,6 +250,7 @@ let screenShake = 0;
 let impactVeil = 0;
 let operatorPulse = 0;
 let operatorMood = "idle";
+let calibrationSession = null;
 
 function bumpFeedback(
   shake = 0,
@@ -8521,6 +8527,7 @@ window.addEventListener("keyup", (event) => {
 });
 
 async function startRun(mode = "standard") {
+  closeAutoCalibration();
   runMode = mode;
   runPaused = false;
   pausePanel.hidden = true;
@@ -8640,6 +8647,292 @@ for (const option of machineOptions) {
   );
 }
 
+function scheduleCalibrationPulse(
+  time,
+  index
+) {
+  if (!clock.context) return null;
+
+  const oscillator =
+    clock.context.createOscillator();
+  const gain =
+    clock.context.createGain();
+
+  oscillator.type =
+    index % 2 === 0
+      ? "sine"
+      : "triangle";
+  oscillator.frequency.value =
+    index === 7
+      ? 1046.5
+      : 784;
+
+  gain.gain.setValueAtTime(
+    0.0001,
+    time
+  );
+  gain.gain.exponentialRampToValueAtTime(
+    0.075,
+    time + 0.003
+  );
+  gain.gain.exponentialRampToValueAtTime(
+    0.0001,
+    time + 0.055
+  );
+
+  oscillator.connect(gain);
+  gain.connect(
+    clock.sfxBus()
+  );
+  oscillator.start(time);
+  oscillator.stop(
+    time + 0.06
+  );
+
+  return oscillator;
+}
+
+function closeAutoCalibration() {
+  if (calibrationSession) {
+    for (
+      const timer of
+      calibrationSession.timers
+    ) {
+      window.clearTimeout(
+        timer
+      );
+    }
+
+    for (
+      const oscillator of
+      calibrationSession.oscillators
+    ) {
+      try {
+        oscillator.stop();
+      } catch {
+        // Already stopped.
+      }
+    }
+  }
+
+  calibrationSession = null;
+  calibrationPanel.hidden = true;
+  calibrationTap.classList.remove(
+    "is-pulse"
+  );
+  calibrationClose.textContent =
+    "CANCELAR";
+}
+
+async function startAutoCalibration() {
+  closeAutoCalibration();
+
+  clock.context ??=
+    new AudioContext();
+  await clock.context.resume();
+  clock.ensureMixGraph();
+
+  const count = 8;
+  const interval = 0.64;
+  const first =
+    clock.context.currentTime +
+    1.05;
+  const times =
+    Array.from(
+      { length: count },
+      (_, index) =>
+        first +
+        index * interval
+    );
+  const timers = [];
+  const oscillators = [];
+
+  calibrationSession = {
+    times,
+    used: new Set(),
+    deltas: [],
+    timers,
+    oscillators,
+    complete: false
+  };
+
+  calibrationPanel.hidden = false;
+  calibrationStatus.textContent =
+    `0 / ${count} · ESCUCHA`;
+  calibrationClose.textContent =
+    "CANCELAR";
+
+  times.forEach(
+    (time, index) => {
+      const oscillator =
+        scheduleCalibrationPulse(
+          time,
+          index
+        );
+
+      if (oscillator) {
+        oscillators.push(
+          oscillator
+        );
+      }
+
+      const delay =
+        Math.max(
+          0,
+          (
+            time -
+            clock.context.currentTime
+          ) *
+            1000
+        );
+
+      timers.push(
+        window.setTimeout(
+          () => {
+            if (
+              !calibrationSession ||
+              calibrationSession.complete
+            ) {
+              return;
+            }
+
+            calibrationTap.classList.remove(
+              "is-pulse"
+            );
+            void calibrationTap.offsetWidth;
+            calibrationTap.classList.add(
+              "is-pulse"
+            );
+
+            window.setTimeout(
+              () =>
+                calibrationTap.classList.remove(
+                  "is-pulse"
+                ),
+              125
+            );
+          },
+          delay
+        )
+      );
+    }
+  );
+}
+
+function recordCalibrationTap() {
+  const session =
+    calibrationSession;
+
+  if (
+    !session ||
+    session.complete ||
+    !clock.context
+  ) {
+    return;
+  }
+
+  const now =
+    clock.context.currentTime;
+  let bestIndex = -1;
+  let bestDistance =
+    Infinity;
+
+  session.times.forEach(
+    (time, index) => {
+      if (
+        session.used.has(
+          index
+        )
+      ) {
+        return;
+      }
+
+      const distance =
+        Math.abs(
+          now - time
+        );
+
+      if (
+        distance <
+        bestDistance
+      ) {
+        bestDistance =
+          distance;
+        bestIndex =
+          index;
+      }
+    }
+  );
+
+  if (
+    bestIndex < 0 ||
+    bestDistance > 0.32
+  ) {
+    return;
+  }
+
+  session.used.add(
+    bestIndex
+  );
+  session.deltas.push(
+    (
+      now -
+      session.times[bestIndex]
+    ) *
+      1000
+  );
+
+  calibrationStatus.textContent =
+    `${session.deltas.length} / ${session.times.length}`;
+
+  if (navigator.vibrate) {
+    navigator.vibrate(5);
+  }
+
+  if (
+    session.deltas.length <
+    session.times.length
+  ) {
+    return;
+  }
+
+  session.complete = true;
+
+  const sorted =
+    [...session.deltas].sort(
+      (a, b) => a - b
+    );
+  const middle =
+    Math.floor(
+      sorted.length / 2
+    );
+  const median =
+    (
+      sorted[middle - 1] +
+      sorted[middle]
+    ) /
+    2;
+  const proposed =
+    clamp(
+      Math.round(
+        -median / 5
+      ) * 5,
+      -250,
+      250
+    );
+
+  setCalibration(
+    proposed
+  );
+
+  calibrationStatus.textContent =
+    `MEDIANA ${median >= 0 ? "+" : ""}${Math.round(median)}ms · OFFSET ${proposed >= 0 ? "+" : ""}${proposed}ms`;
+  calibrationClose.textContent =
+    "LISTO";
+
+  successTone(880);
+}
+
 function setCalibration(value) {
   calibrationOffsetMs =
     clamp(
@@ -8671,6 +8964,24 @@ calibrationPlus.addEventListener(
     setCalibration(
       calibrationOffsetMs + 15
     )
+);
+
+autoCalibration.addEventListener(
+  "click",
+  () => startAutoCalibration()
+);
+
+calibrationTap.addEventListener(
+  "pointerdown",
+  (event) => {
+    event.preventDefault();
+    recordCalibrationTap();
+  }
+);
+
+calibrationClose.addEventListener(
+  "click",
+  () => closeAutoCalibration()
 );
 
 window.addEventListener("resize", () => {
