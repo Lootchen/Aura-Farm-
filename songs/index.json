@@ -4,11 +4,19 @@
   "songs": [
     {
       "id": "glasshouse-circuit",
-      "file": "glasshouse-circuit.json"
+      "file": "glasshouse-circuit.json",
+      "trackNumber": 1,
+      "title": "GLASSHOUSE CIRCUIT",
+      "bpm": 110,
+      "tag": "ORGANIC CIRCUIT"
     },
     {
       "id": "neon-germination",
-      "file": "neon-germination.json"
+      "file": "neon-germination.json",
+      "trackNumber": 2,
+      "title": "NEON GERMINATION",
+      "bpm": 126,
+      "tag": "ELECTRIC BLOOM"
     }
   ]
 }
