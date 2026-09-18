@@ -69,13 +69,13 @@ This makes authored musical phrases and physical projectile routing part of the 
 
 ## Visual language
 
-Shield Notes deliberately add only one visual layer:
+Shield Notes deliberately preserve the normal Tap body but now add a readable material state behind it:
 
-- four thin pale-cyan outer arc segments.
+- a pale translucent membrane/halo larger than the Tap;
+- four structural breaks in the membrane so the state is not communicated by hue alone;
+- a restrained pulse that improves peripheral recognition without changing the judged object.
 
-No extra body detail, icon, text, or permanent glow is added.
-
-After break the ring disappears and the note returns to the normal minimal Tap appearance.
+On break, the membrane fragments expand briefly while the normal Tap remains visibly intact and continues toward the same beat. The break animation is feedback only; the note trajectory and timing do not change.
 
 ## Current authoring
 
