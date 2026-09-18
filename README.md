@@ -1,65 +1,85 @@
-# Aura Farm — Mechanics Lab
+# Aura Farm — Mechanics Lab v0.21
 
-Reinicio del proyecto enfocado primero en **mecánicas, timing y sensación de juego**. El apartado visual queda deliberadamente en segundo plano hasta que el gameplay esté pulido.
+Prototipo vertical mobile-first centrado en **timing, contacto físico, apuntado y reacciones en cadena**.
 
 ## Tecnología
 
-- HTML
-- CSS
+- HTML + Canvas 2D
 - JavaScript ES Modules
-- Canvas 2D
-- Web Audio API
+- Web Audio API como reloj maestro
 - Pointer Events
-- Sin frameworks ni dependencias externas por ahora
+- Charts JSON
+- Sin frameworks ni dependencias externas
 
-## Build actual
+## Núcleo jugable
 
-Primera prueba de **Tap**:
+### Tap
 
-- reloj musical a 120 BPM;
-- count-in de 4 beats;
-- botones izquierda/derecha;
-- notas deterministas sincronizadas con Web Audio;
-- ventanas iniciales:
-  - Perfect: ±70 ms
-  - Great: ±140 ms
-  - Good: ±220 ms
-- score y combo;
-- medición del error real del input en milisegundos;
-- física visual sólo después de acertar la nota;
-- modo debug visible en pantalla.
+- Dos pinzas: izquierda y derecha.
+- No hay GOOD/GREAT ocultos: si la pinza toca físicamente la bola, es **PERFECT**; si no, MISS.
+- La bola golpeada pasa a ser un proyectil a velocidad constante.
+- Los proyectiles pueden colisionar con notas entrantes, paredes, otros proyectiles y bumpers.
+- Las colisiones pueden producir CHAIN y explosiones.
 
-Los valores son provisionales y existen precisamente para poder probarlos y ajustarlos.
+### Slide
 
-## Probar directamente en navegador con GitHub Pages
+- Cada control es un joystick 2D real con base, vástago y cap móvil.
+- El joystick vuelve al centro al soltarlo.
+- La pinza copia dirección y alcance del stick.
+- El objetivo se presenta como un **riel físico** en el campo de juego, no como información dentro del joystick.
+- El éxito se calcula por distancia real en píxeles entre la punta de la pinza y el gate del riel.
+- La anchura visible del riel corresponde a la tolerancia jugable.
+- Completar el Slide dispara una Power Orb; mejoras como Nova pueden multiplicarla.
 
-El repositorio es público, así que la configuración más simple es GitHub Pages desde la rama `main`.
+### Magic
 
-Configuración única en GitHub:
+Magic está pausado y ya no forma parte del contrato de charts de v0.21.
 
-1. `Settings`
-2. `Pages`
-3. En `Build and deployment`, elegir `Deploy from a branch`
-4. Branch: `main`
-5. Folder: `/ (root)`
-6. `Save`
+## Upgrades
 
-Después de eso, cada push a `main` se publica automáticamente y basta con recargar la misma URL de Pages para probar la última versión.
+Al final de cada oleada aparecen tres cartas compactas. Las mejoras deben cambiar algo visible de la partida, no porcentajes ocultos.
 
-URL esperada:
+Pool v0.21:
 
-`https://lootchen.github.io/Aura-Farm-/`
+- **Gemela** — añade un proyectil al disparo.
+- **Rebote** — añade rebotes de pared conservando velocidad constante.
+- **Perfora** — permite atravesar notas entrantes.
+- **Astillas** — las explosiones generan proyectiles pequeños.
+- **Bumper** — añade un reflector físico al tablero.
+- **Nova** — añade dos Power Orbs al completar un Slide.
+- **Shield** — salva un combo roto una vez.
+
+## Chart de laboratorio
+
+`charts/tap-lab.json` prueba cuatro familias de Slide:
+
+1. barrido direccional;
+2. arco suave;
+3. cambio brusco;
+4. variación de alcance.
+
+Los anchors usan `beat / x / y` y deben permanecer dentro del círculo unitario del joystick.
 
 ## Controles
 
-- Móvil: botones `IZQ` y `DER`.
-- Teclado: `A` / flecha izquierda y `L` / flecha derecha.
+- Móvil: zonas táctiles izquierda/derecha.
+- Teclado: `A` / flecha izquierda y `D` / flecha derecha para Tap.
+- `H`: debug oculto.
+- `[` / `]`: offset de calibración.
 
-## Filosofía de desarrollo
+## Filosofía
 
-1. Timing y respuesta del input.
-2. Tap.
-3. Magic.
-4. Slide.
-5. Combinaciones y dificultad.
-6. Sólo después, dirección visual y arte final.
+1. Lo que se ve debe coincidir con lo que se juzga.
+2. Movimiento gameplay siempre a velocidad constante.
+3. Tap = golpear físicamente.
+4. Slide = apuntar físicamente.
+5. Upgrades = alterar físicamente lo que ocurre después.
+6. Visuales secundarios a feeling, lectura y mecánicas.
+
+## GitHub Pages
+
+La fuente de verdad es la rama `main`.
+
+Prueba directa:
+
+https://lootchen.github.io/Aura-Farm-/
