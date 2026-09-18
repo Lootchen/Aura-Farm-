@@ -89,8 +89,18 @@ function validateGameChart(chart) {
       }
     }
 
-    if (event.type === "draw" && !["u", "l", "z"].includes(event.symbol)) {
-      throw new Error(`Evento ${index}: símbolo de draw inválido.`);
+    if (event.type === "draw") {
+      if (!["u", "l", "z"].includes(event.symbol)) {
+        throw new Error(`Evento ${index}: símbolo de draw inválido.`);
+      }
+
+      if (!Number.isFinite(event.windowBeats) || event.windowBeats <= 0) {
+        throw new Error(`Evento ${index}: windowBeats de draw inválido.`);
+      }
+
+      if (event.beat + event.windowBeats > chart.loopBeats) {
+        throw new Error(`Evento ${index}: draw excede el loop.`);
+      }
     }
   }
 }
