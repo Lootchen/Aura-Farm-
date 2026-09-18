@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.42
+# Aura Farm — Vertical Slice v0.43
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,65 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.43 — Modular Song Package / Chart Sync Contract
+
+Aura Farm no longer loads one hardcoded mechanics JSON beside a separately hardcoded composition.
+
+The first real content package now lives at:
+
+- `songs/index.json`
+- `songs/glasshouse-circuit.json`
+
+### One song package owns the timing contract
+
+`glasshouse-circuit.json` contains:
+
+- identity / title / artist;
+- BPM and total beats;
+- beats-per-bar and authoring resolution;
+- count-in;
+- semantic stems;
+- procedural composition patterns and bars;
+- one or more gameplay charts;
+- all Tap / TRACE / Shield / CHAIN event data.
+
+The old `charts/tap-lab.json` remains in the repository as a legacy snapshot but the runtime no longer loads it.
+
+### Automatic song/chart validation
+
+`src/song.js` validates a package before play:
+
+- chart events must land on the song's declared rhythmic grid;
+- Slides must fit inside the song and their anchor geometry must remain valid;
+- event stems must exist in the song;
+- composition patterns must match the declared bar resolution;
+- bar count must exactly equal total song beats;
+- every event's declared `music.stem` must actually be audible on that beat.
+
+GLASSHOUSE CIRCUIT currently passes **51 / 51** alignment checks.
+
+A bad package now fails before the run begins instead of silently drifting out of sync.
+
+### Scheduler is song-driven
+
+The Web Audio scheduler no longer assumes half-beats in code.
+
+It now reads `stepsPerBeat` from the active song package, so future songs can choose a finer legal chart grid without rewriting the scheduler.
+
+### Catalog
+
+`songs/index.json` is now the content registry and future song-selector entry point.
+
+Adding another supported procedural song is:
+
+1. create its song JSON;
+2. add it to `songs/index.json`;
+3. pass loader validation.
+
+No gameplay source edit should be required for the song's BPM, duration, patterns or chart timestamps.
+
+See `docs/song-format-v1.md`.
 
 ## v0.42 — TRACE input hotfix / Reward Cards / Ambient polish
 
