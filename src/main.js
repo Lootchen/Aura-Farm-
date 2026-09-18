@@ -2541,6 +2541,209 @@ function loopDuration() {
   return beatToSeconds(LOOP_BEATS);
 }
 
+function stemMidiNearBeat(
+  beat,
+  stem
+) {
+  const field =
+    stem === "aura"
+      ? "auraMidi"
+      : stem === "bass"
+        ? "bassMidi"
+        : stem === "boss"
+          ? "bossMidi"
+          : "leadMidi";
+  const offsets =
+    [0, -0.5, 0.5, -1, 1];
+
+  for (const offset of offsets) {
+    const frame =
+      songFrameAtBeat(
+        beat + offset
+      );
+    const value =
+      frame[field];
+
+    if (
+      Number.isFinite(value)
+    ) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function buildMusicalSlideAnchors(
+  event
+) {
+  const stem =
+    event.music?.stem === "aura"
+      ? "aura"
+      : "lead";
+  const energy =
+    clamp(
+      Number(
+        event.music?.energy ?? 0.6
+      ),
+      0,
+      1
+    );
+  const sampleBeats = [];
+  const pitches = [];
+
+  for (
+    let relative = 0;
+    relative <
+      event.durationBeats;
+    relative += 1
+  ) {
+    sampleBeats.push(relative);
+  }
+
+  if (
+    sampleBeats.at(-1) !==
+    event.durationBeats
+  ) {
+    sampleBeats.push(
+      event.durationBeats
+    );
+  }
+
+  for (
+    const relative of
+    sampleBeats
+  ) {
+    pitches.push(
+      stemMidiNearBeat(
+        event.beat + relative,
+        stem
+      )
+    );
+  }
+
+  const finite =
+    pitches.filter(
+      Number.isFinite
+    );
+  const fallback =
+    finite[0] ?? 60;
+  const filled =
+    pitches.map(
+      (pitch, index) => {
+        if (
+          Number.isFinite(pitch)
+        ) {
+          return pitch;
+        }
+
+        for (
+          let distance = 1;
+          distance <
+            pitches.length;
+          distance += 1
+        ) {
+          const before =
+            pitches[
+              index - distance
+            ];
+          const after =
+            pitches[
+              index + distance
+            ];
+
+          if (
+            Number.isFinite(before)
+          ) {
+            return before;
+          }
+
+          if (
+            Number.isFinite(after)
+          ) {
+            return after;
+          }
+        }
+
+        return fallback;
+      }
+    );
+  const low =
+    Math.min(...filled);
+  const high =
+    Math.max(...filled);
+  const span =
+    Math.max(
+      1,
+      high - low
+    );
+
+  return sampleBeats.map(
+    (relative, index) => {
+      const normalized =
+        (filled[index] - low) /
+        span;
+      const leftLow =
+        -2.42;
+      const leftHigh =
+        -0.72;
+      const angle =
+        event.side === "left"
+          ? lerp(
+              leftLow,
+              leftHigh,
+              normalized
+            )
+          : lerp(
+              -Math.PI -
+                leftLow,
+              -Math.PI -
+                leftHigh,
+              normalized
+            );
+      const phrasePulse =
+        Math.sin(
+          (
+            relative /
+            Math.max(
+              1,
+              event.durationBeats
+            )
+          ) *
+            Math.PI
+        );
+      const reach =
+        clamp(
+          0.90 +
+            energy * 0.055 +
+            phrasePulse * 0.025,
+          0.88,
+          1.02
+        );
+
+      return {
+        beat: relative,
+        x:
+          Math.cos(angle) *
+          reach,
+        y:
+          Math.sin(angle) *
+          reach
+      };
+    }
+  );
+}
+
+function eventMusicEnergy(event) {
+  return clamp(
+    Number(
+      event?.music?.energy ?? 0.5
+    ),
+    0,
+    1
+  );
+}
+
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
@@ -2560,7 +2763,25 @@ async function ensureChartLoaded() {
     );
   }
 
-  CHART = chart.events;
+  CHART =
+    chart.events.map(
+      (event) => {
+        if (
+          event.type === "slide" &&
+          event.music?.contour
+        ) {
+          return {
+            ...event,
+            anchors:
+              buildMusicalSlideAnchors(
+                event
+              )
+          };
+        }
+
+        return event;
+      }
+    );
   chartName =
     `${chart.name || "Mechanics chart"} · ${AURA_SONG.title}`;
   chartLoaded = true;
@@ -2832,8 +3053,17 @@ function spawnReady(songTime) {
           prevX: path.points[0].x,
           prevY: path.points[0].y,
           vx: 0,
-          vy: 0
-        });
+          vy: 0,
+          radiusScale:
+            clamp(
+              0.95 +
+                eventMusicEnergy(
+                  event
+                ) *
+                  0.10,
+              0.95,
+              1.05
+            ),        });
       }
 
       if (event.type === "slide") {
@@ -2993,15 +3223,95 @@ function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
   oscillator.stop(now + duration + 0.01);
 }
 
-function hitSound(side, judgement) {
-  const base = side === "left" ? 330 : 405;
+function hitSound(
+  side,
+  judgement,
+  note = null
+) {
+  const music =
+    note?.music;
+  const frame =
+    note
+      ? songFrameAtBeat(
+          note.beat
+        )
+      : null;
+  let frequency =
+    side === "left"
+      ? 480
+      : 540;
+  let type =
+    "triangle";
+
+  if (music?.stem === "bass") {
+    frequency =
+      Number.isFinite(
+        frame?.bassMidi
+      )
+        ? midiToHz(
+            frame.bassMidi + 12
+          )
+        : 220;
+    type = "sine";
+  } else if (
+    music?.stem === "lead"
+  ) {
+    frequency =
+      Number.isFinite(
+        frame?.leadMidi
+      )
+        ? midiToHz(
+            frame.leadMidi
+          )
+        : 620;
+    type = "triangle";
+  } else if (
+    music?.stem === "aura"
+  ) {
+    frequency =
+      Number.isFinite(
+        frame?.auraMidi
+      )
+        ? midiToHz(
+            frame.auraMidi
+          )
+        : 760;
+    type = "sine";
+  } else if (
+    music?.stem === "boss"
+  ) {
+    frequency =
+      Number.isFinite(
+        frame?.bossMidi
+      )
+        ? midiToHz(
+            frame.bossMidi + 12
+          )
+        : 330;
+    type = "square";
+  } else if (
+    music?.intent ===
+      "backbeat"
+  ) {
+    frequency = 560;
+  }
+
   playTone(
-    base + (judgement === JUDGEMENTS.perfect ? 150 : 0),
-    0.055,
-    0.075,
-    "triangle"
+    frequency,
+    0.052 +
+      eventMusicEnergy(
+        note
+      ) *
+        0.022,
+    0.052 +
+      eventMusicEnergy(
+        note
+      ) *
+        0.032,
+    type
   );
 }
+
 
 function successTone(frequency = 700) {
   playTone(frequency, 0.07, 0.055, "triangle");
@@ -3230,15 +3540,29 @@ function resolveTapHit(note, side, songTime) {
     segment.tip.y,
     JUDGEMENTS.perfect
   );
+  const musicEnergy =
+    eventMusicEnergy(note);
+
   bumpFeedback(
-    combo >= 12 ? 3.2 : 1.8,
-    combo >= 12 ? 0.11 : 0.055
+    (
+      combo >= 12
+        ? 2.7
+        : 1.35
+    ) +
+      musicEnergy * 0.85,
+    (
+      combo >= 12
+        ? 0.085
+        : 0.035
+    ) +
+      musicEnergy * 0.026
   );
   setOperatorMood(
     combo >= 12
       ? "flow"
       : "hit",
-    0.42
+    0.30 +
+      musicEnergy * 0.30
   );
   setOperatorLean(
     side,
@@ -3252,10 +3576,19 @@ function resolveTapHit(note, side, songTime) {
     JUDGEMENTS.perfect.color,
     shotCount > 1 ? 480 : 360
   );
-  hitSound(side, JUDGEMENTS.perfect);
+  hitSound(
+    side,
+    JUDGEMENTS.perfect,
+    note
+  );
 
   if (navigator.vibrate) {
-    navigator.vibrate(8);
+    navigator.vibrate(
+      Math.round(
+        5 +
+        musicEnergy * 7
+      )
+    );
   }
 
   updateHud();
@@ -7354,6 +7687,8 @@ function drawTap(note) {
       : note.side === "right"
         ? "#d88bff"
         : "#dfeaff";
+  const musicEnergy =
+    eventMusicEnergy(note);
 
   ctx.save();
   ctx.translate(
@@ -7439,7 +7774,9 @@ function drawTap(note) {
       "rgba(7,12,20,.94)";
     ctx.strokeStyle =
       noteColor;
-    ctx.lineWidth = 3;
+    ctx.lineWidth =
+      2.4 +
+      musicEnergy * 0.8;
 
     ctx.beginPath();
     ctx.arc(
