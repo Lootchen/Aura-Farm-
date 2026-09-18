@@ -1,12 +1,12 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.43";
+} from "./song.js?v=0.44";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.43";
+} from "./music.js?v=0.44";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -88,7 +88,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.43";
+const GAME_VERSION = "0.44";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -102,9 +102,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.43";
+  "./assets/world/glasshouse-far.svg?v=0.44";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.43";
+  "./assets/world/growth-bays.svg?v=0.44";
 
 function drawWorldAsset(
   image,
@@ -3149,7 +3149,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.43",
+      "../songs/index.json?v=0.44",
       import.meta.url
     );
 
@@ -3216,7 +3216,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.43`,
+      `../songs/${entry.file}?v=0.44`,
       import.meta.url
     );
 
