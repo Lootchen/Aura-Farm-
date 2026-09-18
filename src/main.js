@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.36.1";
+import { loadGameChart } from "./chart.js?v=0.36.2";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.36.1";
+} from "./music.js?v=0.36.2";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.36.1";
+const GAME_VERSION = "0.36.2";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.36.1";
+  "./assets/world/glasshouse-far.svg?v=0.36.2";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.36.1";
+  "./assets/world/growth-bays.svg?v=0.36.2";
 
 function drawWorldAsset(
   image,
@@ -3119,7 +3119,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.36.1", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.36.2", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -4265,12 +4265,12 @@ function drawShieldMembrane(
   } = {}
 ) {
   const outer =
-    radius + 13 + pulse * 2.5;
+    radius + 16 + pulse * 3.5;
   const halo =
     context.createRadialGradient(
       x,
       y,
-      radius * 0.56,
+      radius * 0.30,
       x,
       y,
       outer
@@ -4278,24 +4278,22 @@ function drawShieldMembrane(
 
   halo.addColorStop(
     0,
-    "rgba(190,232,255,0)"
+    `rgba(205,247,255,${0.12 * alpha})`
   );
   halo.addColorStop(
-    0.46,
-    `rgba(190,232,255,${0.055 * alpha})`
+    0.48,
+    `rgba(174,235,255,${0.19 * alpha})`
   );
   halo.addColorStop(
-    0.76,
-    `rgba(190,232,255,${0.20 * alpha})`
+    0.78,
+    `rgba(190,242,255,${0.27 * alpha})`
   );
   halo.addColorStop(
     1,
-    "rgba(190,232,255,0)"
+    "rgba(190,242,255,0)"
   );
 
   context.save();
-  context.globalCompositeOperation =
-    "destination-over";
   context.fillStyle = halo;
   context.beginPath();
   context.arc(
@@ -4307,9 +4305,14 @@ function drawShieldMembrane(
   );
   context.fill();
 
+  context.shadowBlur =
+    8 + pulse * 6;
+  context.shadowColor =
+    "rgba(205,247,255,.72)";
   context.strokeStyle =
-    `rgba(224,246,255,${0.50 * alpha})`;
-  context.lineWidth = 2.8;
+    `rgba(225,250,255,${0.78 * alpha})`;
+  context.lineWidth =
+    3.8 + pulse * 0.8;
   context.lineCap = "round";
 
   for (
@@ -4320,21 +4323,46 @@ function drawShieldMembrane(
     const start =
       -Math.PI / 2 +
       segment * Math.PI / 2 +
-      0.20;
+      0.15;
     const end =
       start +
       Math.PI / 2 -
-      0.40;
+      0.30;
 
     context.beginPath();
     context.arc(
       x,
       y,
-      outer - 2,
+      outer - 3,
       start,
       end
     );
     context.stroke();
+  }
+
+  context.shadowBlur = 0;
+
+  for (const angle of [
+    0,
+    Math.PI / 2,
+    Math.PI,
+    Math.PI * 1.5
+  ]) {
+    context.fillStyle =
+      `rgba(235,253,255,${0.82 * alpha})`;
+    context.beginPath();
+    context.arc(
+      x +
+        Math.cos(angle) *
+          (outer - 3),
+      y +
+        Math.sin(angle) *
+          (outer - 3),
+      2.4 + pulse * 0.5,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
   }
 
   context.restore();
@@ -8850,6 +8878,31 @@ function drawTap(note) {
     );
   }
 
+  if (
+    !note.launched &&
+    noteShieldIntact(note)
+  ) {
+    const membranePulse =
+      0.5 +
+      0.5 *
+        Math.sin(
+          performance.now() /
+          190
+        );
+
+    drawShieldMembrane(
+      ctx,
+      0,
+      0,
+      radius,
+      {
+        alpha: 1,
+        pulse:
+          membranePulse
+      }
+    );
+  }
+
   if (note.power) {
     ctx.shadowBlur = 16;
     ctx.shadowColor =
@@ -8967,31 +9020,6 @@ function drawTap(note) {
   }
 
   if (
-    !note.launched &&
-    noteShieldIntact(note)
-  ) {
-    const membranePulse =
-      0.5 +
-      0.5 *
-        Math.sin(
-          performance.now() /
-          210
-        );
-
-    drawShieldMembrane(
-      ctx,
-      0,
-      0,
-      radius,
-      {
-        alpha:
-          0.86 +
-          membranePulse * 0.14,
-        pulse:
-          membranePulse
-      }
-    );
-  } else if (
     !note.launched &&
     note.shield &&
     !note.shieldIntact
@@ -10253,6 +10281,31 @@ function drawPreviewNote(
   context.globalAlpha =
     alpha;
 
+  if (
+    shielded &&
+    !launched
+  ) {
+    const membranePulse =
+      0.5 +
+      0.5 *
+        Math.sin(
+          performance.now() /
+          220
+        );
+
+    drawShieldMembrane(
+      context,
+      x,
+      y,
+      radius,
+      {
+        alpha: 0.96,
+        pulse:
+          membranePulse * 0.70
+      }
+    );
+  }
+
   if (launched) {
     context.shadowBlur =
       power ? 13 : 7;
@@ -10301,31 +10354,6 @@ function drawPreviewNote(
       Math.PI * 2
     );
     context.fill();
-  }
-
-  if (
-    shielded &&
-    !launched
-  ) {
-    const membranePulse =
-      0.5 +
-      0.5 *
-        Math.sin(
-          performance.now() /
-          220
-        );
-
-    drawShieldMembrane(
-      context,
-      x,
-      y,
-      radius,
-      {
-        alpha: 0.92,
-        pulse:
-          membranePulse * 0.65
-      }
-    );
   }
 
   context.restore();
