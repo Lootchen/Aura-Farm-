@@ -882,3 +882,8 @@ button { font: inherit; }
   line-height: 1.45;
   opacity: .62;
 }
+
+
+.build-dock[hidden] {
+  display: none;
+}
