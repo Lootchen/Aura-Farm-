@@ -117,6 +117,22 @@ function currentActMeta() {
   ] ?? ACTS[1];
 }
 
+function actPitchRatio() {
+  const semitones =
+    [0, 0, 2, 3, 5, 7, 8, 10][
+      clamp(
+        Math.round(wave),
+        1,
+        RUN_ACTS
+      )
+    ] ?? 0;
+
+  return Math.pow(
+    2,
+    semitones / 12
+  );
+}
+
 function runTargetActs() {
   return runMode === "practice"
     ? 1
@@ -519,6 +535,17 @@ class RhythmClock {
       }
 
       if (
+        Math.abs(barBeat) <
+          0.001
+      ) {
+        this.scheduleActPad(
+          time,
+          0.006 +
+            actEnergy * 0.004
+        );
+      }
+
+      if (
         (
           runMods.shockwave +
           runMods.fusionBlast +
@@ -651,7 +678,12 @@ class RhythmClock {
     const oscillator = this.context.createOscillator();
     const gain = this.context.createGain();
     const pattern = [110, 110, 123.47, 98];
-    const frequency = pattern[Math.floor(beat) % pattern.length];
+    const frequency =
+      pattern[
+        Math.floor(beat) %
+        pattern.length
+      ] *
+      actPitchRatio();
 
     oscillator.type = "triangle";
     oscillator.frequency.setValueAtTime(frequency, time);
@@ -677,7 +709,11 @@ class RhythmClock {
     const pattern =
       [440, 493.88, 587.33, 659.25];
     const frequency =
-      pattern[Math.floor(beat) % pattern.length];
+      pattern[
+        Math.floor(beat) %
+        pattern.length
+      ] *
+      actPitchRatio();
 
     oscillator.type = "sawtooth";
     oscillator.frequency.setValueAtTime(
@@ -706,6 +742,62 @@ class RhythmClock {
     gain.connect(this.context.destination);
     oscillator.start(time);
     oscillator.stop(time + 0.14);
+  }
+
+  scheduleActPad(time, volume) {
+    const root =
+      110 *
+      actPitchRatio();
+    const fifth =
+      root * 1.5;
+
+    for (const [
+      frequency,
+      level
+    ] of [
+      [root, volume],
+      [fifth, volume * 0.68]
+    ]) {
+      const oscillator =
+        this.context.createOscillator();
+      const gain =
+        this.context.createGain();
+      const filter =
+        this.context.createBiquadFilter();
+
+      oscillator.type =
+        "triangle";
+      oscillator.frequency.value =
+        frequency;
+
+      filter.type = "lowpass";
+      filter.frequency.value =
+        820 +
+        wave * 110;
+
+      gain.gain.setValueAtTime(
+        0.0001,
+        time
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        level,
+        time + 0.04
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        time + 0.70
+      );
+
+      oscillator.connect(filter);
+      filter.connect(gain);
+      gain.connect(
+        this.context.destination
+      );
+      oscillator.start(time);
+      oscillator.stop(
+        time + 0.74
+      );
+    }
   }
 
   scheduleBuildClick(time, volume) {
@@ -1079,6 +1171,33 @@ function activeBuildSynergies() {
 function hasActiveSynergy(id) {
   return activeBuildSynergies().some(
     (synergy) => synergy.id === id
+  );
+}
+
+function synergyHintsForUpgrade(upgrade) {
+  const counts =
+    buildCounts();
+  const alreadyActive =
+    new Set(
+      activeBuildSynergies()
+        .map(
+          (synergy) => synergy.id
+        )
+    );
+
+  counts.set(
+    upgrade.id,
+    (counts.get(upgrade.id) || 0) + 1
+  );
+
+  return BUILD_SYNERGIES.filter(
+    (synergy) =>
+      !alreadyActive.has(
+        synergy.id
+      ) &&
+      synergy.requires.every(
+        (id) => counts.has(id)
+      )
   );
 }
 
@@ -6035,8 +6154,17 @@ function renderUpgradeChoices() {
     button.type = "button";
     button.className =
       `upgrade-card family-${upgrade.family}`;
+    const owned =
+      buildCounts().get(upgrade.id) || 0;
+    const hints =
+      synergyHintsForUpgrade(upgrade);
+    const hintText =
+      hints.length
+        ? `→ ${hints.map((item) => item.title).join(" / ")}`
+        : "";
+
     button.innerHTML =
-      `<span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span>`;
+      `<span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span><strong>${upgrade.title}${owned > 0 ? ` ×${owned + 1}` : ""}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span><span class="upgrade-synergy"${hintText ? "" : " hidden"}>${hintText}</span>`;
 
     button.addEventListener(
       "click",
