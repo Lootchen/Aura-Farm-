@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.33";
+import { loadGameChart } from "./chart.js?v=0.34";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.33";
+} from "./music.js?v=0.34";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -88,9 +88,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.33";
+  "./assets/world/glasshouse-far.svg?v=0.34";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.33";
+  "./assets/world/growth-bays.svg?v=0.34";
 
 function drawWorldAsset(
   image,
@@ -153,7 +153,7 @@ const SLIDE = {
   reachMin: 0.88,
   reachMax: 1.15,
   nodeBeats: 0.5,
-  traceGrabRadius: 48
+  traceGrabRadius: 58
 };
 
 const POWER_ORB_BASE_SCALE = 1.55;
@@ -3112,7 +3112,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.33", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.34", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -4244,6 +4244,153 @@ function noteShieldIntact(note) {
   );
 }
 
+function drawShieldMembrane(
+  context,
+  x,
+  y,
+  radius,
+  {
+    alpha = 1,
+    pulse = 0
+  } = {}
+) {
+  const outer =
+    radius + 13 + pulse * 2.5;
+  const halo =
+    context.createRadialGradient(
+      x,
+      y,
+      radius * 0.56,
+      x,
+      y,
+      outer
+    );
+
+  halo.addColorStop(
+    0,
+    "rgba(190,232,255,0)"
+  );
+  halo.addColorStop(
+    0.46,
+    `rgba(190,232,255,${0.055 * alpha})`
+  );
+  halo.addColorStop(
+    0.76,
+    `rgba(190,232,255,${0.20 * alpha})`
+  );
+  halo.addColorStop(
+    1,
+    "rgba(190,232,255,0)"
+  );
+
+  context.save();
+  context.globalCompositeOperation =
+    "destination-over";
+  context.fillStyle = halo;
+  context.beginPath();
+  context.arc(
+    x,
+    y,
+    outer,
+    0,
+    Math.PI * 2
+  );
+  context.fill();
+
+  context.strokeStyle =
+    `rgba(224,246,255,${0.50 * alpha})`;
+  context.lineWidth = 2.8;
+  context.lineCap = "round";
+
+  for (
+    let segment = 0;
+    segment < 4;
+    segment += 1
+  ) {
+    const start =
+      -Math.PI / 2 +
+      segment * Math.PI / 2 +
+      0.20;
+    const end =
+      start +
+      Math.PI / 2 -
+      0.40;
+
+    context.beginPath();
+    context.arc(
+      x,
+      y,
+      outer - 2,
+      start,
+      end
+    );
+    context.stroke();
+  }
+
+  context.restore();
+}
+
+function drawShieldBreakEcho(
+  context,
+  x,
+  y,
+  radius,
+  breakAt
+) {
+  if (!Number.isFinite(breakAt)) {
+    return;
+  }
+
+  const age =
+    performance.now() - breakAt;
+  const duration = 260;
+
+  if (age < 0 || age > duration) {
+    return;
+  }
+
+  const t =
+    clamp(age / duration, 0, 1);
+  const alpha =
+    (1 - t) * (1 - t);
+  const ringRadius =
+    radius + 10 + t * 17;
+
+  context.save();
+  context.strokeStyle =
+    `rgba(224,246,255,${0.78 * alpha})`;
+  context.lineWidth =
+    Math.max(
+      0.8,
+      3.5 * (1 - t)
+    );
+  context.lineCap = "round";
+
+  for (
+    let segment = 0;
+    segment < 4;
+    segment += 1
+  ) {
+    const center =
+      -Math.PI / 2 +
+      segment * Math.PI / 2;
+    const spread =
+      0.35 - t * 0.09;
+
+    context.beginPath();
+    context.arc(
+      x,
+      y,
+      ringRadius,
+      center - spread,
+      center + spread
+    );
+    context.stroke();
+  }
+
+  context.restore();
+}
+
 function breakNoteShield(
   note,
   projectile,
@@ -4257,6 +4404,8 @@ function breakNoteShield(
   }
 
   note.shieldIntact = false;
+  note.shieldBreakAt =
+    performance.now();
 
   if (chain) {
     chainCount += 1;
@@ -6474,6 +6623,65 @@ function drawSlide(event, songTime) {
     connected
   );
 
+  // Keep the next fraction of the musical contour visible beyond the fingertip.
+  // This is purely visual: the same rail geometry remains the judged geometry.
+  const lookAheadStart =
+    Math.min(
+      event.durationBeats,
+      currentBeat + 0.10
+    );
+  const lookAheadEnd =
+    Math.min(
+      event.durationBeats,
+      currentBeat + 0.82
+    );
+
+  if (
+    lookAheadEnd -
+      lookAheadStart >
+    0.05
+  ) {
+    const lookAhead =
+      buildSlideRail(
+        event,
+        lookAheadStart,
+        lookAheadEnd
+      );
+    const guidePoint =
+      slideRailPoint(
+        event,
+        lookAheadEnd
+      );
+
+    ctx.save();
+    ctx.strokeStyle =
+      connected
+        ? "rgba(255,248,207,.86)"
+        : "rgba(236,244,255,.62)";
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    traceSlideRail(
+      lookAhead
+    );
+    ctx.stroke();
+
+    ctx.fillStyle =
+      connected
+        ? "rgba(255,241,169,.92)"
+        : "rgba(236,244,255,.72)";
+    ctx.beginPath();
+    ctx.arc(
+      guidePoint.x,
+      guidePoint.y,
+      4.5,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.restore();
+  }
+
   // Short golden wake communicates successful continuous contact.
   if (currentBeat > 0.02) {
     const wake =
@@ -7883,7 +8091,7 @@ function drawAuriFieldGuide(songTime) {
     beat < 19.6
   ) {
     cue =
-      "ESCUDO: TU BOLA ROMPE EL ARO · TÚ AÚN GOLPEAS LA NOTA";
+      "MEMBRANA: TU BOLA LA ROMPE · EL BEAT SIGUE SIENDO TUYO";
 
     if (
       !profile.shieldTutorialSeen
@@ -8049,7 +8257,7 @@ function drawShieldGuide(songTime) {
   ctx.font =
     "800 8px system-ui, sans-serif";
   ctx.fillText(
-    "ROMPE EL ARO CON UNA BOLA · EL BEAT SIGUE SIENDO TUYO",
+    "ROMPE LA MEMBRANA · LA NOTA SOBREVIVE · GOLPEA EL BEAT",
     x - width / 2 + 58,
     y
   );
@@ -8454,43 +8662,39 @@ function drawTap(note) {
     !note.launched &&
     noteShieldIntact(note)
   ) {
-    ctx.save();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle =
-      "rgba(190,232,255,.78)";
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = "round";
+    const membranePulse =
+      0.5 +
+      0.5 *
+        Math.sin(
+          performance.now() /
+          210
+        );
 
-    const shieldRadius =
-      radius + 8;
-
-    for (
-      let segment = 0;
-      segment < 4;
-      segment += 1
-    ) {
-      const start =
-        -Math.PI / 2 +
-        segment *
-          Math.PI / 2 +
-        0.14;
-      const end =
-        start +
-        Math.PI / 2 -
-        0.28;
-
-      ctx.beginPath();
-      ctx.arc(
-        0,
-        0,
-        shieldRadius,
-        start,
-        end
-      );
-      ctx.stroke();
-    }
-
-    ctx.restore();
+    drawShieldMembrane(
+      ctx,
+      0,
+      0,
+      radius,
+      {
+        alpha:
+          0.86 +
+          membranePulse * 0.14,
+        pulse:
+          membranePulse
+      }
+    );
+  } else if (
+    !note.launched &&
+    note.shield &&
+    !note.shieldIntact
+  ) {
+    drawShieldBreakEcho(
+      ctx,
+      0,
+      0,
+      radius,
+      note.shieldBreakAt
+    );
   }
 
   if (
@@ -9210,7 +9414,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.33 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.34 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE directo · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -9704,36 +9908,25 @@ function drawPreviewNote(
     shielded &&
     !launched
   ) {
-    context.shadowBlur = 0;
-    context.strokeStyle =
-      "rgba(190,232,255,.78)";
-    context.lineWidth = 1.6;
+    const membranePulse =
+      0.5 +
+      0.5 *
+        Math.sin(
+          performance.now() /
+          220
+        );
 
-    for (
-      let segment = 0;
-      segment < 4;
-      segment += 1
-    ) {
-      const start =
-        -Math.PI / 2 +
-        segment *
-          Math.PI / 2 +
-        0.16;
-      const end =
-        start +
-        Math.PI / 2 -
-        0.32;
-
-      context.beginPath();
-      context.arc(
-        x,
-        y,
-        radius + 5,
-        start,
-        end
-      );
-      context.stroke();
-    }
+    drawShieldMembrane(
+      context,
+      x,
+      y,
+      radius,
+      {
+        alpha: 0.92,
+        pulse:
+          membranePulse * 0.65
+      }
+    );
   }
 
   context.restore();
