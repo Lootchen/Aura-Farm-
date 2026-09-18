@@ -9029,17 +9029,6 @@ function pickUpgradeChoices() {
   return choices;
 }
 
-const MODULE_FAMILY_LABELS = {
-  shot: "SHOT",
-  collision: "KINETIC",
-  explosion: "BURST",
-  arena: "ARENA",
-  slide: "SLIDE",
-  chain: "CHAIN",
-  wall: "WALL",
-  defense: "GUARD"
-};
-
 const MODULE_PREVIEW_COLORS = {
   shot: "#6ed7ff",
   collision: "#5ee2d7",
@@ -10871,12 +10860,6 @@ function renderUpgradeChoices() {
     const hints =
       synergyHintsForUpgrade(
         upgrade
-      );
-    const ownedFamily =
-      activeModuleIds.some(
-        (id) =>
-          upgradeById(id)?.family ===
-          upgrade.family
       );
     const fitLabel =
       owned > 0
