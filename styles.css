@@ -216,7 +216,7 @@ button { font: inherit; }
 .upgrade-card {
   flex: 1 1 0;
   min-width: 0;
-  height: 120px;
+  height: 144px;
   padding: 9px 6px 8px;
   border: 1px solid rgba(255,255,255,.17);
   border-radius: 15px;
@@ -229,10 +229,10 @@ button { font: inherit; }
     rgba(15,22,38,.97);
   color: #f5f8ff;
   display: grid;
-  grid-template-rows: 1fr auto auto;
+  grid-template-rows: 1fr auto auto minmax(2.3em, auto);
   align-items: center;
   justify-items: center;
-  gap: 5px;
+  gap: 4px;
   text-align: center;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -285,6 +285,15 @@ button { font: inherit; }
   opacity: .78;
 }
 
+.upgrade-desc {
+  max-width: 13ch;
+  font-size: .58rem;
+  line-height: 1.15;
+  font-weight: 700;
+  opacity: .62;
+  text-wrap: balance;
+}
+
 @keyframes upgradeCardIn {
   from {
     opacity: 0;
@@ -303,7 +312,7 @@ button { font: inherit; }
   }
 
   .upgrade-card {
-    height: 108px;
+    height: 134px;
     padding-inline: 4px;
   }
 
@@ -319,5 +328,10 @@ button { font: inherit; }
     min-width: 44px;
     padding-inline: 4px;
     font-size: .53rem;
+  }
+
+  .upgrade-desc {
+    max-width: 12ch;
+    font-size: .52rem;
   }
 }
