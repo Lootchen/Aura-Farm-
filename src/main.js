@@ -8006,17 +8006,6 @@ function upgradePreviewMarkup(upgrade) {
     '<span class="demo-orb"></span>';
 }
 
-function moduleSerial(upgrade) {
-  const index =
-    UPGRADES.findIndex(
-      (item) => item.id === upgrade.id
-    );
-
-  return `AF-${String(
-    index + 1
-  ).padStart(2, "0")}`;
-}
-
 function renderUpgradeChoices() {
   const choices =
     pickUpgradeChoices();
@@ -8046,9 +8035,9 @@ function renderUpgradeChoices() {
       );
     const fitLabel =
       hints.length
-        ? "COMPLETA SINERGIA"
+        ? `SINERGIA · ${hints[0].title}`
         : ownedFamily
-          ? "REFUERZA BUILD"
+          ? "TU RUTA"
           : "NUEVA RUTA";
 
     button.classList.toggle(
@@ -8064,7 +8053,7 @@ function renderUpgradeChoices() {
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"><span>${moduleSerial(upgrade)}</span><em>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em></span><span class="module-fit">${fitLabel}</span><span class="module-preview" data-module="${upgrade.id}" aria-hidden="true">${upgradePreviewMarkup(upgrade)}</span><strong>${upgrade.title}${owned > 0 ? ` ×${owned + 1}` : ""}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span><span class="upgrade-synergy"${hintText ? "" : " hidden"}>${hintText}</span><span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span>`;
+      `<span class="module-head"><em><i></i>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em><span>${fitLabel}</span></span><span class="module-preview" data-module="${upgrade.id}" aria-hidden="true">${upgradePreviewMarkup(upgrade)}</span><strong>${upgrade.title}${owned > 0 ? ` ×${owned + 1}` : ""}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span>`;
 
     button.addEventListener(
       "click",
