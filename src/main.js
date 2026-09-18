@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.40";
+import { loadGameChart } from "./chart.js?v=0.41";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.40";
+} from "./music.js?v=0.41";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.40";
+const GAME_VERSION = "0.41";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.40";
+  "./assets/world/glasshouse-far.svg?v=0.41";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.40";
+  "./assets/world/growth-bays.svg?v=0.41";
 
 function drawWorldAsset(
   image,
@@ -154,17 +154,16 @@ FLIPPER.cycle = FLIPPER.attack + FLIPPER.hold + FLIPPER.return;
 
 const SLIDE = {
   leadSeconds: 2.45,
-  startEarly: 0.86,
-  startLate: 0.50,
-  catchLead: 0.65,
+  startEarly: 1.05,
+  startLate: 0.52,
   scrollSpeed: 145,
-  railTolerance: 36,
-  disconnectGrace: 0.24,
-  minCoverage: 0.58,
+  railTolerance: 38,
+  disconnectGrace: 0.26,
+  minCoverage: 0.56,
   reachMin: 0.88,
   reachMax: 1.15,
   nodeBeats: 0.5,
-  traceGrabRadius: 92
+  traceGrabRadius: 104
 };
 
 const POWER_ORB_BASE_SCALE = 1.55;
@@ -3123,7 +3122,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.40", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.41", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -6922,29 +6921,22 @@ function drawSlide(event, songTime) {
   ctx.save();
 
   if (!event.started) {
-    const visualArrivalTime =
-      event.targetTime -
-      SLIDE.catchLead;
-    const rawDistance =
+    const distance =
       event.path.length -
       NOTE_SPEED *
         (
-          visualArrivalTime -
+          event.targetTime -
           songTime
         );
-    const distance =
-      Math.min(
-        event.path.length,
-        rawDistance
-      );
-    const docked =
-      songTime >=
-        visualArrivalTime;
     const head =
       pointAtDistance(
         event.path,
         distance
       );
+    const catchReady =
+      songTime >=
+        event.targetTime -
+        SLIDE.startEarly;
     const behind =
       pointAtDistance(
         event.path,
@@ -7008,10 +7000,46 @@ function drawSlide(event, songTime) {
       head,
       {
         docked:
-          docked ||
           event.traceArmed
       }
     );
+
+    if (
+      catchReady &&
+      !event.traceArmed
+    ) {
+      ctx.save();
+      const sideColor =
+        event.side === "left"
+          ? "110,215,255"
+          : "216,139,255";
+      const readiness =
+        clamp(
+          1 -
+            (
+              event.targetTime -
+              songTime
+            ) /
+              SLIDE.startEarly,
+          0,
+          1
+        );
+
+      ctx.strokeStyle =
+        `rgba(${sideColor},${0.12 + readiness * 0.24})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(
+        head.x,
+        head.y,
+        38 +
+          readiness * 5,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+      ctx.restore();
+    }
     drawSlideCatcher(
       event,
       0,
@@ -7358,6 +7386,237 @@ function worldMusicResponse() {
   };
 }
 
+function drawGlasshouseCanopy(
+  palette,
+  intensity,
+  musicResponse
+) {
+  const [ar, ag, ab] =
+    palette.accent;
+  const [sr, sg, sb] =
+    palette.secondary;
+  const time =
+    Math.max(
+      0,
+      clock.songTime
+    );
+  const build =
+    clamp(
+      activeModulePower() / 8,
+      0,
+      1
+    );
+  const beatGlow =
+    clamp(
+      musicResponse.kick * 0.7 +
+      musicResponse.aura * 0.6,
+      0,
+      1
+    );
+  const cx =
+    DESIGN.width / 2;
+  const cy = 390;
+
+  ctx.save();
+
+  const shaft =
+    ctx.createLinearGradient(
+      cx,
+      120,
+      cx,
+      720
+    );
+  shaft.addColorStop(
+    0,
+    `rgba(${sr},${sg},${sb},0)`
+  );
+  shaft.addColorStop(
+    0.42,
+    `rgba(${sr},${sg},${sb},${0.018 + intensity * 0.018 + beatGlow * 0.018})`
+  );
+  shaft.addColorStop(
+    0.78,
+    `rgba(${ar},${ag},${ab},${0.012 + build * 0.018})`
+  );
+  shaft.addColorStop(
+    1,
+    `rgba(${ar},${ag},${ab},0)`
+  );
+  ctx.fillStyle = shaft;
+  ctx.fillRect(
+    cx - 86,
+    118,
+    172,
+    620
+  );
+
+  ctx.translate(
+    cx,
+    cy
+  );
+
+  for (
+    let petal = 0;
+    petal < 5;
+    petal += 1
+  ) {
+    const angle =
+      -Math.PI / 2 +
+      petal *
+        (
+          Math.PI * 2 / 5
+        ) +
+      Math.sin(
+        time * 0.08 +
+        petal
+      ) *
+        0.025;
+    const distance =
+      54 +
+      petal % 2 * 8;
+
+    ctx.save();
+    ctx.rotate(angle);
+    ctx.translate(
+      0,
+      -distance
+    );
+
+    const petalGlow =
+      ctx.createRadialGradient(
+        0,
+        4,
+        2,
+        0,
+        0,
+        55
+      );
+    petalGlow.addColorStop(
+      0,
+      `rgba(${ar},${ag},${ab},${0.026 + intensity * 0.025})`
+    );
+    petalGlow.addColorStop(
+      0.55,
+      `rgba(${sr},${sg},${sb},${0.018 + build * 0.020})`
+    );
+    petalGlow.addColorStop(
+      1,
+      "rgba(0,0,0,0)"
+    );
+
+    ctx.fillStyle =
+      petalGlow;
+    ctx.strokeStyle =
+      `rgba(220,241,249,${0.025 + intensity * 0.025})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(
+      0,
+      0,
+      28,
+      76,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  const corePulse =
+    1 +
+    beatGlow * 0.10 +
+    Math.sin(
+      time * 0.9
+    ) *
+      0.025;
+
+  ctx.scale(
+    corePulse,
+    corePulse
+  );
+
+  ctx.shadowBlur =
+    16 +
+    beatGlow * 18;
+  ctx.shadowColor =
+    `rgba(${sr},${sg},${sb},.32)`;
+  ctx.strokeStyle =
+    `rgba(${sr},${sg},${sb},${0.10 + intensity * 0.06})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    44,
+    0,
+    Math.PI * 2
+  );
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle =
+    `rgba(${ar},${ag},${ab},${0.018 + build * 0.018})`;
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    26,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  ctx.restore();
+
+  // A few slow "pollen" motes add depth without crossing note silhouettes.
+  ctx.save();
+  for (
+    let mote = 0;
+    mote < 9;
+    mote += 1
+  ) {
+    const lane =
+      mote % 2 === 0
+        ? 1
+        : -1;
+    const mx =
+      cx +
+      lane *
+        (
+          120 +
+          (mote % 3) * 34
+        ) +
+      Math.sin(
+        time * 0.13 +
+        mote * 1.7
+      ) *
+        12;
+    const my =
+      170 +
+      ((mote * 83 +
+        time * (6 + mote % 3)) %
+        560);
+
+    ctx.fillStyle =
+      mote % 3 === 0
+        ? `rgba(${ar},${ag},${ab},.10)`
+        : `rgba(${sr},${sg},${sb},.075)`;
+    ctx.beginPath();
+    ctx.arc(
+      mx,
+      my,
+      1.2 +
+        (mote % 2) * 0.7,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawGlasshouseDepth(
   palette,
   intensity,
@@ -7611,6 +7870,12 @@ function drawBackground() {
   drawWorldAsset(
     WORLD_ASSETS.mid,
     0.42
+  );
+
+  drawGlasshouseCanopy(
+    palette,
+    intensity,
+    musicResponse
   );
 
   drawGlasshouseDepth(
@@ -8037,6 +8302,21 @@ function moduleFamilyColor(
     wall: "#ff7d99",
     defense: "#ccecff"
   }[family] ?? "#dfeaff";
+}
+
+function moduleFamilyLabel(
+  family
+) {
+  return {
+    shot: "DISPARO",
+    collision: "CINÉTICA",
+    explosion: "REACTOR",
+    arena: "ARENA",
+    slide: "TRACE",
+    chain: "CHAIN",
+    wall: "PARED",
+    defense: "DEFENSA"
+  }[family] ?? "MÓDULO";
 }
 
 function drawBuildConduits(
@@ -12929,13 +13209,26 @@ function renderUpgradeChoices() {
       );
     const fitLabel =
       owned > 0
-        ? `LV${nextLevel}`
+        ? `MEJORA · LV${nextLevel}`
         : hints.length
           ? `SINERGIA · ${hints[0].title}`
           : activeModuleIds.length >=
               ACTIVE_MODULE_LIMIT
             ? "RESERVA"
-            : "";
+            : "NUEVO";
+    const levelStars =
+      Array.from(
+        {
+          length:
+            moduleMaxLevel(
+              upgrade
+            )
+        },
+        (_, index) =>
+          index < nextLevel
+            ? "●"
+            : "○"
+      ).join("");
 
     button.classList.toggle(
       "is-synergy",
@@ -12944,7 +13237,7 @@ function renderUpgradeChoices() {
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"${fitLabel ? "" : " hidden"}><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="360" height="210" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
+      `<span class="module-head"><span>${fitLabel}</span></span><div class="upgrade-card-art" aria-hidden="true"><i class="upgrade-card-orbit"></i><span class="upgrade-card-icon">${upgrade.icon}</span><small class="upgrade-card-stars">${levelStars}</small></div><div class="upgrade-card-copy"><span class="upgrade-family">${moduleFamilyLabel(upgrade.family)}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span></div><div class="upgrade-preview-strip"><span>EN JUEGO</span><canvas class="module-preview-canvas" width="360" height="96" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas></div>`;
 
     button.addEventListener(
       "click",
@@ -13607,22 +13900,13 @@ function traceTargetPoint(event, songTime) {
     );
   }
 
-  const visualArrivalTime =
-    event.targetTime -
-    SLIDE.catchLead;
-  const rawDistance =
+  const distance =
     event.path.length -
     NOTE_SPEED *
       (
-        visualArrivalTime -
+        event.targetTime -
         songTime
       );
-  const distance =
-    clamp(
-      rawDistance,
-      0,
-      event.path.length
-    );
 
   return pointAtDistance(
     event.path,
