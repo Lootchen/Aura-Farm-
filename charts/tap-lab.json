@@ -1,7 +1,7 @@
 {
-  "name": "Mechanics Lab 05 · Interleave",
+  "name": "Mechanics Lab 06 · Analog Slide",
   "bpm": 110,
-  "loopBeats": 48,
+  "loopBeats": 44,
   "countInBeats": 4,
   "events": [
     {
@@ -33,29 +33,33 @@
       "symbol": "♩"
     },
     {
-      "type": "link",
+      "type": "slide",
       "beat": 7,
+      "side": "left",
+      "route": 1,
       "durationBeats": 6,
-      "segments": [
+      "anchors": [
         {
           "beat": 0,
-          "side": "left"
+          "position": 0
+        },
+        {
+          "beat": 1.5,
+          "position": 0.72
+        },
+        {
+          "beat": 3,
+          "position": -0.68
+        },
+        {
+          "beat": 4.5,
+          "position": 0.48
+        },
+        {
+          "beat": 6,
+          "position": 0
         }
       ]
-    },
-    {
-      "type": "tap",
-      "beat": 8.5,
-      "side": "right",
-      "route": 1,
-      "symbol": "♪"
-    },
-    {
-      "type": "tap",
-      "beat": 10.5,
-      "side": "right",
-      "route": 2,
-      "symbol": "♬"
     },
     {
       "type": "draw",
@@ -65,80 +69,52 @@
     },
     {
       "type": "tap",
-      "beat": 23,
-      "side": "left",
-      "route": 2,
-      "symbol": "♩"
-    },
-    {
-      "type": "tap",
       "beat": 24,
-      "side": "right",
-      "route": 2,
-      "symbol": "♪"
-    },
-    {
-      "type": "link",
-      "beat": 27,
-      "durationBeats": 8,
-      "segments": [
-        {
-          "beat": 0,
-          "side": "left"
-        },
-        {
-          "beat": 4,
-          "side": "right"
-        }
-      ]
-    },
-    {
-      "type": "tap",
-      "beat": 28.5,
-      "side": "right",
-      "route": 0,
-      "symbol": "♪"
-    },
-    {
-      "type": "tap",
-      "beat": 30,
-      "side": "right",
-      "route": 1,
-      "symbol": "♩"
-    },
-    {
-      "type": "tap",
-      "beat": 32.5,
-      "side": "left",
-      "route": 0,
-      "symbol": "♪"
-    },
-    {
-      "type": "tap",
-      "beat": 34,
       "side": "left",
       "route": 2,
       "symbol": "♬"
     },
     {
-      "type": "draw",
-      "beat": 39,
-      "windowBeats": 4,
-      "symbol": "z"
-    },
-    {
       "type": "tap",
-      "beat": 45,
-      "side": "left",
-      "route": 1,
+      "beat": 25,
+      "side": "right",
+      "route": 2,
       "symbol": "♪"
     },
     {
-      "type": "tap",
-      "beat": 46,
+      "type": "slide",
+      "beat": 29,
       "side": "right",
       "route": 1,
-      "symbol": "♩"
+      "durationBeats": 6,
+      "anchors": [
+        {
+          "beat": 0,
+          "position": 0
+        },
+        {
+          "beat": 1.5,
+          "position": -0.7
+        },
+        {
+          "beat": 3,
+          "position": 0.65
+        },
+        {
+          "beat": 4.5,
+          "position": -0.42
+        },
+        {
+          "beat": 6,
+          "position": 0
+        }
+      ]
+    },
+    {
+      "type": "draw",
+      "beat": 38,
+      "windowBeats": 4,
+      "symbol": "z"
     }
   ]
 }
