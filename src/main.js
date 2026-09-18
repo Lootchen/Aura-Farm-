@@ -4058,6 +4058,10 @@ function updateHud() {
 function drawBackground() {
   const palette =
     machinePalette();
+  const act =
+    currentActMeta();
+  const intensity =
+    act.intensity;
   const [ar, ag, ab] =
     palette.accent;
   const [sr, sg, sb] =
@@ -4089,7 +4093,7 @@ function drawBackground() {
     );
   glow.addColorStop(
     0,
-    `rgba(${ar},${ag},${ab},${0.055 + pulse * 0.025})`
+    `rgba(${ar},${ag},${ab},${0.035 + intensity * 0.055 + pulse * 0.025})`
   );
   glow.addColorStop(
     0.52,
@@ -4109,7 +4113,7 @@ function drawBackground() {
 
   // Chassis rails.
   ctx.strokeStyle =
-    `rgba(${ar},${ag},${ab},.13)`;
+    `rgba(${ar},${ag},${ab},${0.09 + intensity * 0.11})`;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(28, 105);
@@ -4159,6 +4163,66 @@ function drawBackground() {
     ctx.fillRect(x, y, 1.2, 1.2);
   }
 
+  // Each act physically lights another cell in the chassis.
+  for (let index = 0; index < RUN_ACTS; index += 1) {
+    const lit =
+      index < wave;
+    const y =
+      166 + index * 82;
+
+    for (const x of [23, 517]) {
+      ctx.fillStyle =
+        lit
+          ? `rgba(${ar},${ag},${ab},${0.26 + intensity * 0.28})`
+          : "rgba(255,255,255,.035)";
+      ctx.beginPath();
+      ctx.roundRect(
+        x - 6,
+        y - 12,
+        12,
+        24,
+        5
+      );
+      ctx.fill();
+    }
+  }
+
+  // More circuitry wakes up as the run escalates.
+  ctx.save();
+  ctx.strokeStyle =
+    `rgba(${sr},${sg},${sb},${0.035 + intensity * 0.10})`;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = "round";
+
+  for (let lane = 0; lane < wave; lane += 1) {
+    const phase =
+      clock.songTime *
+        (0.35 + lane * 0.025) +
+      lane;
+    const y =
+      245 + lane * 54;
+    const offset =
+      Math.sin(phase) *
+      (18 + lane * 2);
+
+    ctx.beginPath();
+    ctx.moveTo(
+      96,
+      y
+    );
+    ctx.bezierCurveTo(
+      175 + offset,
+      y - 18,
+      365 - offset,
+      y + 18,
+      444,
+      y
+    );
+    ctx.stroke();
+  }
+
+  ctx.restore();
+
   // Act energy meter embedded in the machine.
   const progress =
     clamp(
@@ -4179,9 +4243,6 @@ function drawBackground() {
     112 * progress,
     4
   );
-
-  const act =
-    currentActMeta();
 
   ctx.fillStyle =
     `rgba(${ar},${ag},${ab},.58)`;
@@ -5605,16 +5666,41 @@ async function beginAct() {
 
   updateHud();
 
+  const act =
+    currentActMeta();
+
   showMessage(
     wave === FINAL_ACT
       ? "ACTO 7 · AURA CORE"
-      : `ACTO ${wave} · BUILD THE BEAT`,
+      : `ACTO ${wave} · ${act.name}`,
     wave === FINAL_ACT
       ? "#ffdf85"
       : "#fff1a9",
     wave === FINAL_ACT
       ? 1100
-      : 700
+      : 760
+  );
+
+  setOperatorMood(
+    wave === FINAL_ACT
+      ? "boss"
+      : "flow",
+    0.8
+  );
+  bumpFeedback(
+    wave === FINAL_ACT
+      ? 4.8
+      : 2.4,
+    wave === FINAL_ACT
+      ? 0.13
+      : 0.055
+  );
+
+  playTone(
+    330 + wave * 42,
+    0.09,
+    0.04,
+    "triangle"
   );
 
   await clock.start();
