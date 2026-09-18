@@ -1,5 +1,5 @@
 {
-  "name": "Vertical Slice 01 · Musical Intent v0.30",
+  "name": "Vertical Slice 01 · Musical Phrasing v0.31",
   "bpm": 110,
   "loopBeats": 68,
   "countInBeats": 4,
@@ -10,7 +10,6 @@
       "side": "left",
       "route": 0,
       "symbol": "♩",
-      "chainGroup": "intro",
       "music": {
         "stem": "drums",
         "intent": "pulse",
@@ -24,7 +23,6 @@
       "side": "right",
       "route": 0,
       "symbol": "♪",
-      "chainGroup": "intro",
       "music": {
         "stem": "drums",
         "intent": "backbeat",
@@ -38,7 +36,6 @@
       "side": "left",
       "route": 1,
       "symbol": "♪",
-      "chainGroup": "intro",
       "music": {
         "stem": "drums",
         "intent": "pulse",
@@ -52,12 +49,65 @@
       "side": "right",
       "route": 1,
       "symbol": "♩",
-      "chainGroup": "intro",
       "music": {
         "stem": "drums",
         "intent": "backbeat",
         "energy": 0.66,
         "phrase": "germinate-pulse"
+      }
+    },
+    {
+      "type": "tap",
+      "beat": 4,
+      "side": "left",
+      "route": 0,
+      "symbol": "●",
+      "music": {
+        "stem": "drums",
+        "intent": "pulse",
+        "energy": 0.6,
+        "phrase": "germinate-repeat"
+      }
+    },
+    {
+      "type": "tap",
+      "beat": 5,
+      "side": "right",
+      "route": 0,
+      "symbol": "●",
+      "music": {
+        "stem": "drums",
+        "intent": "backbeat",
+        "energy": 0.66,
+        "phrase": "germinate-repeat"
+      }
+    },
+    {
+      "type": "tap",
+      "beat": 6,
+      "side": "left",
+      "route": 0,
+      "symbol": "●",
+      "minAct": 2,
+      "music": {
+        "stem": "drums",
+        "intent": "pulse",
+        "energy": 0.62,
+        "phrase": "germinate-repeat"
+      }
+    },
+    {
+      "type": "tap",
+      "beat": 7,
+      "side": "right",
+      "route": 0,
+      "symbol": "●",
+      "minAct": 2,
+      "music": {
+        "stem": "drums",
+        "intent": "backbeat",
+        "energy": 0.68,
+        "phrase": "germinate-repeat"
       }
     },
     {
@@ -152,11 +202,26 @@
     },
     {
       "type": "tap",
+      "beat": 15.5,
+      "side": "right",
+      "route": 2,
+      "symbol": "●",
+      "minAct": 4,
+      "chainGroup": "spark-a",
+      "music": {
+        "stem": "drums",
+        "intent": "fill",
+        "energy": 0.86,
+        "phrase": "spark-a"
+      }
+    },
+    {
+      "type": "tap",
       "beat": 16,
       "side": "right",
       "route": 1,
       "symbol": "♩",
-      "chainGroup": "spark-a",
+      "chainGroup": "current-answer",
       "music": {
         "stem": "lead",
         "intent": "accent",
@@ -170,7 +235,7 @@
       "side": "left",
       "route": 2,
       "symbol": "♪",
-      "chainGroup": "spark-a",
+      "chainGroup": "current-answer",
       "music": {
         "stem": "aura",
         "intent": "response",
@@ -184,7 +249,7 @@
       "side": "right",
       "route": 2,
       "symbol": "·",
-      "chainGroup": "spark-a",
+      "chainGroup": "current-answer",
       "minAct": 7,
       "music": {
         "stem": "bass",
@@ -236,7 +301,7 @@
       "side": "right",
       "route": 2,
       "symbol": "·",
-      "chainGroup": "spark-b",
+      "chainGroup": "relay-a",
       "minAct": 3,
       "music": {
         "stem": "lead",
@@ -251,7 +316,7 @@
       "side": "left",
       "route": 1,
       "symbol": "·",
-      "chainGroup": "spark-b",
+      "chainGroup": "relay-a",
       "minAct": 5,
       "music": {
         "stem": "aura",
@@ -266,7 +331,7 @@
       "side": "left",
       "route": 0,
       "symbol": "♩",
-      "chainGroup": "spark-b",
+      "chainGroup": "relay-a",
       "music": {
         "stem": "aura",
         "intent": "accent",
@@ -280,7 +345,7 @@
       "side": "right",
       "route": 0,
       "symbol": "♪",
-      "chainGroup": "spark-b",
+      "chainGroup": "relay-a",
       "music": {
         "stem": "lead",
         "intent": "phrase",
@@ -294,7 +359,7 @@
       "side": "left",
       "route": 2,
       "symbol": "♬",
-      "chainGroup": "spark-b",
+      "chainGroup": "relay-a",
       "music": {
         "stem": "lead",
         "intent": "accent",
@@ -308,7 +373,7 @@
       "side": "right",
       "route": 2,
       "symbol": "♪",
-      "chainGroup": "spark-b",
+      "chainGroup": "relay-a",
       "music": {
         "stem": "lead",
         "intent": "fill",
@@ -318,11 +383,26 @@
     },
     {
       "type": "tap",
+      "beat": 31.5,
+      "side": "left",
+      "route": 2,
+      "symbol": "●",
+      "minAct": 4,
+      "chainGroup": "relay-a",
+      "music": {
+        "stem": "aura",
+        "intent": "fill",
+        "energy": 0.84,
+        "phrase": "relay-a"
+      }
+    },
+    {
+      "type": "tap",
       "beat": 32.5,
       "side": "left",
       "route": 1,
       "symbol": "·",
-      "chainGroup": "spark-b",
+      "chainGroup": "fracture-entry",
       "minAct": 7,
       "music": {
         "stem": "lead",
@@ -384,7 +464,7 @@
       "side": "left",
       "route": 2,
       "symbol": "·",
-      "chainGroup": "spark-c",
+      "chainGroup": "overdrive-a",
       "minAct": 3,
       "music": {
         "stem": "drums",
@@ -399,7 +479,7 @@
       "side": "right",
       "route": 1,
       "symbol": "·",
-      "chainGroup": "spark-c",
+      "chainGroup": "overdrive-a",
       "minAct": 5,
       "music": {
         "stem": "aura",
@@ -414,7 +494,7 @@
       "side": "right",
       "route": 1,
       "symbol": "♪",
-      "chainGroup": "spark-c",
+      "chainGroup": "overdrive-a",
       "music": {
         "stem": "lead",
         "intent": "accent",
@@ -428,7 +508,7 @@
       "side": "left",
       "route": 1,
       "symbol": "♩",
-      "chainGroup": "spark-c",
+      "chainGroup": "overdrive-a",
       "music": {
         "stem": "lead",
         "intent": "response",
@@ -442,7 +522,7 @@
       "side": "right",
       "route": 0,
       "symbol": "♬",
-      "chainGroup": "spark-c",
+      "chainGroup": "overdrive-a",
       "music": {
         "stem": "aura",
         "intent": "accent",
@@ -456,7 +536,7 @@
       "side": "left",
       "route": 0,
       "symbol": "♪",
-      "chainGroup": "spark-c",
+      "chainGroup": "overdrive-a",
       "music": {
         "stem": "aura",
         "intent": "phrase",
@@ -470,12 +550,27 @@
       "side": "right",
       "route": 2,
       "symbol": "·",
-      "chainGroup": "spark-c",
+      "chainGroup": "overdrive-a",
       "minAct": 7,
       "music": {
         "stem": "bass",
         "intent": "pickup",
         "energy": 0.62,
+        "phrase": "overdrive-a"
+      }
+    },
+    {
+      "type": "tap",
+      "beat": 47.5,
+      "side": "left",
+      "route": 2,
+      "symbol": "●",
+      "minAct": 5,
+      "chainGroup": "overdrive-a",
+      "music": {
+        "stem": "drums",
+        "intent": "fill",
+        "energy": 0.88,
         "phrase": "overdrive-a"
       }
     },
@@ -527,7 +622,7 @@
       "side": "right",
       "route": 0,
       "symbol": "✦",
-      "chainGroup": "boss-fan",
+      "chainGroup": "bloom-fan",
       "minAct": 7,
       "music": {
         "stem": "boss",
@@ -542,7 +637,7 @@
       "side": "left",
       "route": 2,
       "symbol": "✦",
-      "chainGroup": "boss-fan",
+      "chainGroup": "bloom-fan",
       "minAct": 5,
       "music": {
         "stem": "drums",
@@ -557,7 +652,7 @@
       "side": "right",
       "route": 2,
       "symbol": "✦",
-      "chainGroup": "boss-fan",
+      "chainGroup": "bloom-fan",
       "minAct": 7,
       "music": {
         "stem": "aura",
@@ -652,11 +747,26 @@
     },
     {
       "type": "tap",
+      "beat": 63.5,
+      "side": "left",
+      "route": 2,
+      "symbol": "●",
+      "minAct": 3,
+      "chainGroup": "finale",
+      "music": {
+        "stem": "drums",
+        "intent": "fill",
+        "energy": 0.96,
+        "phrase": "finale"
+      }
+    },
+    {
+      "type": "tap",
       "beat": 64,
       "side": "left",
       "route": 1,
       "symbol": "✦",
-      "chainGroup": "boss-fan",
+      "chainGroup": "core-fan",
       "minAct": 7,
       "music": {
         "stem": "boss",
@@ -671,7 +781,7 @@
       "side": "right",
       "route": 1,
       "symbol": "✦",
-      "chainGroup": "boss-fan",
+      "chainGroup": "core-fan",
       "minAct": 7,
       "music": {
         "stem": "boss",
@@ -686,8 +796,38 @@
       "side": "left",
       "route": 2,
       "symbol": "✦",
-      "chainGroup": "boss-fan",
+      "chainGroup": "core-fan",
       "minAct": 7,
+      "music": {
+        "stem": "boss",
+        "intent": "resolve",
+        "energy": 1,
+        "phrase": "core-fan"
+      }
+    },
+    {
+      "type": "tap",
+      "beat": 66,
+      "side": "right",
+      "route": 2,
+      "symbol": "◆",
+      "minAct": 7,
+      "chainGroup": "core-fan",
+      "music": {
+        "stem": "boss",
+        "intent": "climax",
+        "energy": 0.98,
+        "phrase": "core-fan"
+      }
+    },
+    {
+      "type": "tap",
+      "beat": 67,
+      "side": "left",
+      "route": 2,
+      "symbol": "◆",
+      "minAct": 7,
+      "chainGroup": "core-fan",
       "music": {
         "stem": "boss",
         "intent": "resolve",
