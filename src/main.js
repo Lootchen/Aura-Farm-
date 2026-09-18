@@ -188,7 +188,8 @@ const profile = loadLocalJson(
     bestScore: 0,
     selectedMachine: "forge",
     calibrationOffsetMs: 0,
-    dailyBest: {}
+    dailyBest: {},
+    tutorialSeen: false
   }
 );
 
@@ -2194,6 +2195,35 @@ function chainSound(value = 1) {
     0.075,
     0.045,
     "triangle"
+  );
+}
+
+function moduleInstallSound() {
+  playTone(
+    330,
+    0.055,
+    0.035,
+    "triangle"
+  );
+
+  window.setTimeout(
+    () => playTone(
+      495,
+      0.065,
+      0.04,
+      "triangle"
+    ),
+    55
+  );
+
+  window.setTimeout(
+    () => playTone(
+      660,
+      0.09,
+      0.045,
+      "sine"
+    ),
+    110
   );
 }
 
@@ -5799,7 +5829,19 @@ function drawOperatorSocket(songTime) {
   ctx.fill();
   ctx.globalAlpha = 1;
 
-  // AURI's sprout antenna: the brand motif that links machine + "Farm".
+  // AURI's sprout antenna grows with the current build.
+  const growth =
+    clamp(
+      buildHistory.length / 6,
+      0,
+      1
+    );
+  const synergyGrowth =
+    Math.min(
+      2,
+      activeBuildSynergies()
+        .length
+    );
   const sway =
     Math.sin(
       songTime *
@@ -5807,10 +5849,14 @@ function drawOperatorSocket(songTime) {
       60 *
       Math.PI
     ) * 2.2;
+  const stemTop =
+    -39 -
+    growth * 7;
 
   ctx.strokeStyle =
     `rgb(${palette.accent.join(",")})`;
-  ctx.lineWidth = 2;
+  ctx.lineWidth =
+    2 + growth * 0.6;
   ctx.beginPath();
   ctx.moveTo(
     0,
@@ -5820,38 +5866,63 @@ function drawOperatorSocket(songTime) {
     sway * 0.3,
     -34,
     sway,
-    -39
+    stemTop
   );
   ctx.stroke();
 
-  for (const sign of [-1, 1]) {
-    ctx.save();
-    ctx.translate(
-      sway +
-        sign * 3.5,
-      -40
-    );
-    ctx.rotate(
-      sign * -0.45
-    );
-    ctx.scale(
-      1 + beat * 0.08,
-      1
-    );
-    ctx.fillStyle =
-      `rgb(${palette.accent.join(",")})`;
-    ctx.beginPath();
-    ctx.ellipse(
-      0,
-      0,
-      5,
-      2.5,
-      0,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-    ctx.restore();
+  const leafPairs =
+    1 +
+    (
+      buildHistory.length >= 3
+        ? 1
+        : 0
+    ) +
+    synergyGrowth;
+
+  for (
+    let level = 0;
+    level < leafPairs;
+    level += 1
+  ) {
+    const leafY =
+      stemTop +
+      level * 5.5;
+    const spread =
+      3.5 + level * 0.7;
+
+    for (const sign of [-1, 1]) {
+      ctx.save();
+      ctx.translate(
+        sway +
+          sign * spread,
+        leafY
+      );
+      ctx.rotate(
+        sign * -0.45
+      );
+      ctx.scale(
+        1 +
+          beat * 0.08 +
+          growth * 0.12,
+        1
+      );
+      ctx.fillStyle =
+        level >= 2
+          ? `rgb(${palette.secondary.join(",")})`
+          : `rgb(${palette.accent.join(",")})`;
+      ctx.beginPath();
+      ctx.ellipse(
+        0,
+        0,
+        5,
+        2.5,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   ctx.restore();
@@ -5866,6 +5937,95 @@ function drawOperatorSocket(songTime) {
     x,
     y + 29
   );
+}
+
+function drawAuriFieldGuide(songTime) {
+  if (
+    profile.tutorialSeen ||
+    runMode === "daily" ||
+    songTime < 0
+  ) {
+    return;
+  }
+
+  const beat =
+    songTime /
+    (60 / BPM);
+  let cue = null;
+
+  if (beat < 4.1) {
+    cue =
+      "GOLPEA CUANDO LA SEMILLA TOQUE LA PINZA";
+  } else if (
+    beat >= 4.6 &&
+    beat < 12.4
+  ) {
+    cue =
+      "SLIDE: SIGUE LOS FRETS · EL RIEL ES LA REGLA";
+  } else if (
+    beat >= 12.7 &&
+    beat < 19.6
+  ) {
+    cue =
+      "CHAIN: USA EL RETORNO PARA CRUZAR EL GRUPO";
+  } else if (beat >= 20) {
+    profile.tutorialSeen = true;
+    saveLocalJson(
+      PROFILE_KEY,
+      profile
+    );
+    return;
+  }
+
+  if (!cue) return;
+
+  const palette =
+    machinePalette();
+  const x = 270;
+  const y = 714;
+  const width = 388;
+
+  ctx.save();
+
+  ctx.fillStyle =
+    "rgba(5,10,17,.88)";
+  ctx.strokeStyle =
+    `rgba(${palette.secondary.join(",")},.30)`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(
+    x - width / 2,
+    y - 17,
+    width,
+    34,
+    12
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle =
+    `rgb(${palette.accent.join(",")})`;
+  ctx.font =
+    "900 8px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "AURI //",
+    x - width / 2 + 12,
+    y
+  );
+
+  ctx.fillStyle =
+    "rgba(255,255,255,.78)";
+  ctx.font =
+    "800 8px system-ui, sans-serif";
+  ctx.fillText(
+    cue,
+    x - width / 2 + 58,
+    y
+  );
+
+  ctx.restore();
 }
 
 function drawImpactVeil() {
@@ -6927,6 +7087,7 @@ function render(songTime) {
   drawExplosions();
   drawMessage();
   drawCountIn(songTime);
+  drawAuriFieldGuide(songTime);
   drawImpactVeil();
 
   if (showDebug) drawDebug(songTime);
@@ -7226,6 +7387,28 @@ function renderUpgradeChoices() {
         if (!awaitingUpgrade) return;
 
         awaitingUpgrade = false;
+
+        for (
+          const card of
+          upgradeCards.children
+        ) {
+          card.disabled = true;
+        }
+
+        button.classList.add(
+          "is-installing"
+        );
+        upgradePanel.classList.add(
+          "installing"
+        );
+        moduleInstallSound();
+
+        if (navigator.vibrate) {
+          navigator.vibrate(
+            [7, 20, 10]
+          );
+        }
+
         upgrade.apply();
 
         buildHistory.push({
@@ -7249,7 +7432,18 @@ function renderUpgradeChoices() {
 
         wave += 1;
 
+        await new Promise(
+          (resolve) =>
+            window.setTimeout(
+              resolve,
+              390
+            )
+        );
+
         upgradePanel.hidden = true;
+        upgradePanel.classList.remove(
+          "installing"
+        );
 
         await beginAct();
       }
