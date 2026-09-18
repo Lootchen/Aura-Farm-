@@ -2685,3 +2685,26 @@ button { font: inherit; }
     height: 82px;
   }
 }
+
+
+/* v0.31 — only meaningful state badges survive on module cards */
+.upgrade-card .module-head {
+  justify-content: flex-end;
+}
+
+.upgrade-card .module-head[hidden] {
+  display: none !important;
+}
+
+.upgrade-card .module-head em {
+  display: none !important;
+}
+
+.upgrade-card .module-head > span {
+  max-width: 85%;
+  color: rgba(255,255,255,.66);
+}
+
+.upgrade-card.is-synergy .module-head > span {
+  background: rgba(43,34,8,.82);
+}
