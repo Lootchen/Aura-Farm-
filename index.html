@@ -88,6 +88,7 @@
         <button id="calibrationMinus" type="button">−15ms</button>
         <span>OFFSET <strong id="calibrationValue">0ms</strong></span>
         <button id="calibrationPlus" type="button">+15ms</button>
+        <button id="autoCalibration" type="button">CALIBRAR</button>
       </div>
 
       <small>Tap = contacto físico. TRACE = sigue la cuerda con el dedo. FOLLOW = mueve la garra con el stick. Auriculares Bluetooth: calibra el offset antes de una run seria.</small>
@@ -104,6 +105,17 @@
         </div>
         <div id="upgradeCards" class="upgrade-cards"></div>
         <small>La mejora altera el resto de la run y también su mezcla musical.</small>
+      </div>
+    </section>
+
+    <section id="calibrationPanel" class="calibration-panel" hidden>
+      <div class="calibration-shell">
+        <span class="eyebrow">LATENCY LAB</span>
+        <h2>SIGUE EL PULSO</h2>
+        <p>Toca el núcleo cuando <strong>oigas</strong> cada click. La animación es sólo una guía.</p>
+        <button id="calibrationTap" class="calibration-tap" type="button" aria-label="Tocar pulso">◉</button>
+        <strong id="calibrationStatus">0 / 8</strong>
+        <button id="calibrationClose" class="secondary-action" type="button">CANCELAR</button>
       </div>
     </section>
 
