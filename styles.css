@@ -810,3 +810,33 @@ button { font: inherit; }
     white-space: nowrap;
   }
 }
+
+
+.upgrade-card {
+  grid-template-rows:
+    1fr
+    auto
+    auto
+    minmax(2.3em, auto)
+    auto;
+}
+
+.upgrade-synergy {
+  max-width: 100%;
+  padding: 4px 6px;
+  border: 1px solid rgba(255,229,109,.20);
+  border-radius: 999px;
+  background: rgba(255,229,109,.065);
+  color: #ffe56d;
+  font: 900 .48rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .025em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upgrade-synergy[hidden] {
+  visibility: hidden;
+  display: block;
+  min-height: 1.35em;
+}
