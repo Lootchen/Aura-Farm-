@@ -10880,15 +10880,13 @@ function renderUpgradeChoices() {
       );
     const fitLabel =
       owned > 0
-        ? `MEJORA · LV${nextLevel}`
+        ? `LV${nextLevel}`
         : hints.length
           ? `SINERGIA · ${hints[0].title}`
-          : ownedFamily
-            ? "TU RUTA"
-            : activeModuleIds.length >=
-                ACTIVE_MODULE_LIMIT
-              ? "NUEVO · RESERVA"
-              : "NUEVA RUTA";
+          : activeModuleIds.length >=
+              ACTIVE_MODULE_LIMIT
+            ? "RESERVA"
+            : "";
 
     button.classList.toggle(
       "is-synergy",
@@ -10897,7 +10895,7 @@ function renderUpgradeChoices() {
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"><em><i></i>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="260" height="150" data-module="${upgrade.id}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
+      `<span class="module-head"${fitLabel ? "" : " hidden"}><span>${fitLabel}</span></span><canvas class="module-preview-canvas" width="260" height="150" data-module="${upgrade.id}" aria-hidden="true"></canvas><strong>${upgrade.title}</strong><span class="upgrade-desc">${upgrade.desc}</span>`;
 
     button.addEventListener(
       "click",
