@@ -23,6 +23,8 @@ const buildDockItems = document.querySelector("#buildDockItems");
 const synergyBadge = document.querySelector("#synergyBadge");
 const currentBuildList = document.querySelector("#currentBuildList");
 const currentSynergy = document.querySelector("#currentSynergy");
+const pausePanel = document.querySelector("#pausePanel");
+const resumeButton = document.querySelector("#resumeButton");
 const summaryPanel = document.querySelector("#summaryPanel");
 const summaryTitle = document.querySelector("#summaryTitle");
 const summaryScore = document.querySelector("#summaryScore");
@@ -223,6 +225,7 @@ let selectedMachine =
     ? profile.selectedMachine
     : "forge";
 let runMode = "standard";
+let runPaused = false;
 let runSeed = 1;
 let rngState = 1;
 let buildHistory = [];
@@ -426,6 +429,31 @@ class RhythmClock {
       clearInterval(this.timer);
       this.timer = null;
     }
+  }
+
+  async pause() {
+    this.stopScheduler();
+
+    if (
+      this.context &&
+      this.context.state === "running"
+    ) {
+      await this.context.suspend();
+    }
+  }
+
+  async resumePaused() {
+    if (!this.context) return;
+
+    await this.context.resume();
+    this.schedule();
+
+    this.stopScheduler();
+    this.timer =
+      window.setInterval(
+        () => this.schedule(),
+        25
+      );
   }
 
   get songTime() {
@@ -6269,6 +6297,8 @@ async function beginAct() {
 
   await clock.start();
 
+  runPaused = false;
+  pausePanel.hidden = true;
   running = true;
   lastFrame = performance.now();
   requestAnimationFrame(frame);
@@ -6310,6 +6340,7 @@ function completeRun() {
   if (!running) return;
 
   running = false;
+  runPaused = false;
   awaitingUpgrade = false;
   clock.stopScheduler();
 
@@ -6906,6 +6937,8 @@ window.addEventListener("keyup", (event) => {
 
 async function startRun(mode = "standard") {
   runMode = mode;
+  runPaused = false;
+  pausePanel.hidden = true;
   seedRunRng(
     mode === "daily"
       ? hashString(
@@ -7065,17 +7098,52 @@ window.addEventListener("resize", () => {
   render(clock.songTime);
 });
 
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden || !running) return;
+document.addEventListener(
+  "visibilitychange",
+  async () => {
+    if (
+      document.hidden &&
+      running
+    ) {
+      running = false;
+      runPaused = true;
+      await clock.pause();
+      pausePanel.hidden = false;
+      return;
+    }
 
-  running = false;
-  clock.stopScheduler();
+    if (
+      !document.hidden &&
+      runPaused
+    ) {
+      pausePanel.hidden = false;
+    }
+  }
+);
 
-  startPanel.hidden = false;
-  buildDock.hidden = true;
-  startButton.disabled = false;
-  startButton.textContent = "REINICIAR PRUEBA";
-});
+resumeButton.addEventListener(
+  "click",
+  async () => {
+    if (!runPaused) return;
+
+    resumeButton.disabled = true;
+    resumeButton.textContent =
+      "REANUDANDO…";
+
+    await clock.resumePaused();
+
+    runPaused = false;
+    pausePanel.hidden = true;
+    running = true;
+    lastFrame = performance.now();
+
+    resumeButton.disabled = false;
+    resumeButton.textContent =
+      "CONTINUAR";
+
+    requestAnimationFrame(frame);
+  }
+);
 
 refreshMachineOptions();
 buildDock.hidden = true;
