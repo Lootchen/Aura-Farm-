@@ -502,6 +502,7 @@ class RhythmClock {
     this.timer = null;
     this.noiseBuffer = null;
     this.masterBus = null;
+    this.saturator = null;
     this.compressor = null;
     this.stemBuses = null;
     this.sfxBusNode = null;
@@ -526,20 +527,58 @@ class RhythmClock {
     this.masterBus.gain.value =
       0.82;
 
+    this.saturator =
+      context.createWaveShaper();
+    this.saturator.oversample =
+      "2x";
+
+    const saturationCurve =
+      new Float32Array(1024);
+
+    for (
+      let index = 0;
+      index <
+        saturationCurve.length;
+      index += 1
+    ) {
+      const x =
+        (
+          index /
+          (
+            saturationCurve.length -
+            1
+          )
+        ) *
+          2 -
+        1;
+
+      saturationCurve[index] =
+        Math.tanh(
+          x * 1.45
+        ) /
+        Math.tanh(1.45);
+    }
+
+    this.saturator.curve =
+      saturationCurve;
+
     this.compressor =
       context.createDynamicsCompressor();
     this.compressor.threshold.value =
-      -18;
+      -19;
     this.compressor.knee.value =
-      18;
+      16;
     this.compressor.ratio.value =
-      3;
+      2.7;
     this.compressor.attack.value =
-      0.006;
+      0.007;
     this.compressor.release.value =
-      0.19;
+      0.22;
 
     this.masterBus.connect(
+      this.saturator
+    );
+    this.saturator.connect(
       this.compressor
     );
     this.compressor.connect(
@@ -1011,8 +1050,8 @@ class RhythmClock {
       this.scheduleDrumFill(
         time,
         frame.step,
-        0.022 +
-          actEnergy * 0.012
+        0.024 +
+          actEnergy * 0.013
       );
     }
 
@@ -1098,6 +1137,32 @@ class RhythmClock {
       );
     }
 
+    const majorSectionBars =
+      new Set([
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16
+      ]);
+
+    if (
+      frame.step === 0 &&
+      majorSectionBars.has(
+        frame.barIndex
+      )
+    ) {
+      this.scheduleSectionStinger(
+        time,
+        frame.section,
+        0.006 +
+          actEnergy * 0.004
+      );
+    }
+
     // Build percussion is reactive SFX layered over the six authored stems.
     if (
       frame.step % 2 === 1 &&
@@ -1105,10 +1170,125 @@ class RhythmClock {
     ) {
       this.scheduleBuildClick(
         time,
-        0.006 +
-          rhythmBuild * 0.010
+        0.004 +
+          rhythmBuild * 0.007
       );
     }
+  }
+
+  scheduleSectionStinger(
+    time,
+    section,
+    volume = 0.008
+  ) {
+    const sectionRoot = {
+      SPROUT: 72,
+      CURRENT: 69,
+      RELAY: 74,
+      FRACTURE: 77,
+      OVERDRIVE: 76,
+      ASCENT: 79,
+      BLOOM: 81,
+      ROOT: 57
+    }[section] ?? 72;
+
+    const frequencies =
+      section === "ROOT"
+        ? [
+            midiToHz(
+              sectionRoot
+            ),
+            midiToHz(
+              sectionRoot + 7
+            )
+          ]
+        : [
+            midiToHz(
+              sectionRoot
+            ),
+            midiToHz(
+              sectionRoot + 12
+            )
+          ];
+
+    frequencies.forEach(
+      (
+        frequency,
+        index
+      ) => {
+        const oscillator =
+          this.context.createOscillator();
+        const gain =
+          this.context.createGain();
+        const filter =
+          this.context.createBiquadFilter();
+
+        oscillator.type =
+          section === "ROOT"
+            ? "sawtooth"
+            : index === 0
+              ? "triangle"
+              : "sine";
+        oscillator.frequency.setValueAtTime(
+          frequency,
+          time
+        );
+
+        filter.type =
+          "lowpass";
+        filter.frequency.setValueAtTime(
+          section === "ROOT"
+            ? 1250
+            : 2600,
+          time
+        );
+        filter.Q.value = .7;
+
+        gain.gain.setValueAtTime(
+          0.0001,
+          time
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          volume *
+            (
+              index === 0
+                ? 1
+                : .58
+            ),
+          time + .012
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          time +
+            (
+              section === "ROOT"
+                ? .34
+                : .24
+            )
+        );
+
+        oscillator.connect(
+          filter
+        );
+        filter.connect(
+          gain
+        );
+        gain.connect(
+          this.stemBus(
+            section === "ROOT"
+              ? "boss"
+              : "harmony"
+          )
+        );
+
+        oscillator.start(
+          time
+        );
+        oscillator.stop(
+          time + .38
+        );
+      }
+    );
   }
 
   scheduleHat(time, volume) {
