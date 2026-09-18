@@ -209,7 +209,9 @@ let bossState = {
   damage: 0,
   hitFlash: 0,
   shieldFlash: 0,
-  armor: [false, false, false]
+  armor: [false, false, false],
+  phase: 1,
+  recharged: false
 };
 
 let screenShake = 0;
@@ -2085,7 +2087,94 @@ function bossCenter() {
   };
 }
 
-function resolveBossCollisions() {
+function bossArmorNodes(songTime) {
+  const center =
+    bossCenter();
+  const phaseSpeed =
+    bossState.phase === 1
+      ? 0.68
+      : 0.94;
+  const orbitRadius =
+    bossState.phase === 1
+      ? 92
+      : 102;
+  const baseAngle =
+    songTime * phaseSpeed;
+
+  return bossState.armor.map(
+    (broken, index) => {
+      const angle =
+        baseAngle +
+        index *
+          (Math.PI * 2 / 3);
+
+      return {
+        index,
+        broken,
+        angle,
+        radius: 17,
+        x:
+          center.x +
+          Math.cos(angle) *
+            orbitRadius,
+        y:
+          center.y +
+          Math.sin(angle) *
+            orbitRadius
+      };
+    }
+  );
+}
+
+function bossArmorRemaining() {
+  return bossState.armor.filter(
+    (broken) => !broken
+  ).length;
+}
+
+function bossShielded() {
+  return (
+    bossState.active &&
+    !bossState.broken &&
+    bossArmorRemaining() > 0
+  );
+}
+
+function reflectProjectileFromCircle(
+  projectile,
+  center,
+  limit
+) {
+  const dx =
+    projectile.x - center.x;
+  const dy =
+    projectile.y - center.y;
+  const distance =
+    Math.hypot(dx, dy) || 1;
+  const nx = dx / distance;
+  const ny = dy / distance;
+  const dot =
+    projectile.vx * nx +
+    projectile.vy * ny;
+
+  projectile.vx -=
+    2 * dot * nx;
+  projectile.vy -=
+    2 * dot * ny;
+
+  projectile.x =
+    center.x +
+    nx * (limit + 1);
+  projectile.y =
+    center.y +
+    ny * (limit + 1);
+  projectile.prevX =
+    projectile.x;
+  projectile.prevY =
+    projectile.y;
+}
+
+function resolveBossCollisions(songTime) {
   if (
     !bossState.active ||
     bossState.broken
@@ -2093,8 +2182,11 @@ function resolveBossCollisions() {
     return;
   }
 
-  const center = bossCenter();
-  const radius = 58;
+  const center =
+    bossCenter();
+  const coreRadius = 58;
+  const nodes =
+    bossArmorNodes(songTime);
 
   for (const projectile of [...active.values()]) {
     if (
@@ -2104,21 +2196,131 @@ function resolveBossCollisions() {
       continue;
     }
 
+    let armorHit = false;
+
+    for (const node of nodes) {
+      if (node.broken) continue;
+
+      const distance =
+        Math.hypot(
+          projectile.x - node.x,
+          projectile.y - node.y
+        );
+
+      if (
+        distance >
+        node.radius +
+          noteRadius(projectile)
+      ) {
+        continue;
+      }
+
+      bossState.armor[node.index] =
+        true;
+      active.delete(
+        projectile.key
+      );
+      armorHit = true;
+
+      createExplosion(
+        node.x,
+        node.y,
+        projectile.power
+          ? 1.55
+          : 1.12,
+        {
+          emitFragments:
+            !projectile.fragment,
+          side: projectile.side
+        }
+      );
+      awardScore(
+        projectile.power
+          ? 450
+          : 275
+      );
+      bumpFeedback(
+        projectile.power
+          ? 5.2
+          : 3.4,
+        projectile.power
+          ? 0.15
+          : 0.09
+      );
+      setOperatorMood(
+        "boss",
+        1
+      );
+
+      const remaining =
+        bossArmorRemaining();
+
+      showMessage(
+        remaining === 0
+          ? "ARMOR BREAK · CORE EXPOSED"
+          : `ARMOR -1 · ${remaining} RESTAN`,
+        "#ffdf85",
+        remaining === 0
+          ? 900
+          : 480
+      );
+
+      if (navigator.vibrate) {
+        navigator.vibrate(
+          remaining === 0
+            ? [10, 20, 16]
+            : 9
+        );
+      }
+
+      break;
+    }
+
+    if (armorHit) continue;
+
     const distance =
       Math.hypot(
         projectile.x - center.x,
         projectile.y - center.y
       );
+    const limit =
+      coreRadius +
+      noteRadius(projectile);
 
-    if (
-      distance >
-      radius + noteRadius(projectile)
-    ) {
+    if (distance > limit) {
+      continue;
+    }
+
+    if (bossShielded()) {
+      reflectProjectileFromCircle(
+        projectile,
+        center,
+        limit
+      );
+      bossState.shieldFlash =
+        0.18;
+      bumpFeedback(
+        2.4,
+        0.055
+      );
+      playTone(
+        190,
+        0.055,
+        0.04,
+        "square"
+      );
+      showMessage(
+        "CORE SHIELDED",
+        "#8ee8ff",
+        280
+      );
       continue;
     }
 
     const damage =
-      projectile.power ? 3 : 1;
+      projectile.power
+        ? 3
+        : 1;
 
     active.delete(projectile.key);
     bossState.health =
@@ -2138,7 +2340,9 @@ function resolveBossCollisions() {
     createExplosion(
       projectile.x,
       projectile.y,
-      projectile.power ? 1.75 : 1.2,
+      projectile.power
+        ? 1.75
+        : 1.2,
       {
         emitFragments:
           !projectile.fragment,
@@ -2151,6 +2355,10 @@ function resolveBossCollisions() {
       "#ffdf85",
       320
     );
+    setOperatorMood(
+      "boss",
+      0.85
+    );
 
     if (navigator.vibrate) {
       navigator.vibrate(
@@ -2158,6 +2366,42 @@ function resolveBossCollisions() {
           ? [10, 18, 14]
           : 7
       );
+    }
+
+    if (
+      bossState.health <=
+        bossState.maxHealth / 2 &&
+      !bossState.recharged &&
+      bossState.health > 0
+    ) {
+      bossState.phase = 2;
+      bossState.recharged = true;
+      bossState.armor =
+        [false, false, false];
+      bossState.shieldFlash =
+        0.32;
+
+      showMessage(
+        "PHASE 2 · ARMOR REBOOT",
+        "#ff9fd0",
+        1000
+      );
+      playTone(
+        330,
+        0.16,
+        0.055,
+        "sawtooth"
+      );
+      bumpFeedback(
+        6.2,
+        0.18
+      );
+
+      if (navigator.vibrate) {
+        navigator.vibrate(
+          [14, 24, 14, 24, 18]
+        );
+      }
     }
 
     if (bossState.health <= 0) {
@@ -2178,6 +2422,14 @@ function resolveBossCollisions() {
         1000
       );
       successTone(1046.5);
+      setOperatorMood(
+        "victory",
+        1.3
+      );
+      bumpFeedback(
+        8.5,
+        0.28
+      );
 
       if (navigator.vibrate) {
         navigator.vibrate(
@@ -4941,7 +5193,9 @@ async function beginAct() {
     damage: 0,
     hitFlash: 0,
     shieldFlash: 0,
-    armor: [false, false, false]
+    armor: [false, false, false],
+    phase: 1,
+    recharged: false
   };
 
   updateHud();
@@ -5152,7 +5406,7 @@ function frame(now) {
   updateEvents(dt, songTime);
   resolveFlipperCollisions(songTime);
   resolveBumperCollisions();
-  resolveBossCollisions();
+  resolveBossCollisions(songTime);
   resolveProjectileCollisions();
   updateEffects(dt);
   render(songTime);
@@ -5595,7 +5849,9 @@ async function startRun(mode = "standard") {
     damage: 0,
     hitFlash: 0,
     shieldFlash: 0,
-    armor: [false, false, false]
+    armor: [false, false, false],
+    phase: 1,
+    recharged: false
   };
 
   updateHud();
