@@ -1,5 +1,5 @@
 {
-  "name": "Mechanics Lab 11 · Physical Rail",
+  "name": "Mechanics Lab 12 · Slider Rope",
   "bpm": 110,
   "loopBeats": 64,
   "countInBeats": 4,
@@ -239,45 +239,71 @@
     },
     {
       "type": "tap",
+      "beat": 52,
+      "side": "left",
+      "route": 1,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 53,
+      "side": "right",
+      "route": 1,
+      "symbol": "♪"
+    },
+    {
+      "type": "slide",
       "beat": 54,
       "side": "left",
       "route": 1,
-      "symbol": "♩"
-    },
-    {
-      "type": "tap",
-      "beat": 55,
-      "side": "right",
-      "route": 1,
-      "symbol": "♪"
-    },
-    {
-      "type": "tap",
-      "beat": 56,
-      "side": "left",
-      "route": 2,
-      "symbol": "♬"
-    },
-    {
-      "type": "tap",
-      "beat": 57,
-      "side": "right",
-      "route": 2,
-      "symbol": "♪"
-    },
-    {
-      "type": "tap",
-      "beat": 58,
-      "side": "left",
-      "route": 0,
-      "symbol": "♩"
-    },
-    {
-      "type": "tap",
-      "beat": 59,
-      "side": "right",
-      "route": 0,
-      "symbol": "♪"
+      "durationBeats": 8,
+      "anchors": [
+        {
+          "beat": 0,
+          "x": 0.78,
+          "y": -0.55
+        },
+        {
+          "beat": 1,
+          "x": 0.28,
+          "y": -0.94
+        },
+        {
+          "beat": 2,
+          "x": -0.42,
+          "y": -0.82
+        },
+        {
+          "beat": 3,
+          "x": -0.93,
+          "y": -0.18
+        },
+        {
+          "beat": 4,
+          "x": -0.34,
+          "y": -0.92
+        },
+        {
+          "beat": 5,
+          "x": 0.34,
+          "y": -0.9
+        },
+        {
+          "beat": 6,
+          "x": 0.92,
+          "y": -0.3
+        },
+        {
+          "beat": 7,
+          "x": 0.48,
+          "y": -0.72
+        },
+        {
+          "beat": 8,
+          "x": 0.1,
+          "y": -0.98
+        }
+      ]
     }
   ]
 }
