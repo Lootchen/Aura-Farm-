@@ -1,5 +1,5 @@
 {
-  "name": "Mechanics Lab 13 · Trace vs Follow",
+  "name": "Vertical Slice 01 · Build the Beat",
   "bpm": 110,
   "loopBeats": 68,
   "countInBeats": 4,
@@ -9,28 +9,32 @@
       "beat": 0,
       "side": "left",
       "route": 0,
-      "symbol": "♩"
+      "symbol": "♩",
+      "chainGroup": "intro"
     },
     {
       "type": "tap",
       "beat": 1,
       "side": "right",
       "route": 0,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "intro"
     },
     {
       "type": "tap",
       "beat": 2,
       "side": "left",
       "route": 1,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "intro"
     },
     {
       "type": "tap",
       "beat": 3,
       "side": "right",
       "route": 1,
-      "symbol": "♩"
+      "symbol": "♩",
+      "chainGroup": "intro"
     },
     {
       "type": "slide",
@@ -69,31 +73,62 @@
     },
     {
       "type": "tap",
+      "beat": 13,
+      "side": "left",
+      "route": 2,
+      "symbol": "·",
+      "chainGroup": "spark-a",
+      "minAct": 3
+    },
+    {
+      "type": "tap",
+      "beat": 13.5,
+      "side": "right",
+      "route": 0,
+      "symbol": "·",
+      "chainGroup": "spark-a",
+      "minAct": 5
+    },
+    {
+      "type": "tap",
       "beat": 14,
       "side": "right",
       "route": 2,
-      "symbol": "♬"
+      "symbol": "♬",
+      "chainGroup": "spark-a"
     },
     {
       "type": "tap",
       "beat": 15,
       "side": "left",
       "route": 0,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "spark-a"
     },
     {
       "type": "tap",
       "beat": 16,
       "side": "right",
       "route": 1,
-      "symbol": "♩"
+      "symbol": "♩",
+      "chainGroup": "spark-a"
     },
     {
       "type": "tap",
       "beat": 17,
       "side": "left",
       "route": 2,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "spark-a"
+    },
+    {
+      "type": "tap",
+      "beat": 18.5,
+      "side": "right",
+      "route": 2,
+      "symbol": "·",
+      "chainGroup": "spark-a",
+      "minAct": 7
     },
     {
       "type": "slide",
@@ -127,31 +162,62 @@
     },
     {
       "type": "tap",
+      "beat": 27,
+      "side": "right",
+      "route": 2,
+      "symbol": "·",
+      "chainGroup": "spark-b",
+      "minAct": 3
+    },
+    {
+      "type": "tap",
+      "beat": 27.5,
+      "side": "left",
+      "route": 1,
+      "symbol": "·",
+      "chainGroup": "spark-b",
+      "minAct": 5
+    },
+    {
+      "type": "tap",
       "beat": 28,
       "side": "left",
       "route": 0,
-      "symbol": "♩"
+      "symbol": "♩",
+      "chainGroup": "spark-b"
     },
     {
       "type": "tap",
       "beat": 29,
       "side": "right",
       "route": 0,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "spark-b"
     },
     {
       "type": "tap",
       "beat": 30,
       "side": "left",
       "route": 2,
-      "symbol": "♬"
+      "symbol": "♬",
+      "chainGroup": "spark-b"
     },
     {
       "type": "tap",
       "beat": 31,
       "side": "right",
       "route": 2,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "spark-b"
+    },
+    {
+      "type": "tap",
+      "beat": 32.5,
+      "side": "left",
+      "route": 1,
+      "symbol": "·",
+      "chainGroup": "spark-b",
+      "minAct": 7
     },
     {
       "type": "slide",
@@ -195,31 +261,62 @@
     },
     {
       "type": "tap",
+      "beat": 41,
+      "side": "left",
+      "route": 2,
+      "symbol": "·",
+      "chainGroup": "spark-c",
+      "minAct": 3
+    },
+    {
+      "type": "tap",
+      "beat": 41.5,
+      "side": "right",
+      "route": 1,
+      "symbol": "·",
+      "chainGroup": "spark-c",
+      "minAct": 5
+    },
+    {
+      "type": "tap",
       "beat": 42,
       "side": "right",
       "route": 1,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "spark-c"
     },
     {
       "type": "tap",
       "beat": 43,
       "side": "left",
       "route": 1,
-      "symbol": "♩"
+      "symbol": "♩",
+      "chainGroup": "spark-c"
     },
     {
       "type": "tap",
       "beat": 44,
       "side": "right",
       "route": 0,
-      "symbol": "♬"
+      "symbol": "♬",
+      "chainGroup": "spark-c"
     },
     {
       "type": "tap",
       "beat": 45,
       "side": "left",
       "route": 0,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "spark-c"
+    },
+    {
+      "type": "tap",
+      "beat": 46.5,
+      "side": "right",
+      "route": 2,
+      "symbol": "·",
+      "chainGroup": "spark-c",
+      "minAct": 7
     },
     {
       "type": "slide",
@@ -258,45 +355,105 @@
     },
     {
       "type": "tap",
+      "beat": 56.5,
+      "side": "right",
+      "route": 0,
+      "symbol": "✦",
+      "chainGroup": "boss-fan",
+      "minAct": 7
+    },
+    {
+      "type": "tap",
+      "beat": 57,
+      "side": "left",
+      "route": 2,
+      "symbol": "✦",
+      "chainGroup": "boss-fan",
+      "minAct": 5
+    },
+    {
+      "type": "tap",
+      "beat": 57.5,
+      "side": "right",
+      "route": 2,
+      "symbol": "✦",
+      "chainGroup": "boss-fan",
+      "minAct": 7
+    },
+    {
+      "type": "tap",
       "beat": 58,
       "side": "left",
       "route": 1,
-      "symbol": "♩"
+      "symbol": "♩",
+      "chainGroup": "finale"
     },
     {
       "type": "tap",
       "beat": 59,
       "side": "right",
       "route": 1,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "finale"
     },
     {
       "type": "tap",
       "beat": 60,
       "side": "left",
       "route": 2,
-      "symbol": "♬"
+      "symbol": "♬",
+      "chainGroup": "finale"
     },
     {
       "type": "tap",
       "beat": 61,
       "side": "right",
       "route": 2,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "finale"
     },
     {
       "type": "tap",
       "beat": 62,
       "side": "left",
       "route": 0,
-      "symbol": "♩"
+      "symbol": "♩",
+      "chainGroup": "finale"
     },
     {
       "type": "tap",
       "beat": 63,
       "side": "right",
       "route": 0,
-      "symbol": "♪"
+      "symbol": "♪",
+      "chainGroup": "finale"
+    },
+    {
+      "type": "tap",
+      "beat": 64,
+      "side": "left",
+      "route": 1,
+      "symbol": "✦",
+      "chainGroup": "boss-fan",
+      "minAct": 7
+    },
+    {
+      "type": "tap",
+      "beat": 64.5,
+      "side": "right",
+      "route": 1,
+      "symbol": "✦",
+      "chainGroup": "boss-fan",
+      "minAct": 7
+    },
+    {
+      "type": "tap",
+      "beat": 65,
+      "side": "left",
+      "route": 2,
+      "symbol": "✦",
+      "chainGroup": "boss-fan",
+      "minAct": 7
     }
   ]
 }
