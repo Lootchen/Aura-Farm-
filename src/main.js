@@ -864,7 +864,7 @@ function resolveFlipperCollisions(songTime) {
     const state = flippers[side];
     const segment = flipperSegment(side, songTime);
 
-    if (!segment.phase.attack || state.hitThisSwing) continue;
+    if (!segment.phase.active || state.hitThisSwing) continue;
 
     const candidates = [...active.values()]
       .filter(
@@ -1801,7 +1801,7 @@ function finishDraw(event, songTime) {
     comboMultiplier(combo);
 
   lastJudgement =
-    `MAGIC ${event.symbol.toUpperCase()}`;
+    `MAGIC ${event.symbol.toUpperCase()} PERFECT`;
   lastDeltaMs = null;
 
   active.delete(event.key);
