@@ -94,11 +94,14 @@ function validateGameChart(chart) {
         }
 
         if (
-          !Number.isFinite(anchor.position) ||
-          anchor.position < -1 ||
-          anchor.position > 1
+          !Number.isFinite(anchor.x) ||
+          !Number.isFinite(anchor.y)
         ) {
-          throw new Error(`Evento ${index}, anchor ${anchorIndex}: position debe estar entre -1 y 1.`);
+          throw new Error(`Evento ${index}, anchor ${anchorIndex}: x/y inválidos.`);
+        }
+
+        if (Math.hypot(anchor.x, anchor.y) > 1.001) {
+          throw new Error(`Evento ${index}, anchor ${anchorIndex}: vector fuera del joystick.`);
         }
 
         previousBeat = anchor.beat;
