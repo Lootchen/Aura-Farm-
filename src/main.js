@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.14";
+import { loadGameChart } from "./chart.js?v=0.15";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -57,12 +57,14 @@ const LINK = {
   startEarly: 0.25,
   startLate: 0.25,
   handoffGrace: 0.30,
-  releaseGrace: 0.34,
-  minCoverage: 0.68
+  disconnectGrace: 0.11,
+  minCoverage: 0.68,
+  tickBeats: 0.5,
+  tickPoints: 18
 };
 
 const DRAW = {
-  leadSeconds: 2.80,
+  previewSeconds: 1.35,
   recognitionThreshold: 0.62,
   minPoints: 6
 };
@@ -326,7 +328,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.14", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.15", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -562,6 +564,26 @@ function judgementFor(errorSeconds, windows = TAP_WINDOWS) {
   return null;
 }
 
+function tapScoreFor(deltaSeconds) {
+  const error = Math.abs(deltaSeconds);
+  const ratio = clamp(error / TAP_WINDOWS.good, 0, 1);
+  return Math.round(20 + 480 * Math.pow(1 - ratio, 1.55));
+}
+
+function tapLaunchAngle(side, deltaSeconds) {
+  const base = side === "left"
+    ? -Math.PI / 4
+    : -3 * Math.PI / 4;
+
+  const timing = clamp(
+    deltaSeconds / TAP_WINDOWS.good,
+    -1,
+    1
+  );
+
+  return base + timing * 0.20;
+}
+
 function spawnReady(songTime) {
   const duration = loopDuration();
   const currentLoop = songTime < 0 ? 0 : Math.floor(songTime / duration);
@@ -583,10 +605,10 @@ function spawnReady(songTime) {
         expireAt = targetTime + TAP_WINDOWS.good + 0.22;
       } else if (event.type === "link") {
         lead = LINK.leadSeconds;
-        expireAt = targetTime + beatToSeconds(event.durationBeats) + LINK.releaseGrace;
+        expireAt = targetTime + beatToSeconds(event.durationBeats) + 0.35;
       } else if (event.type === "draw") {
-        lead = DRAW.leadSeconds;
-        expireAt = targetTime + DRAW_WINDOWS.good;
+        lead = DRAW.previewSeconds;
+        expireAt = targetTime + beatToSeconds(event.windowBeats);
       }
 
       if (songTime > expireAt) return;
@@ -626,7 +648,10 @@ function spawnReady(songTime) {
           releaseDelta: null,
           handoffDone: event.segments.map((segment, index) => index === 0),
           handoffDelta: event.segments.map(() => null),
-          handoffFlashed: event.segments.map((segment, index) => index === 0)
+          handoffFlashed: event.segments.map((segment, index) => index === 0),
+          nextTickBeat: 0,
+          ticksHit: 0,
+          ticksTotal: Math.floor(event.durationBeats / LINK.tickBeats) + 1
         });
       }
 
@@ -635,7 +660,8 @@ function spawnReady(songTime) {
           key,
           loop,
           ...event,
-          targetTime
+          targetTime,
+          endTime: targetTime + beatToSeconds(event.windowBeats)
         });
       }
     });
@@ -807,11 +833,12 @@ function resolveTapHit(note, side, songTime) {
   if (!judgement) return false;
 
   const deltaMs = Math.round(delta * 1000);
+  const basePoints = tapScoreFor(delta);
 
   combo += 1;
   const multiplier = comboMultiplier(combo);
 
-  score += judgement.points * multiplier;
+  score += basePoints * multiplier;
   hitCount += 1;
 
   lastDeltaMs = deltaMs;
@@ -821,12 +848,10 @@ function resolveTapHit(note, side, songTime) {
   note.prevX = note.x;
   note.prevY = note.y;
 
-  const direction = side === "left" ? 1 : -1;
-  const vertical = -1;
-  const vectorLength = Math.hypot(direction, vertical) || 1;
+  const launchAngle = tapLaunchAngle(side, delta);
 
-  note.vx = (direction / vectorLength) * POST_HIT_SPEED;
-  note.vy = (vertical / vectorLength) * POST_HIT_SPEED;
+  note.vx = Math.cos(launchAngle) * POST_HIT_SPEED;
+  note.vy = Math.sin(launchAngle) * POST_HIT_SPEED;
 
   resolved.add(note.key);
   flippers[side].hitThisSwing = true;
@@ -835,7 +860,7 @@ function resolveTapHit(note, side, songTime) {
   createImpactFlash(contact.x, contact.y, judgement);
 
   showMessage(
-    `${judgement.label} · ${deltaMs >= 0 ? "+" : ""}${deltaMs}ms · x${multiplier}`,
+    `${judgement.label} · ${deltaMs >= 0 ? "+" : ""}${deltaMs}ms · +${basePoints}`,
     judgement.color
   );
 
@@ -1126,19 +1151,57 @@ function nextLinkSegment(event, songTime) {
   ) ?? null;
 }
 
+function previousLinkSegment(event, songTime) {
+  let previous = null;
+
+  for (const segment of event.segments) {
+    if (linkSegmentTime(event, segment) <= songTime) {
+      if (previous) previous = segment;
+      else previous = segment;
+    } else {
+      break;
+    }
+  }
+
+  return previous;
+}
+
 function activeLinkAt(songTime) {
   return [...active.values()]
     .filter((event) => event.type === "link")
     .filter(
       (event) =>
         songTime >= event.targetTime - LINK.leadSeconds &&
-        songTime <= event.endTime + LINK.releaseGrace
+        songTime <= event.endTime + 0.35
     )
     .sort(
       (a, b) =>
         Math.abs(a.targetTime - songTime) -
         Math.abs(b.targetTime - songTime)
     )[0] ?? null;
+}
+
+function linkPressReserved(event, side, songTime) {
+  if (!event) return false;
+
+  if (!event.started) {
+    const first = event.segments[0];
+    const delta = songTime - event.targetTime;
+
+    return (
+      first.side === side &&
+      delta >= -LINK.startEarly &&
+      delta <= LINK.startLate
+    );
+  }
+
+  const next = nextLinkSegment(event, songTime);
+
+  if (!next || next.side !== side) return false;
+
+  return Math.abs(
+    songTime - linkSegmentTime(event, next)
+  ) <= LINK.handoffGrace;
 }
 
 function linkVisualState(side, songTime) {
@@ -1174,8 +1237,54 @@ function linkVisualState(side, songTime) {
     connected:
       event.started &&
       expected === side &&
-      holdState[side].held
+      (
+        holdState[side].held ||
+        songTime - holdState[side].releasedAt <= LINK.disconnectGrace
+      )
   };
+}
+
+function linkSideConnected(side, songTime) {
+  return (
+    holdState[side].held ||
+    songTime - holdState[side].releasedAt <= LINK.disconnectGrace
+  );
+}
+
+function scoreLinkTicks(event, songTime) {
+  while (
+    event.nextTickBeat <= event.durationBeats + 0.0001 &&
+    songTime >= event.targetTime + beatToSeconds(event.nextTickBeat)
+  ) {
+    const tickTime =
+      event.targetTime + beatToSeconds(event.nextTickBeat);
+
+    const side =
+      expectedLinkSide(event, tickTime + 0.0001);
+
+    if (linkSideConnected(side, songTime)) {
+      event.ticksHit += 1;
+      score += LINK.tickPoints * comboMultiplier(combo);
+
+      const receiver = linkReceiver(side);
+      createImpactFlash(
+        receiver.x,
+        receiver.y,
+        JUDGEMENTS.good
+      );
+
+      playTone(
+        side === "left" ? 520 : 610,
+        0.028,
+        0.018,
+        "triangle"
+      );
+
+      updateHud();
+    }
+
+    event.nextTickBeat += LINK.tickBeats;
+  }
 }
 
 function updateLink(event, dt, songTime) {
@@ -1206,7 +1315,7 @@ function updateLink(event, dt, songTime) {
       showMessage(
         `SLIDE · AGARRADO ${firstSide === "left" ? "A" : "D"}`,
         "#9edcff",
-        420
+        360
       );
 
       successTone(590);
@@ -1227,14 +1336,13 @@ function updateLink(event, dt, songTime) {
     const segment = event.segments[i];
     const previous = event.segments[i - 1];
     const segmentTime = linkSegmentTime(event, segment);
-
     const pressDelta =
       holdState[segment.side].pressedAt - segmentTime;
 
     const overlap =
-      holdState[previous.side].held ||
+      linkSideConnected(previous.side, segmentTime) ||
       holdState[previous.side].releasedAt >=
-        segmentTime - 0.06;
+        segmentTime - LINK.disconnectGrace;
 
     if (
       Math.abs(pressDelta) <= LINK.handoffGrace &&
@@ -1254,7 +1362,7 @@ function updateLink(event, dt, songTime) {
       showMessage(
         `TRANSFERENCIA · ${segment.side === "left" ? "A" : "D"}`,
         "#b8ffd9",
-        340
+        300
       );
 
       successTone(690);
@@ -1274,36 +1382,23 @@ function updateLink(event, dt, songTime) {
 
     event.trackingTime += dt;
 
-    if (holdState[expectedSide].held) {
+    if (linkSideConnected(expectedSide, songTime)) {
       event.goodTime += dt;
     }
+
+    scoreLinkTicks(event, songTime);
   }
 
-  if (songTime < event.endTime) return;
-
-  const lastSide = event.segments.at(-1).side;
-  const releaseAt = holdState[lastSide].releasedAt;
-  const releaseDelta = releaseAt - event.endTime;
-
-  const releasedInWindow =
-    releaseAt >= event.endTime - LINK.releaseGrace &&
-    releaseAt <= event.endTime + LINK.releaseGrace;
-
-  if (releasedInWindow) {
-    finishLink(event, releaseDelta);
-    return;
-  }
-
-  if (songTime > event.endTime + LINK.releaseGrace) {
-    failEvent(event, "SLIDE MISS");
+  if (songTime >= event.endTime) {
+    finishLink(event);
   }
 }
 
 function spawnSlideProjectile(side) {
   const receiver = linkReceiver(side);
-  const direction = side === "left" ? 1 : -1;
-  const vertical = -1;
-  const length = Math.hypot(direction, vertical) || 1;
+  const launchAngle = side === "left"
+    ? -Math.PI / 4
+    : -3 * Math.PI / 4;
 
   const key =
     `slidefx:${performance.now().toFixed(3)}:${Math.random().toString(36).slice(2)}`;
@@ -1319,17 +1414,19 @@ function spawnSlideProjectile(side) {
     prevX: receiver.x,
     prevY: receiver.y,
     vx:
-      (direction / length) *
+      Math.cos(launchAngle) *
       POST_HIT_SPEED *
       1.08,
     vy:
-      (vertical / length) *
+      Math.sin(launchAngle) *
       POST_HIT_SPEED *
       1.08
   });
 }
 
-function finishLink(event, releaseDelta) {
+function finishLink(event) {
+  if (!active.has(event.key)) return;
+
   const duration = Math.max(
     0.001,
     event.endTime - event.targetTime
@@ -1338,12 +1435,10 @@ function finishLink(event, releaseDelta) {
   const coverage = event.goodTime / duration;
   const handoffsOk = event.handoffDone.every(Boolean);
 
-  const success =
-    coverage >= LINK.minCoverage &&
-    handoffsOk &&
-    Math.abs(releaseDelta) <= LINK.releaseGrace;
-
-  if (!success) {
+  if (
+    coverage < LINK.minCoverage ||
+    !handoffsOk
+  ) {
     failEvent(event, "SLIDE FALLÓ");
     return;
   }
@@ -1352,11 +1447,13 @@ function finishLink(event, releaseDelta) {
     Math.abs(event.startDelta ?? LINK.startLate),
     ...event.handoffDelta
       .filter((value) => Number.isFinite(value))
-      .map(Math.abs),
-    Math.abs(releaseDelta)
+      .map(Math.abs)
   ];
 
-  const worstTiming = Math.max(...timingErrors);
+  const worstTiming =
+    timingErrors.length
+      ? Math.max(...timingErrors)
+      : 0;
 
   let judgement = JUDGEMENTS.good;
 
@@ -1373,12 +1470,16 @@ function finishLink(event, releaseDelta) {
   }
 
   combo += 1;
+
+  const tickBonus =
+    event.ticksHit * LINK.tickPoints;
+
   score +=
-    (judgement.points + 180) *
+    (judgement.points + 140) *
     comboMultiplier(combo);
 
   lastJudgement = `SLIDE ${judgement.label}`;
-  lastDeltaMs = Math.round(releaseDelta * 1000);
+  lastDeltaMs = Math.round(worstTiming * 1000);
 
   active.delete(event.key);
   resolved.add(event.key);
@@ -1395,9 +1496,9 @@ function finishLink(event, releaseDelta) {
   spawnSlideProjectile(finalSide);
 
   showMessage(
-    `SLIDE ${judgement.label} · ${Math.round(coverage * 100)}%`,
+    `SLIDE ${judgement.label} · ${Math.round(coverage * 100)}% · ${event.ticksHit}/${event.ticksTotal}`,
     judgement.color,
-    580
+    620
   );
 
   successTone(810);
@@ -1465,13 +1566,12 @@ function drawSlideOrb(x, y, side, radius, alpha = 1, energized = false) {
 }
 
 function drawLink(event, songTime) {
-  const halfBeat = 0.5;
   const nodes = [];
 
   for (
     let beat = 0;
     beat <= event.durationBeats + 0.001;
-    beat += halfBeat
+    beat += LINK.tickBeats
   ) {
     let side = event.segments[0].side;
 
@@ -1527,14 +1627,14 @@ function drawLink(event, songTime) {
 
     ctx.strokeStyle =
       energized
-        ? "rgba(255,238,153,.72)"
+        ? "rgba(255,238,153,.70)"
         : a.side === "left"
-          ? "rgba(110,215,255,.38)"
-          : "rgba(216,139,255,.38)";
+          ? "rgba(110,215,255,.34)"
+          : "rgba(216,139,255,.34)";
 
-    ctx.shadowBlur = energized ? 16 : 6;
+    ctx.shadowBlur = energized ? 14 : 4;
     ctx.shadowColor = ctx.strokeStyle;
-    ctx.lineWidth = energized ? 12 : 8;
+    ctx.lineWidth = energized ? 10 : 7;
 
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
@@ -1557,20 +1657,20 @@ function drawLink(event, songTime) {
       node.x,
       node.y,
       node.side,
-      node.transition ? 18 : 12,
-      energized ? 1 : 0.82,
+      node.transition ? 17 : 11,
+      energized ? 1 : 0.78,
       energized
     );
 
     if (node.transition) {
       ctx.strokeStyle =
-        "rgba(255,255,255,.86)";
+        "rgba(255,255,255,.82)";
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(
         node.x,
         node.y,
-        25,
+        24,
         0,
         Math.PI * 2
       );
@@ -1586,20 +1686,22 @@ function drawLink(event, songTime) {
       );
 
     const receiver = linkReceiver(expected);
+    const connected =
+      linkSideConnected(expected, songTime);
 
-    ctx.shadowBlur = 26;
+    ctx.shadowBlur = 24;
     ctx.shadowColor = "#fff1a9";
     ctx.strokeStyle =
-      holdState[expected].held
+      connected
         ? "#fff1a9"
         : "#ff7184";
 
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(
       receiver.x,
       receiver.y,
-      24,
+      23,
       0,
       Math.PI * 2
     );
@@ -1607,12 +1709,12 @@ function drawLink(event, songTime) {
 
     ctx.shadowBlur = 0;
 
-    if (holdState[expected].held) {
+    if (connected) {
       drawSlideOrb(
         receiver.x,
         receiver.y,
         expected,
-        18,
+        17,
         1,
         true
       );
@@ -1623,12 +1725,6 @@ function drawLink(event, songTime) {
   const nextIn = next
     ? linkSegmentTime(event, next) - songTime
     : Infinity;
-
-  ctx.fillStyle =
-    "rgba(238,248,255,.84)";
-  ctx.font = "900 14px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
 
   let instruction;
 
@@ -1642,15 +1738,39 @@ function drawLink(event, songTime) {
   ) {
     instruction =
       `CONECTA ${next.side === "left" ? "A" : "D"} SIN SOLTAR`;
-  } else if (
-    songTime >=
-    event.endTime - 0.72
-  ) {
-    instruction =
-      `SUELTA ${event.segments.at(-1).side === "left" ? "A" : "D"} EN EL ÚLTIMO ORBE`;
   } else {
-    instruction = "MANTÉN LA CADENA";
+    const expected =
+      expectedLinkSide(event, songTime);
+
+    const previousSide =
+      expected === "left" ? "right" : "left";
+
+    const currentSegmentIndex =
+      event.segments.findIndex(
+        (segment, index) =>
+          index === event.segments.length - 1 ||
+          linkSegmentTime(event, event.segments[index + 1]) > songTime
+      );
+
+    const justTransferred =
+      currentSegmentIndex > 0 &&
+      songTime -
+        linkSegmentTime(
+          event,
+          event.segments[currentSegmentIndex]
+        ) < 0.72 &&
+      holdState[previousSide].held;
+
+    instruction = justTransferred
+      ? `SUELTA ${previousSide === "left" ? "A" : "D"} · MANTÉN ${expected === "left" ? "A" : "D"}`
+      : `MANTÉN ${expected === "left" ? "A" : "D"}`;
   }
+
+  ctx.fillStyle =
+    "rgba(238,248,255,.80)";
+  ctx.font = "900 14px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
 
   ctx.fillText(
     instruction,
@@ -1747,21 +1867,35 @@ function resamplePolyline(points, count) {
 }
 
 function normalizeGesture(points) {
-  const sampled = resamplePolyline(points, 32);
-  const xs = sampled.map((point) => point.x);
-  const ys = sampled.map((point) => point.y);
+  const sampled = resamplePolyline(points, 48);
 
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
+  const centroid = sampled.reduce(
+    (acc, point) => ({
+      x: acc.x + point.x / sampled.length,
+      y: acc.y + point.y / sampled.length
+    }),
+    { x: 0, y: 0 }
+  );
 
-  const width = Math.max(1, maxX - minX);
-  const height = Math.max(1, maxY - minY);
+  const centered = sampled.map((point) => ({
+    x: point.x - centroid.x,
+    y: point.y - centroid.y
+  }));
 
-  return sampled.map((point) => ({
-    x: (point.x - minX) / width,
-    y: (point.y - minY) / height
+  const xs = centered.map((point) => point.x);
+  const ys = centered.map((point) => point.y);
+
+  const width =
+    Math.max(...xs) - Math.min(...xs);
+  const height =
+    Math.max(...ys) - Math.min(...ys);
+
+  const scale =
+    Math.max(1, width, height);
+
+  return centered.map((point) => ({
+    x: point.x / scale,
+    y: point.y / scale
   }));
 }
 
@@ -1769,7 +1903,7 @@ function gestureScore(points, template) {
   if (points.length < DRAW.minPoints) return 0;
 
   const gesture = normalizeGesture(points);
-  const target = resamplePolyline(template, 32);
+  const target = normalizeGesture(template);
 
   const compare = (candidate) => {
     let distance = 0;
@@ -1781,8 +1915,14 @@ function gestureScore(points, template) {
       );
     }
 
-    const mean = distance / candidate.length;
-    return clamp(1 - mean / 0.82, 0, 1);
+    const mean =
+      distance / candidate.length;
+
+    return clamp(
+      1 - mean / 0.70,
+      0,
+      1
+    );
   };
 
   return Math.max(
@@ -1796,13 +1936,12 @@ function activeDrawCandidate(songTime) {
     .filter((event) => event.type === "draw")
     .filter(
       (event) =>
-        songTime >= event.targetTime - DRAW.leadSeconds &&
-        songTime <= event.targetTime + DRAW_WINDOWS.good
+        songTime >= event.targetTime &&
+        songTime <= event.endTime
     )
     .sort(
       (a, b) =>
-        Math.abs(a.targetTime - songTime) -
-        Math.abs(b.targetTime - songTime)
+        a.endTime - b.endTime
     )[0] ?? null;
 }
 
@@ -1818,32 +1957,68 @@ function beginDraw(event, pointerId, point) {
 
 function finishDraw(event, songTime) {
   const points = drawGesture?.points ?? [];
-  const scoreValue = gestureScore(points, drawTemplate(event.symbol));
-  const timingDelta = songTime - event.targetTime;
-  const judgement = judgementFor(timingDelta, DRAW_WINDOWS);
+  const scoreValue =
+    gestureScore(
+      points,
+      drawTemplate(event.symbol)
+    );
 
   drawGesture = null;
 
-  if (scoreValue < DRAW.recognitionThreshold || !judgement) {
+  if (songTime > event.endTime) {
+    failEvent(event, "MAGIC MISS");
+    return;
+  }
+
+  if (
+    scoreValue <
+    DRAW.recognitionThreshold
+  ) {
     showMessage(
-      scoreValue < DRAW.recognitionThreshold
-        ? "TRAZO NO RECONOCIDO"
-        : "FUERA DE TIEMPO",
+      "TRAZO NO RECONOCIDO · INTENTA OTRA VEZ",
       "#ff9da9",
-      360
+      480
     );
     return;
   }
 
+  let judgement = JUDGEMENTS.good;
+
+  if (scoreValue >= 0.88) {
+    judgement = JUDGEMENTS.perfect;
+  } else if (scoreValue >= 0.75) {
+    judgement = JUDGEMENTS.great;
+  }
+
   combo += 1;
-  score += (judgement.points + 150) * comboMultiplier(combo);
-  lastJudgement = `MAGIC ${event.symbol.toUpperCase()}`;
-  lastDeltaMs = Math.round(timingDelta * 1000);
+
+  const remainingRatio =
+    clamp(
+      (event.endTime - songTime) /
+      Math.max(
+        0.001,
+        event.endTime - event.targetTime
+      ),
+      0,
+      1
+    );
+
+  const timeBonus =
+    Math.round(120 * remainingRatio);
+
+  score +=
+    (judgement.points + 150 + timeBonus) *
+    comboMultiplier(combo);
+
+  lastJudgement =
+    `MAGIC ${event.symbol.toUpperCase()}`;
+  lastDeltaMs = null;
 
   active.delete(event.key);
   resolved.add(event.key);
 
-  const constellation = constellationPoints(event.symbol);
+  const constellation =
+    constellationPoints(event.symbol);
 
   for (const point of constellation) {
     createExplosion(point.x, point.y);
@@ -1852,12 +2027,14 @@ function finishDraw(event, songTime) {
   showMessage(
     `MAGIC ${event.symbol.toUpperCase()} · ${judgement.label} · ${Math.round(scoreValue * 100)}%`,
     judgement.color,
-    560
+    600
   );
 
   successTone(860);
 
-  if (navigator.vibrate) navigator.vibrate([5, 25, 5]);
+  if (navigator.vibrate) {
+    navigator.vibrate([5, 25, 5]);
+  }
 
   updateHud();
 }
@@ -1885,7 +2062,7 @@ function updateEvents(dt, songTime) {
 
     if (
       event.type === "draw" &&
-      songTime > event.targetTime + DRAW_WINDOWS.good
+      songTime > event.endTime
     ) {
       if (drawGesture?.key === event.key) drawGesture = null;
       failEvent(event, "MAGIC MISS");
@@ -2259,13 +2436,25 @@ function drawConstellation(event, songTime) {
 
   ctx.stroke();
 
-  const proximity = clamp(
-    1 -
-    Math.abs(songTime - event.targetTime) /
-    DRAW.leadSeconds,
-    0,
-    1
-  );
+  const proximity =
+    songTime < event.targetTime
+      ? clamp(
+          1 -
+          (event.targetTime - songTime) /
+          DRAW.previewSeconds,
+          0,
+          1
+        )
+      : clamp(
+          1 -
+          (event.endTime - songTime) /
+          Math.max(
+            0.001,
+            event.endTime - event.targetTime
+          ),
+          0,
+          1
+        );
 
   for (const point of points) {
     ctx.shadowBlur = 12 + 10 * proximity;
@@ -2282,7 +2471,13 @@ function drawConstellation(event, songTime) {
   ctx.fillStyle = "rgba(255,255,255,.54)";
   ctx.font = "900 15px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("DIBUJA LA CONSTELACIÓN", 270, 620);
+  ctx.fillText(
+    songTime < event.targetTime
+      ? "PREPÁRATE PARA DIBUJAR"
+      : `DIBUJA · ${Math.max(0, (event.endTime - songTime)).toFixed(1)}s`,
+    270,
+    620
+  );
 
   ctx.restore();
 }
@@ -2400,9 +2595,9 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.14 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.15 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap P±45 G±90 GOOD±160ms · draw P±200 G±400 GOOD±850ms`,
+    `tap ±160ms · score continuo · slide ticks 1/2 beat · magic deadline`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `link L:${holdState.left.held ? "ON" : "off"} R:${holdState.right.held ? "ON" : "off"} · draw ${drawGesture ? "ACTIVO" : "—"}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
@@ -2489,16 +2684,59 @@ function pressVisual(button, state) {
   button.classList.toggle("active", state);
 }
 
+function handleSidePress(
+  side,
+  eventTimestamp,
+  inputType = "unknown"
+) {
+  if (!running) return;
+
+  const songTime =
+    eventSongTime(eventTimestamp);
+
+  setHeldSide(side, true, songTime);
+
+  const link = activeLinkAt(songTime);
+
+  if (
+    linkPressReserved(
+      link,
+      side,
+      songTime
+    )
+  ) {
+    lastInputType = "slide";
+    return;
+  }
+
+  triggerFlipper(
+    side,
+    eventTimestamp,
+    inputType
+  );
+}
+
+function handleSideRelease(
+  side,
+  eventTimestamp
+) {
+  const songTime =
+    eventSongTime(eventTimestamp);
+
+  setHeldSide(
+    side,
+    false,
+    songTime
+  );
+}
+
 function bindButton(button, side) {
   button.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     button.setPointerCapture?.(event.pointerId);
     pressVisual(button, true);
 
-    const songTime = eventSongTime(event.timeStamp);
-    setHeldSide(side, true, songTime);
-
-    triggerFlipper(
+    handleSidePress(
       side,
       event.timeStamp,
       event.pointerType || "touch"
@@ -2509,11 +2747,10 @@ function bindButton(button, side) {
     event?.preventDefault?.();
     pressVisual(button, false);
 
-    const songTime = event
-      ? eventSongTime(event.timeStamp)
-      : clock.songTime;
-
-    setHeldSide(side, false, songTime);
+    handleSideRelease(
+      side,
+      event?.timeStamp
+    );
   };
 
   button.addEventListener("pointerup", release);
@@ -2631,22 +2868,20 @@ window.addEventListener("keydown", (event) => {
 
   if (key === "a" || event.key === "ArrowLeft") {
     pressVisual(leftButton, true);
-    setHeldSide(
+    handleSidePress(
       "left",
-      true,
-      eventSongTime(event.timeStamp)
+      event.timeStamp,
+      "keyboard"
     );
-    triggerFlipper("left", event.timeStamp, "keyboard");
   }
 
   if (key === "d" || event.key === "ArrowRight") {
     pressVisual(rightButton, true);
-    setHeldSide(
+    handleSidePress(
       "right",
-      true,
-      eventSongTime(event.timeStamp)
+      event.timeStamp,
+      "keyboard"
     );
-    triggerFlipper("right", event.timeStamp, "keyboard");
   }
 });
 
@@ -2655,19 +2890,17 @@ window.addEventListener("keyup", (event) => {
 
   if (key === "a" || event.key === "ArrowLeft") {
     pressVisual(leftButton, false);
-    setHeldSide(
+    handleSideRelease(
       "left",
-      false,
-      eventSongTime(event.timeStamp)
+      event.timeStamp
     );
   }
 
   if (key === "d" || event.key === "ArrowRight") {
     pressVisual(rightButton, false);
-    setHeldSide(
+    handleSideRelease(
       "right",
-      false,
-      eventSongTime(event.timeStamp)
+      event.timeStamp
     );
   }
 });
