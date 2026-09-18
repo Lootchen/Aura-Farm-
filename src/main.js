@@ -1,17 +1,36 @@
-import { loadGameChart } from "./chart.js?v=0.20";
+import { loadGameChart } from "./chart.js?v=0.24";
 
+const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
 const startPanel = document.querySelector("#startPanel");
 const startButton = document.querySelector("#startButton");
+const dailyButton = document.querySelector("#dailyButton");
+const rerunButton = document.querySelector("#rerunButton");
+const summaryDailyButton = document.querySelector("#summaryDailyButton");
 const leftButton = document.querySelector("#leftButton");
 const rightButton = document.querySelector("#rightButton");
 const scoreEl = document.querySelector("#score");
 const comboEl = document.querySelector("#combo");
+const actEl = document.querySelector("#act");
 const lastHitEl = document.querySelector("#lastHit");
 const upgradePanel = document.querySelector("#upgradePanel");
 const upgradeTitle = document.querySelector("#upgradeTitle");
 const upgradeCards = document.querySelector("#upgradeCards");
+const summaryPanel = document.querySelector("#summaryPanel");
+const summaryTitle = document.querySelector("#summaryTitle");
+const summaryScore = document.querySelector("#summaryScore");
+const summaryHits = document.querySelector("#summaryHits");
+const summaryChains = document.querySelector("#summaryChains");
+const summaryMisses = document.querySelector("#summaryMisses");
+const summaryBoss = document.querySelector("#summaryBoss");
+const summaryBuild = document.querySelector("#summaryBuild");
+const summaryUnlock = document.querySelector("#summaryUnlock");
+const calibrationMinus = document.querySelector("#calibrationMinus");
+const calibrationPlus = document.querySelector("#calibrationPlus");
+const calibrationValue = document.querySelector("#calibrationValue");
+const machineOptions =
+  [...document.querySelectorAll(".machine-option")];
 
 const DESIGN = { width: 540, height: 960 };
 
@@ -66,6 +85,221 @@ const BUMPER_LAYOUT = [
   { x: 185, y: 430, radius: 27 },
   { x: 355, y: 430, radius: 27 }
 ];
+
+const RUN_ACTS = 7;
+const FINAL_ACT = RUN_ACTS;
+const BOSS_MAX_HEALTH = 18;
+const PROFILE_KEY = "aura-farm-profile-v1";
+const METRICS_KEY = "aura-farm-metrics-v1";
+
+const MACHINES = {
+  forge: {
+    name: "FORGE",
+    unlockRuns: 0,
+    accent: [255, 196, 92],
+    secondary: [110, 215, 255]
+  },
+  prism: {
+    name: "PRISM",
+    unlockRuns: 1,
+    accent: [211, 139, 255],
+    secondary: [94, 226, 215]
+  },
+  pulse: {
+    name: "PULSE",
+    unlockRuns: 3,
+    accent: [255, 105, 148],
+    secondary: [255, 226, 104]
+  }
+};
+
+function loadLocalJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw
+      ? { ...fallback, ...JSON.parse(raw) }
+      : { ...fallback };
+  } catch {
+    return { ...fallback };
+  }
+}
+
+function saveLocalJson(key, value) {
+  try {
+    localStorage.setItem(
+      key,
+      JSON.stringify(value)
+    );
+  } catch {
+    // Storage is optional; gameplay must never depend on it.
+  }
+}
+
+const profile = loadLocalJson(
+  PROFILE_KEY,
+  {
+    runsCompleted: 0,
+    bestScore: 0,
+    selectedMachine: "forge",
+    calibrationOffsetMs: 0
+  }
+);
+
+const lifetimeMetrics = loadLocalJson(
+  METRICS_KEY,
+  {
+    sessions: 0,
+    runsStarted: 0,
+    runsCompleted: 0,
+    totalChains: 0,
+    traceAttempts: 0,
+    traceSuccess: 0,
+    followAttempts: 0,
+    followSuccess: 0
+  }
+);
+
+lifetimeMetrics.sessions += 1;
+saveLocalJson(METRICS_KEY, lifetimeMetrics);
+
+let selectedMachine =
+  MACHINES[profile.selectedMachine]
+    ? profile.selectedMachine
+    : "forge";
+let runMode = "standard";
+let runSeed = 1;
+let rngState = 1;
+let buildHistory = [];
+let runStartedAt = 0;
+let maxCombo = 0;
+let runStats = null;
+let bossState = {
+  active: false,
+  health: BOSS_MAX_HEALTH,
+  maxHealth: BOSS_MAX_HEALTH,
+  broken: false,
+  damage: 0,
+  hitFlash: 0
+};
+
+function machinePalette() {
+  return MACHINES[selectedMachine] ??
+    MACHINES.forge;
+}
+
+function machineUnlocked(id) {
+  return (
+    profile.runsCompleted >=
+    (MACHINES[id]?.unlockRuns ?? Infinity)
+  );
+}
+
+function applyMachineSelection(id) {
+  if (!MACHINES[id] || !machineUnlocked(id)) {
+    return false;
+  }
+
+  selectedMachine = id;
+  profile.selectedMachine = id;
+  saveLocalJson(PROFILE_KEY, profile);
+  app.dataset.machine = id;
+
+  for (const option of machineOptions) {
+    option.classList.toggle(
+      "is-selected",
+      option.dataset.machine === id
+    );
+  }
+
+  return true;
+}
+
+function refreshMachineOptions() {
+  for (const option of machineOptions) {
+    const id = option.dataset.machine;
+    const unlocked = machineUnlocked(id);
+
+    option.classList.toggle(
+      "is-locked",
+      !unlocked
+    );
+    option.disabled = !unlocked;
+
+    if (unlocked && id !== "forge") {
+      const small = option.querySelector("small");
+      if (small) small.textContent = "Desbloqueada";
+    }
+  }
+
+  applyMachineSelection(
+    machineUnlocked(selectedMachine)
+      ? selectedMachine
+      : "forge"
+  );
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function localDateKey() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month =
+    String(date.getMonth() + 1).padStart(2, "0");
+  const day =
+    String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function seedRunRng(seed) {
+  runSeed = (seed >>> 0) || 1;
+  rngState = runSeed;
+}
+
+function runRandom() {
+  if (runMode !== "daily") {
+    return Math.random();
+  }
+
+  let x = rngState >>> 0;
+  x ^= x << 13;
+  x ^= x >>> 17;
+  x ^= x << 5;
+  rngState = x >>> 0;
+
+  return rngState / 4294967296;
+}
+
+function recordLifetimeMetric(key, amount = 1) {
+  lifetimeMetrics[key] =
+    Number(lifetimeMetrics[key] || 0) +
+    amount;
+  saveLocalJson(
+    METRICS_KEY,
+    lifetimeMetrics
+  );
+}
+
+function newRunStats() {
+  return {
+    startedAt: performance.now(),
+    traceAttempts: 0,
+    traceSuccess: 0,
+    followAttempts: 0,
+    followSuccess: 0,
+    chosenUpgrades: [],
+    firstChainMs: null
+  };
+}
 
 class RhythmClock {
   constructor() {
@@ -160,20 +394,111 @@ class RhythmClock {
   }
 
   scheduleGroove(time, beat) {
-    const barBeat = ((beat % 4) + 4) % 4;
+    const barBeat =
+      ((beat % 4) + 4) % 4;
+    const actEnergy =
+      clamp(
+        (wave - 1) /
+          Math.max(1, RUN_ACTS - 1),
+        0,
+        1
+      );
+    const buildEnergy =
+      Math.min(
+        1,
+        buildHistory.length / 6
+      );
 
-    this.scheduleHat(time, 0.018);
+    this.scheduleHat(
+      time,
+      0.016 +
+        actEnergy * 0.008 +
+        buildEnergy * 0.004
+    );
 
-    if (Math.abs(barBeat - 0) < 0.001 || Math.abs(barBeat - 2) < 0.001) {
+    if (
+      Math.abs(barBeat - 0) < 0.001 ||
+      Math.abs(barBeat - 2) < 0.001
+    ) {
       this.scheduleKick(time);
     }
 
-    if (Math.abs(barBeat - 1) < 0.001 || Math.abs(barBeat - 3) < 0.001) {
+    if (
+      Math.abs(barBeat - 1) < 0.001 ||
+      Math.abs(barBeat - 3) < 0.001
+    ) {
       this.scheduleSnare(time);
     }
 
     if (Number.isInteger(beat)) {
       this.scheduleBass(time, beat);
+
+      if (
+        runMods.slideNova > 0 ||
+        runMods.slideMirror > 0
+      ) {
+        this.scheduleLead(
+          time,
+          beat,
+          0.012 +
+            0.006 *
+              Math.min(
+                3,
+                runMods.slideNova +
+                  runMods.slideMirror
+              )
+        );
+      }
+
+      if (
+        (
+          runMods.shockwave +
+          runMods.fusionBlast +
+          runMods.wallCharge
+        ) > 0 &&
+        Math.abs(barBeat) < 0.001
+      ) {
+        this.scheduleAuraPulse(
+          time,
+          0.018 +
+            0.006 *
+              Math.min(
+                3,
+                runMods.shockwave +
+                  runMods.fusionBlast +
+                  runMods.wallCharge
+              )
+        );
+      }
+
+      if (wave === FINAL_ACT) {
+        this.scheduleBossDrone(
+          time,
+          beat
+        );
+      }
+    }
+
+    if (
+      Math.abs(barBeat % 1 - 0.5) <
+        0.001 &&
+      (
+        runMods.twinShots > 0 ||
+        runMods.chainRelay > 0 ||
+        runMods.bumperSplit > 0
+      )
+    ) {
+      this.scheduleBuildClick(
+        time,
+        0.010 +
+          0.004 *
+            Math.min(
+              3,
+              runMods.twinShots +
+                runMods.chainRelay +
+                runMods.bumperSplit
+            )
+      );
     }
   }
 
@@ -255,6 +580,136 @@ class RhythmClock {
     oscillator.start(time);
     oscillator.stop(time + 0.18);
   }
+
+  scheduleLead(time, beat, volume) {
+    const oscillator =
+      this.context.createOscillator();
+    const gain =
+      this.context.createGain();
+    const filter =
+      this.context.createBiquadFilter();
+    const pattern =
+      [440, 493.88, 587.33, 659.25];
+    const frequency =
+      pattern[Math.floor(beat) % pattern.length];
+
+    oscillator.type = "sawtooth";
+    oscillator.frequency.setValueAtTime(
+      frequency,
+      time
+    );
+
+    filter.type = "lowpass";
+    filter.frequency.value = 1800;
+
+    gain.gain.setValueAtTime(
+      0.0001,
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      volume,
+      time + 0.008
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.12
+    );
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.context.destination);
+    oscillator.start(time);
+    oscillator.stop(time + 0.14);
+  }
+
+  scheduleBuildClick(time, volume) {
+    const source =
+      this.context.createBufferSource();
+    const filter =
+      this.context.createBiquadFilter();
+    const gain =
+      this.context.createGain();
+
+    source.buffer = this.noiseBuffer;
+    filter.type = "bandpass";
+    filter.frequency.value = 3300;
+    filter.Q.value = 2.4;
+
+    gain.gain.setValueAtTime(
+      volume,
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.025
+    );
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.context.destination);
+    source.start(time);
+    source.stop(time + 0.03);
+  }
+
+  scheduleAuraPulse(time, volume) {
+    const oscillator =
+      this.context.createOscillator();
+    const gain =
+      this.context.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(
+      220,
+      time
+    );
+    oscillator.frequency.exponentialRampToValueAtTime(
+      110,
+      time + 0.22
+    );
+
+    gain.gain.setValueAtTime(
+      volume,
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.24
+    );
+
+    oscillator.connect(gain);
+    gain.connect(this.context.destination);
+    oscillator.start(time);
+    oscillator.stop(time + 0.25);
+  }
+
+  scheduleBossDrone(time, beat) {
+    const oscillator =
+      this.context.createOscillator();
+    const gain =
+      this.context.createGain();
+
+    oscillator.type = "square";
+    oscillator.frequency.value =
+      beat % 2 === 0 ? 55 : 61.74;
+
+    gain.gain.setValueAtTime(
+      0.0001,
+      time
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.012,
+      time + 0.012
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.34
+    );
+
+    oscillator.connect(gain);
+    gain.connect(this.context.destination);
+    oscillator.start(time);
+    oscillator.stop(time + 0.36);
+  }
 }
 
 const clock = new RhythmClock();
@@ -288,7 +743,7 @@ let fps = 60;
 let message = "";
 let messageColor = "#ffffff";
 let messageUntil = 0;
-let calibrationOffsetMs = 0;
+let calibrationOffsetMs = Number(profile.calibrationOffsetMs || 0);
 let lastInputType = "—";
 let showDebug = false;
 let wave = 1;
