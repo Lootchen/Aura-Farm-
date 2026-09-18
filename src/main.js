@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.24";
+import { loadGameChart } from "./chart.js?v=0.25";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -89,6 +89,27 @@ const BUMPER_LAYOUT = [
 const RUN_ACTS = 7;
 const FINAL_ACT = RUN_ACTS;
 const BOSS_MAX_HEALTH = 18;
+
+const ACTS = [
+  null,
+  { name: "IGNITION", cue: "ENCIENDE LA MÁQUINA", intensity: 0.14 },
+  { name: "CURRENT", cue: "MANTÉN EL FLUJO", intensity: 0.24 },
+  { name: "RELAY", cue: "BUSCA CHAIN", intensity: 0.36 },
+  { name: "OVERDRIVE", cue: "CONSTRUYE MOMENTO", intensity: 0.50 },
+  { name: "FRACTURE", cue: "ROMPE EL PATRÓN", intensity: 0.64 },
+  { name: "ASCENT", cue: "PREPARA EL CORE", intensity: 0.80 },
+  { name: "AURA CORE", cue: "ROMPE LA ARMADURA", intensity: 1 }
+];
+
+function currentActMeta() {
+  return ACTS[
+    clamp(
+      Math.round(wave),
+      1,
+      RUN_ACTS
+    )
+  ] ?? ACTS[1];
+}
 const PROFILE_KEY = "aura-farm-profile-v1";
 const METRICS_KEY = "aura-farm-metrics-v1";
 
@@ -186,8 +207,34 @@ let bossState = {
   maxHealth: BOSS_MAX_HEALTH,
   broken: false,
   damage: 0,
-  hitFlash: 0
+  hitFlash: 0,
+  shieldFlash: 0,
+  armor: [false, false, false]
 };
+
+let screenShake = 0;
+let impactVeil = 0;
+let operatorPulse = 0;
+let operatorMood = "idle";
+
+function bumpFeedback(
+  shake = 0,
+  veil = 0
+) {
+  screenShake =
+    Math.max(screenShake, shake);
+  impactVeil =
+    Math.max(impactVeil, veil);
+}
+
+function setOperatorMood(
+  mood,
+  pulse = 0.5
+) {
+  operatorMood = mood;
+  operatorPulse =
+    Math.max(operatorPulse, pulse);
+}
 
 function machinePalette() {
   return MACHINES[selectedMachine] ??
@@ -987,7 +1034,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.24", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.25", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -1620,6 +1667,16 @@ function resolveTapHit(note, side, songTime) {
     segment.tip.y,
     JUDGEMENTS.perfect
   );
+  bumpFeedback(
+    combo >= 12 ? 3.2 : 1.8,
+    combo >= 12 ? 0.11 : 0.055
+  );
+  setOperatorMood(
+    combo >= 12
+      ? "flow"
+      : "hit",
+    0.42
+  );
 
   showMessage(
     shotCount > 1 ? `PERFECT · ×${shotCount}` : "PERFECT",
@@ -1652,6 +1709,17 @@ function failEvent(event, label = "MISS") {
 
   active.delete(event.key);
   resolved.add(event.key);
+
+  setOperatorMood(
+    protectedCombo
+      ? "shield"
+      : "miss",
+    0.7
+  );
+  bumpFeedback(
+    protectedCombo ? 1.5 : 2.2,
+    protectedCombo ? 0.035 : 0.07
+  );
 
   showMessage(
     protectedCombo
@@ -1735,6 +1803,10 @@ function createExplosion(
   if (explosions.length > 12) explosions.shift();
 
   explosionSound();
+  bumpFeedback(
+    Math.min(5.8, 0.9 + scale * 1.55),
+    Math.min(0.13, 0.018 + scale * 0.026)
+  );
 
   if (scale > 1.2) {
     playTone(105, 0.09, 0.045, "sine");
@@ -1912,6 +1984,20 @@ function resolveProjectileCollisions() {
         );
         chainSound(
           Math.min(5, chainCount)
+        );
+        bumpFeedback(
+          Math.min(
+            5.5,
+            2.2 + chainCount * 0.35
+          ),
+          Math.min(
+            0.16,
+            0.055 + chainCount * 0.012
+          )
+        );
+        setOperatorMood(
+          "chain",
+          0.8
         );
 
         if (navigator.vibrate) {
@@ -2849,6 +2935,12 @@ function finishSlide(event) {
 
   spawnSlideProjectile(event);
 
+  bumpFeedback(3.5, 0.10);
+  setOperatorMood(
+    "slide",
+    0.9
+  );
+
   showMessage(
     "SLIDE PERFECT · POWER ORB",
     JUDGEMENTS.perfect.color,
@@ -3657,6 +3749,34 @@ function updateEffects(dt) {
       0,
       bossState.hitFlash - dt
     );
+  bossState.shieldFlash =
+    Math.max(
+      0,
+      bossState.shieldFlash - dt
+    );
+
+  screenShake =
+    Math.max(
+      0,
+      screenShake - dt * 17
+    );
+  impactVeil =
+    Math.max(
+      0,
+      impactVeil - dt * 2.8
+    );
+  operatorPulse =
+    Math.max(
+      0,
+      operatorPulse - dt * 1.9
+    );
+
+  if (
+    operatorPulse <= 0 &&
+    combo < 8
+  ) {
+    operatorMood = "idle";
+  }
 
   explosions = explosions.filter(
     (explosion) => explosion.life < explosion.duration
@@ -4635,7 +4755,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.24 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.25 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -4819,7 +4939,9 @@ async function beginAct() {
     maxHealth: BOSS_MAX_HEALTH,
     broken: false,
     damage: 0,
-    hitFlash: 0
+    hitFlash: 0,
+    shieldFlash: 0,
+    armor: [false, false, false]
   };
 
   updateHud();
@@ -5471,7 +5593,9 @@ async function startRun(mode = "standard") {
     maxHealth: BOSS_MAX_HEALTH,
     broken: false,
     damage: 0,
-    hitFlash: 0
+    hitFlash: 0,
+    shieldFlash: 0,
+    armor: [false, false, false]
   };
 
   updateHud();
