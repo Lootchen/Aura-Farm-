@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.36.2
+# Aura Farm — Vertical Slice v0.37
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,46 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.37 — Mobile playability / HUD / Module Bay
+
+v0.37 is a mobile usability pass focused on the friction visible in real-device play.
+
+### TRACE forgiveness
+
+- start pickup radius grows from 58 to 82 design px;
+- the start window grows from ±0.28 s to 0.42 s early / 0.38 s late;
+- rail tolerance grows from 25 to 34 px;
+- disconnect grace grows from 0.15 to 0.22 s;
+- minimum successful coverage drops from 68% to 60%;
+- the first accepted touch snaps to the authored rail head so grabbing TRACE feels intentional instead of pixel-perfect;
+- the incoming TRACE head is larger and gets a pulsing pickup ring.
+
+### Mobile HUD
+
+The top HUD and build dock now prioritize phone readability over micro-technical styling:
+
+- larger score, combo, act and status values;
+- labels use the normal UI sans at readable sizes instead of tiny monospace;
+- the pause control and build chips have larger touch/read areas;
+- narrow-screen rules no longer shrink the important values below comfortable reading size.
+
+### Module Bay on phones
+
+Three narrow cards no longer compete in one row. On mobile, Module Bay becomes a horizontal snap carousel:
+
+- each card uses roughly 82% of the screen width;
+- previews grow to a 360×210 render surface and ~190 px displayed height;
+- title, state badge and description are larger;
+- cards snap one at a time while leaving a glimpse of the next choice.
+
+### Gameplay previews
+
+Preview loops run more slowly and communicate input causality more explicitly:
+
+- Tap previews label the moment as `TAP · PERFECT → SHOT`;
+- Slide previews use `TRACE · ARRASTRA` and a visible moving trace cursor;
+- the goal is to make each card read as miniature gameplay rather than an abstract GIF.
 
 ## v0.36.2 — Shield readability hotfix
 
