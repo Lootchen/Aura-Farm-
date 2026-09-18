@@ -1,5 +1,5 @@
 {
-  "name": "Vertical Slice 01 · Readability Pass v0.34",
+  "name": "Vertical Slice 01 · Shield Readability v0.36.2",
   "bpm": 110,
   "loopBeats": 68,
   "countInBeats": 4,
@@ -199,7 +199,8 @@
         "intent": "fill",
         "energy": 0.84,
         "phrase": "spark-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -228,7 +229,8 @@
         "intent": "accent",
         "energy": 0.7,
         "phrase": "current-answer"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -354,7 +356,8 @@
         "intent": "phrase",
         "energy": 0.7,
         "phrase": "relay-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -383,7 +386,8 @@
         "intent": "fill",
         "energy": 0.8,
         "phrase": "relay-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -519,7 +523,8 @@
         "intent": "response",
         "energy": 0.72,
         "phrase": "overdrive-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -548,7 +553,8 @@
         "intent": "phrase",
         "energy": 0.82,
         "phrase": "overdrive-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -680,7 +686,8 @@
         "intent": "accent",
         "energy": 0.82,
         "phrase": "finale"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -694,7 +701,8 @@
         "intent": "backbeat",
         "energy": 0.86,
         "phrase": "finale"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -723,7 +731,8 @@
         "intent": "response",
         "energy": 0.9,
         "phrase": "finale"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -752,7 +761,8 @@
         "intent": "fill",
         "energy": 0.94,
         "phrase": "finale"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
