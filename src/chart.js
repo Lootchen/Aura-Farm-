@@ -162,8 +162,8 @@ function validateGameChart(chart) {
     }
 
     if (event.type === "slide") {
-      if (!["trace", "follow"].includes(event.mode)) {
-        throw new Error(`Evento ${index}: mode de slide debe ser trace o follow.`);
+      if (event.mode !== "trace") {
+        throw new Error(`Evento ${index}: Slide sólo admite mode trace.`);
       }
 
       if (!["left", "right"].includes(event.side)) {
@@ -222,7 +222,7 @@ function validateGameChart(chart) {
         }
 
         if (Math.hypot(anchor.x, anchor.y) > 1.001) {
-          throw new Error(`Evento ${index}, anchor ${anchorIndex}: vector fuera del joystick.`);
+          throw new Error(`Evento ${index}, anchor ${anchorIndex}: vector fuera del alcance TRACE.`);
         }
 
         previousBeat = anchor.beat;
