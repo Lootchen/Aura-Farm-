@@ -4365,3 +4365,383 @@ button { font: inherit; }
       rotate(-360deg);
   }
 }
+
+
+/* v0.42 — premium clarity pass + larger upgrade previews */
+.upgrade-panel {
+  align-items: center;
+}
+
+.upgrade-shell {
+  width: min(100%, 560px);
+  gap: 11px;
+}
+
+.upgrade-cards {
+  align-items: stretch;
+  gap: 12px;
+}
+
+.upgrade-card {
+  flex-basis: 172px;
+  width: min(31vw, 172px);
+  height: 392px;
+  padding: 12px;
+  grid-template-rows:
+    auto
+    94px
+    minmax(108px, auto)
+    128px !important;
+  gap: 8px;
+  border-radius: 21px;
+  transition:
+    transform .18s ease,
+    opacity .18s ease,
+    filter .18s ease,
+    border-color .18s ease;
+}
+
+.upgrade-card-art {
+  min-height: 94px;
+}
+
+.upgrade-card-orbit {
+  width: 80px;
+  height: 80px;
+}
+
+.upgrade-card-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 21px;
+  font-size: 2.25rem;
+}
+
+.upgrade-card-stars {
+  bottom: -1px;
+}
+
+.upgrade-card-copy {
+  align-content: start;
+  gap: 5px;
+}
+
+.upgrade-family {
+  font-size: .50rem;
+}
+
+.upgrade-card-copy > strong {
+  font-size: 1.02rem;
+}
+
+.upgrade-effect {
+  padding: 6px 10px;
+  border-color:
+    rgba(var(--accent),.25);
+  background:
+    rgba(var(--accent),.12);
+  font-size: .66rem;
+  box-shadow:
+    0 0 16px rgba(var(--accent),.06);
+}
+
+.upgrade-desc {
+  max-width: 27ch;
+  font-size: .66rem;
+  line-height: 1.36;
+}
+
+.upgrade-preview-strip {
+  height: 128px;
+  border-color:
+    rgba(var(--accent),.12);
+  background:
+    radial-gradient(
+      circle at 50% 72%,
+      rgba(var(--accent),.08),
+      transparent 66%
+    ),
+    #060b12;
+  box-shadow:
+    inset 0 0 24px rgba(0,0,0,.22),
+    0 0 18px rgba(var(--accent),.045);
+}
+
+.upgrade-preview-strip > span {
+  top: 7px;
+  left: 8px;
+  padding: 4px 6px;
+  color:
+    rgba(255,255,255,.58);
+  font-size: .42rem;
+}
+
+.upgrade-preview-strip .module-preview-canvas {
+  height: 128px;
+  opacity: 1;
+  filter:
+    saturate(1.12)
+    brightness(1.13);
+}
+
+.upgrade-panel.installing
+.upgrade-card:not(.is-installing) {
+  opacity: .20;
+  transform: scale(.94);
+  filter: saturate(.55);
+}
+
+.upgrade-card.is-installing {
+  z-index: 4;
+  animation:
+    moduleClaimV042
+    .46s cubic-bezier(.2,.8,.2,1)
+    both;
+  border-color:
+    rgba(var(--accent),.72);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent),.16),
+    0 0 42px rgba(var(--accent),.20),
+    0 22px 54px rgba(0,0,0,.48);
+}
+
+/* Menu: tiny ambient motion instead of extra UI clutter. */
+.menu-sparks {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.menu-sparks i {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background:
+    rgb(var(--machine-secondary));
+  box-shadow:
+    0 0 9px rgba(var(--machine-secondary),.50);
+  opacity: .34;
+  animation:
+    menuSparkFloat
+    5.8s ease-in-out infinite;
+}
+
+.menu-sparks i:nth-child(1) {
+  left: 24%;
+  top: 72%;
+  animation-delay: -.8s;
+}
+.menu-sparks i:nth-child(2) {
+  left: 38%;
+  top: 26%;
+  animation-delay: -2.1s;
+}
+.menu-sparks i:nth-child(3) {
+  left: 63%;
+  top: 68%;
+  animation-delay: -3.5s;
+}
+.menu-sparks i:nth-child(4) {
+  left: 74%;
+  top: 35%;
+  animation-delay: -1.5s;
+}
+.menu-sparks i:nth-child(5) {
+  left: 51%;
+  top: 16%;
+  animation-delay: -4.3s;
+}
+.menu-sparks i:nth-child(6) {
+  left: 82%;
+  top: 78%;
+  animation-delay: -2.8s;
+}
+
+.run-card::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: -80%;
+  bottom: -80%;
+  width: 44px;
+  left: -70px;
+  transform: rotate(18deg);
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,255,255,.20),
+      transparent
+    );
+  animation:
+    runCardSheen
+    4.8s ease-in-out infinite;
+}
+
+.machine-option.is-selected {
+  box-shadow:
+    inset 0 0 0 1px
+      rgba(var(--pick-secondary),.12),
+    0 0 22px
+      rgba(var(--pick-secondary),.09);
+}
+
+/* Slightly stronger depth at the edges, never over the central note lane. */
+.app::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(2,5,10,.22),
+      transparent 12% 88%,
+      rgba(2,5,10,.22)
+    ),
+    linear-gradient(
+      180deg,
+      rgba(2,5,10,.10),
+      transparent 18% 80%,
+      rgba(2,5,10,.12)
+    );
+}
+
+.topbar,
+.build-dock,
+.controls,
+.start-panel,
+.upgrade-panel,
+.build-panel,
+.pause-panel,
+.summary-panel,
+.calibration-panel {
+  position: absolute;
+  z-index: 5;
+}
+
+.start-panel {
+  z-index: 20;
+}
+.upgrade-panel {
+  z-index: 30;
+}
+.build-panel,
+.pause-panel,
+.summary-panel,
+.calibration-panel {
+  z-index: 72;
+}
+.controls {
+  z-index: 8;
+}
+.topbar {
+  z-index: 5;
+}
+.build-dock {
+  z-index: 9;
+}
+
+@media (max-width: 520px) {
+  .upgrade-card {
+    flex:
+      0 0
+      min(82vw, 350px);
+    width:
+      min(82vw, 350px);
+    height: 420px;
+    grid-template-rows:
+      auto
+      102px
+      minmax(112px, auto)
+      136px !important;
+    padding: 13px;
+  }
+
+  .upgrade-card-art {
+    min-height: 102px;
+  }
+
+  .upgrade-card-icon {
+    width: 70px;
+    height: 70px;
+    font-size: 2.5rem;
+  }
+
+  .upgrade-card-orbit {
+    width: 88px;
+    height: 88px;
+  }
+
+  .upgrade-card-copy > strong {
+    font-size: 1.12rem;
+  }
+
+  .upgrade-effect {
+    font-size: .70rem;
+  }
+
+  .upgrade-desc {
+    font-size: .70rem;
+    line-height: 1.38;
+  }
+
+  .upgrade-preview-strip,
+  .upgrade-preview-strip
+  .module-preview-canvas {
+    height: 136px;
+  }
+}
+
+@media (max-width: 390px) {
+  .upgrade-card {
+    flex-basis: 84vw;
+    width: 84vw;
+    height: 412px;
+  }
+}
+
+@keyframes moduleClaimV042 {
+  0% {
+    transform: scale(.98);
+  }
+  42% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes menuSparkFloat {
+  0%, 100% {
+    transform:
+      translate3d(0, 8px, 0)
+      scale(.85);
+    opacity: .18;
+  }
+  50% {
+    transform:
+      translate3d(8px, -14px, 0)
+      scale(1.15);
+    opacity: .55;
+  }
+}
+
+@keyframes runCardSheen {
+  0%, 68% {
+    left: -70px;
+    opacity: 0;
+  }
+  76% {
+    opacity: .7;
+  }
+  90%, 100% {
+    left: calc(100% + 70px);
+    opacity: 0;
+  }
+}
