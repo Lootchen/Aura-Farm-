@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.19";
+import { loadGameChart } from "./chart.js?v=0.20";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -55,11 +55,13 @@ const SLIDE = {
   startEarly: 0.28,
   startLate: 0.28,
   scrollSpeed: 145,
-  positionTolerance: 0.30,
-  disconnectGrace: 0.14,
-  minCoverage: 0.70,
-  joystickRadius: 38,
-  aimSpan: 1.00,
+  positionTolerance: 0.34,
+  disconnectGrace: 0.15,
+  minCoverage: 0.68,
+  joystickRadius: 40,
+  inputRadius: 62,
+  reachMin: 0.88,
+  reachMax: 1.15,
   nodeBeats: 0.5
 };
 
@@ -318,7 +320,7 @@ const UPGRADES = [
     id: "aim-assist",
     icon: "◎",
     title: "Mira+",
-    effect: "+ zona Slide",
+    effect: "+AIM",
     apply: () => {
       runMods.slideToleranceBonus += 0.05;
     }
@@ -327,7 +329,7 @@ const UPGRADES = [
     id: "stable-stick",
     icon: "◉",
     title: "Grip",
-    effect: "+ gracia",
+    effect: "+GRIP",
     apply: () => {
       runMods.slideGraceBonus += 0.04;
     }
@@ -336,7 +338,7 @@ const UPGRADES = [
     id: "wide-flipper",
     icon: "━",
     title: "Pinza+",
-    effect: "+ impacto",
+    effect: "+HIT",
     apply: () => {
       runMods.flipperHitBonus += 3;
     }
@@ -345,7 +347,7 @@ const UPGRADES = [
     id: "big-core",
     icon: "●",
     title: "Core+",
-    effect: "+ tamaño",
+    effect: "ORB XL",
     apply: () => {
       runMods.powerOrbScale *= 1.18;
     }
@@ -354,7 +356,7 @@ const UPGRADES = [
     id: "shockwave",
     icon: "✹",
     title: "Shock",
-    effect: "+ explosión",
+    effect: "AOE+",
     apply: () => {
       runMods.powerExplosionScale *= 1.20;
     }
@@ -363,7 +365,7 @@ const UPGRADES = [
     id: "thruster",
     icon: "➤",
     title: "Boost",
-    effect: "+ velocidad",
+    effect: "SPD+",
     apply: () => {
       runMods.powerOrbSpeed *= 1.10;
     }
@@ -372,7 +374,7 @@ const UPGRADES = [
     id: "aura-amp",
     icon: "✦",
     title: "Aura+",
-    effect: "+15% score",
+    effect: "SCORE+",
     apply: () => {
       runMods.scoreMultiplier *= 1.15;
     }
@@ -381,7 +383,7 @@ const UPGRADES = [
     id: "combo-shield",
     icon: "◇",
     title: "Shield",
-    effect: "1 MISS",
+    effect: "SAVE 1",
     apply: () => {
       runMods.comboShieldCharges += 1;
     }
@@ -390,7 +392,7 @@ const UPGRADES = [
     id: "tap-overload",
     icon: "⚡",
     title: "Overload",
-    effect: "Tap → Power",
+    effect: "POWER",
     apply: () => {
       runMods.tapPowerEvery =
         runMods.tapPowerEvery === 0
@@ -404,17 +406,15 @@ const slideControl = {
   left: {
     held: false,
     pointerId: null,
-    position: 0,
-    x: 0.42,
-    y: -0.91,
+    x: 0.78,
+    y: -0.62,
     releasedAt: -Infinity
   },
   right: {
     held: false,
     pointerId: null,
-    position: 0,
-    x: -0.42,
-    y: -0.91,
+    x: -0.78,
+    y: -0.62,
     releasedAt: -Infinity
   }
 };
@@ -463,7 +463,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.19", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.20", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -825,12 +825,28 @@ function flipperSegment(side, songTime) {
   const m = view();
   const pivot = m.pivot[side];
   const phase = flipperPhase(side, songTime);
-  const slide = activeSlideAt(songTime, side);
+  const slide =
+    activeSlideAt(songTime, side);
 
-  const angle =
-    slide?.started
-      ? slideAngle(side, slideControl[side].position)
-      : phase.angle;
+  if (slide?.started) {
+    const segment =
+      slideSegmentFromVector(
+        side,
+        slideControl[side]
+      );
+
+    return {
+      pivot,
+      tip: segment.tip,
+      phase: {
+        ...phase,
+        slide: true,
+        angle: segment.angle
+      }
+    };
+  }
+
+  const angle = phase.angle;
 
   return {
     pivot,
@@ -840,7 +856,7 @@ function flipperSegment(side, songTime) {
     },
     phase: {
       ...phase,
-      slide: Boolean(slide?.started),
+      slide: false,
       angle
     }
   };
@@ -1258,24 +1274,34 @@ function updateTap(note, dt, songTime) {
   }
 }
 
-function slideAimCenter(side) {
+function defaultSlideVector(side) {
   return side === "left"
-    ? -1.15
-    : -Math.PI + 1.15;
+    ? { x: 0.78, y: -0.62 }
+    : { x: -0.78, y: -0.62 };
 }
 
-function slideAngle(side, position) {
-  return (
-    slideAimCenter(side) +
-    clamp(position, -1, 1) *
-      SLIDE.aimSpan
-  );
+function clampSlideVector(vector) {
+  const length =
+    Math.hypot(vector.x, vector.y);
+
+  if (length <= 1) {
+    return {
+      x: vector.x,
+      y: vector.y
+    };
+  }
+
+  return {
+    x: vector.x / length,
+    y: vector.y / length
+  };
 }
-function slidePositionAtBeat(event, beatOffset) {
+
+function slideVectorAtBeat(event, beatOffset) {
   const anchors = event.anchors;
 
   if (beatOffset <= anchors[0].beat) {
-    return anchors[0].position;
+    return clampSlideVector(anchors[0]);
   }
 
   for (let i = 1; i < anchors.length; i += 1) {
@@ -1288,15 +1314,18 @@ function slidePositionAtBeat(event, beatOffset) {
       const t =
         (beatOffset - a.beat) / span;
 
-      return lerp(a.position, b.position, t);
+      return clampSlideVector({
+        x: lerp(a.x, b.x, t),
+        y: lerp(a.y, b.y, t)
+      });
     }
   }
 
-  return anchors.at(-1).position;
+  return clampSlideVector(anchors.at(-1));
 }
 
-function slidePositionAtTime(event, songTime) {
-  return slidePositionAtBeat(
+function slideVectorAtTime(event, songTime) {
+  return slideVectorAtBeat(
     event,
     clamp(
       (songTime - event.targetTime) / beatToSeconds(1),
@@ -1306,6 +1335,63 @@ function slidePositionAtTime(event, songTime) {
   );
 }
 
+function slideVectorError(a, b) {
+  return Math.hypot(
+    a.x - b.x,
+    a.y - b.y
+  );
+}
+
+function slideAngleFromVector(side, vector) {
+  const length =
+    Math.hypot(vector.x, vector.y);
+
+  const safe =
+    length < 0.08
+      ? defaultSlideVector(side)
+      : vector;
+
+  return Math.atan2(
+    safe.y,
+    safe.x
+  );
+}
+
+function slideLengthFromVector(vector) {
+  const magnitude = clamp(
+    Math.hypot(vector.x, vector.y),
+    0,
+    1
+  );
+
+  return (
+    FLIPPER.length *
+    lerp(
+      SLIDE.reachMin,
+      SLIDE.reachMax,
+      magnitude
+    )
+  );
+}
+
+function slideSegmentFromVector(side, vector) {
+  const m = view();
+  const pivot = m.pivot[side];
+  const angle =
+    slideAngleFromVector(side, vector);
+  const length =
+    slideLengthFromVector(vector);
+
+  return {
+    pivot,
+    angle,
+    length,
+    tip: {
+      x: pivot.x + Math.cos(angle) * length,
+      y: pivot.y + Math.sin(angle) * length
+    }
+  };
+}
 function activeSlideAt(songTime, side = null) {
   return [...active.values()]
     .filter((event) => event.type === "slide")
@@ -1345,28 +1431,24 @@ function updateSlidePadPosition(side, event) {
   const dx = point.x - center.x;
   const dy = point.y - center.y;
   const length = Math.hypot(dx, dy);
-
-  if (length < 4) return;
-
-  const maxDistance = 54;
-  const scale =
-    Math.min(length, maxDistance) / length;
-
   const control = slideControl[side];
-  control.x = (dx * scale) / maxDistance;
-  control.y = (dy * scale) / maxDistance;
 
-  const pointerAngle =
-    Math.atan2(control.y, control.x);
+  if (length < 2) {
+    control.x = 0;
+    control.y = 0;
+    return;
+  }
 
-  control.position = clamp(
-    normalizeAngle(
-      pointerAngle -
-      slideAimCenter(side)
-    ) / SLIDE.aimSpan,
-    -1,
-    1
-  );
+  const clamped =
+    Math.min(length, SLIDE.inputRadius);
+
+  control.x =
+    (dx / length) *
+    (clamped / SLIDE.inputRadius);
+
+  control.y =
+    (dy / length) *
+    (clamped / SLIDE.inputRadius);
 }
 function beginSlide(event, side, songTime) {
   if (!event.started) {
@@ -1376,7 +1458,7 @@ function beginSlide(event, side, songTime) {
 
     const receiver = slideTipPoint(
       side,
-      event.anchors[0].position
+      slideVectorAtBeat(event, 0)
     );
 
     createImpactFlash(
@@ -1399,15 +1481,11 @@ function beginSlide(event, side, songTime) {
   }
 }
 
-function slideTipPoint(side, position) {
-  const m = view();
-  const pivot = m.pivot[side];
-  const angle = slideAngle(side, position);
-
-  return {
-    x: pivot.x + Math.cos(angle) * FLIPPER.length,
-    y: pivot.y + Math.sin(angle) * FLIPPER.length
-  };
+function slideTipPoint(side, vector) {
+  return slideSegmentFromVector(
+    side,
+    vector
+  ).tip;
 }
 
 function slideConnected(event, songTime) {
@@ -1415,10 +1493,13 @@ function slideConnected(event, songTime) {
 
   const control = slideControl[event.side];
   const target =
-    slidePositionAtTime(event, songTime);
+    slideVectorAtTime(event, songTime);
 
   const error =
-    Math.abs(control.position - target);
+    slideVectorError(
+      control,
+      target
+    );
 
   event.lastError = error;
 
@@ -1435,7 +1516,6 @@ function slideConnected(event, songTime) {
     slideGrace()
   );
 }
-
 function updateSlide(event, dt, songTime) {
   if (!event.started) {
     if (
@@ -1465,12 +1545,18 @@ function updateSlide(event, dt, songTime) {
 }
 
 function spawnSlideProjectile(event) {
-  const finalPosition =
-    event.anchors.at(-1).position;
-  const point =
-    slideTipPoint(event.side, finalPosition);
-  const angle =
-    slideAngle(event.side, finalPosition);
+  const finalVector =
+    slideVectorAtBeat(
+      event,
+      event.durationBeats
+    );
+  const segment =
+    slideSegmentFromVector(
+      event.side,
+      finalVector
+    );
+  const point = segment.tip;
+  const angle = segment.angle;
 
   const key =
     `slidefx:${performance.now().toFixed(3)}:${Math.random().toString(36).slice(2)}`;
@@ -1499,7 +1585,6 @@ function spawnSlideProjectile(event) {
       runMods.powerOrbScale
   });
 }
-
 function finishSlide(event) {
   if (!active.has(event.key)) return;
 
@@ -1538,7 +1623,10 @@ function finishSlide(event) {
   const finalPoint =
     slideTipPoint(
       event.side,
-      event.anchors.at(-1).position
+      slideVectorAtBeat(
+        event,
+        event.durationBeats
+      )
     );
 
   createImpactFlash(
@@ -1562,10 +1650,10 @@ function finishSlide(event) {
   }
 
   const control = slideControl[event.side];
-  const neutralAngle = slideAimCenter(event.side);
-  control.position = 0;
-  control.x = Math.cos(neutralAngle);
-  control.y = Math.sin(neutralAngle);
+  const neutral =
+    defaultSlideVector(event.side);
+  control.x = neutral.x;
+  control.y = neutral.y;
 
   updateHud();
 }
@@ -1577,27 +1665,34 @@ function slideNodePoint(
 ) {
   const m = view();
   const pivot = m.pivot[event.side];
-  const position =
-    slidePositionAtBeat(event, beatOffset);
+  const vector =
+    slideVectorAtBeat(
+      event,
+      beatOffset
+    );
   const angle =
-    slideAngle(event.side, position);
+    slideAngleFromVector(
+      event.side,
+      vector
+    );
+  const baseLength =
+    slideLengthFromVector(vector);
 
   const nodeTime =
     event.targetTime + beatToSeconds(beatOffset);
 
   const radius =
-    FLIPPER.length +
+    baseLength +
     SLIDE.scrollSpeed * (nodeTime - songTime);
 
   return {
     x: pivot.x + Math.cos(angle) * radius,
     y: pivot.y + Math.sin(angle) * radius,
     radius,
-    position,
+    vector,
     angle
   };
 }
-
 function drawSlideOrb(
   x,
   y,
@@ -1641,9 +1736,9 @@ function drawSlideOrb(
 function slideRawError(event, songTime) {
   if (!event.started) return Infinity;
 
-  return Math.abs(
-    slideControl[event.side].position -
-    slidePositionAtTime(event, songTime)
+  return slideVectorError(
+    slideControl[event.side],
+    slideVectorAtTime(event, songTime)
   );
 }
 
@@ -1659,30 +1754,16 @@ function slideVisualConnected(event, songTime) {
 function drawSlideGuideArc(event, songTime) {
   const m = view();
   const pivot = m.pivot[event.side];
-  const targetPosition =
-    slidePositionAtTime(
+  const targetVector =
+    slideVectorAtTime(
       event,
       Math.max(songTime, event.targetTime)
     );
-  const targetAngle =
-    slideAngle(event.side, targetPosition);
-  const targetTip =
-    slideTipPoint(
+  const targetSegment =
+    slideSegmentFromVector(
       event.side,
-      targetPosition
+      targetVector
     );
-
-  const startAngle =
-    Math.min(
-      m.restAngle[event.side],
-      m.strikeAngle[event.side]
-    );
-  const endAngle =
-    Math.max(
-      m.restAngle[event.side],
-      m.strikeAngle[event.side]
-    );
-
   const connected =
     slideVisualConnected(event, songTime);
 
@@ -1690,34 +1771,54 @@ function drawSlideGuideArc(event, songTime) {
 
   ctx.strokeStyle =
     event.started
-      ? "rgba(255,255,255,.20)"
-      : "rgba(255,255,255,.11)";
-  ctx.lineWidth = 5;
-  ctx.lineCap = "round";
+      ? "rgba(255,255,255,.14)"
+      : "rgba(255,255,255,.07)";
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(
     pivot.x,
     pivot.y,
-    FLIPPER.length,
-    startAngle,
-    endAngle
+    FLIPPER.length * SLIDE.reachMax,
+    0,
+    Math.PI * 2
   );
   ctx.stroke();
 
-  // Target ghost flipper: this is where the real flipper should align.
+  ctx.strokeStyle =
+    "rgba(255,255,255,.06)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(
+    pivot.x,
+    pivot.y,
+    FLIPPER.length * SLIDE.reachMin,
+    0,
+    Math.PI * 2
+  );
+  ctx.stroke();
+
   ctx.strokeStyle =
     event.started
       ? connected
-        ? "rgba(255,241,169,.66)"
-        : "rgba(255,113,132,.58)"
-      : "rgba(255,241,169,.34)";
-  ctx.lineWidth = 7;
-  ctx.setLineDash([7, 7]);
+        ? "rgba(255,241,169,.72)"
+        : "rgba(255,113,132,.62)"
+      : "rgba(255,241,169,.36)";
+  ctx.lineWidth = 8;
+  ctx.setLineDash([8, 7]);
   ctx.beginPath();
   ctx.moveTo(pivot.x, pivot.y);
-  ctx.lineTo(targetTip.x, targetTip.y);
+  ctx.lineTo(
+    targetSegment.tip.x,
+    targetSegment.tip.y
+  );
   ctx.stroke();
   ctx.setLineDash([]);
+
+  const toleranceRadius =
+    Math.max(
+      10,
+      slideTolerance() * 34
+    );
 
   ctx.shadowBlur =
     event.started ? 20 : 10;
@@ -1728,13 +1829,13 @@ function drawSlideGuideArc(event, songTime) {
       ? connected
         ? "#fff1a9"
         : "#ff7184"
-      : "rgba(255,241,169,.70)";
+      : "rgba(255,241,169,.76)";
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.arc(
-    targetTip.x,
-    targetTip.y,
-    event.started ? 17 : 13,
+    targetSegment.tip.x,
+    targetSegment.tip.y,
+    toleranceRadius,
     0,
     Math.PI * 2
   );
@@ -1743,29 +1844,23 @@ function drawSlideGuideArc(event, songTime) {
   ctx.restore();
 }
 
-function joystickPoint(side, position, radius) {
-  const center = controlButtonCenter(side);
-  const angle = slideAngle(side, position);
-
-  return {
-    x: center.x + Math.cos(angle) * radius,
-    y: center.y + Math.sin(angle) * radius
-  };
-}
-
 function drawSlidePadLegend(event, songTime) {
-  const center = controlButtonCenter(event.side);
-  const control = slideControl[event.side];
+  const center =
+    controlButtonCenter(event.side);
+  const control =
+    slideControl[event.side];
   const target =
     event.started
-      ? slidePositionAtTime(event, songTime)
-      : event.anchors[0].position;
-  const targetPoint =
-    joystickPoint(
-      event.side,
-      target,
-      SLIDE.joystickRadius
-    );
+      ? slideVectorAtTime(event, songTime)
+      : slideVectorAtBeat(event, 0);
+  const targetPoint = {
+    x:
+      center.x +
+      target.x * SLIDE.joystickRadius,
+    y:
+      center.y +
+      target.y * SLIDE.joystickRadius
+  };
   const playerPoint = {
     x:
       center.x +
@@ -1779,12 +1874,13 @@ function drawSlidePadLegend(event, songTime) {
 
   ctx.save();
 
-  ctx.fillStyle = "rgba(5,9,16,.58)";
+  ctx.fillStyle =
+    "rgba(5,9,16,.64)";
   ctx.strokeStyle =
     event.started
       ? connected
-        ? "rgba(255,241,169,.66)"
-        : "rgba(255,113,132,.52)"
+        ? "rgba(255,241,169,.70)"
+        : "rgba(255,113,132,.56)"
       : "rgba(255,255,255,.28)";
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -1798,14 +1894,14 @@ function drawSlidePadLegend(event, songTime) {
   ctx.fill();
   ctx.stroke();
 
-  // Free joystick field.
-  ctx.strokeStyle = "rgba(255,255,255,.10)";
+  ctx.strokeStyle =
+    "rgba(255,255,255,.09)";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.arc(
     center.x,
     center.y,
-    SLIDE.joystickRadius * 0.55,
+    SLIDE.joystickRadius * 0.5,
     0,
     Math.PI * 2
   );
@@ -1830,7 +1926,27 @@ function drawSlidePadLegend(event, songTime) {
   );
   ctx.stroke();
 
-  // Target aim.
+  const toleranceRadius =
+    Math.max(
+      6,
+      slideTolerance() *
+      SLIDE.joystickRadius
+    );
+
+  ctx.fillStyle =
+    connected
+      ? "rgba(255,241,169,.14)"
+      : "rgba(255,113,132,.10)";
+  ctx.beginPath();
+  ctx.arc(
+    targetPoint.x,
+    targetPoint.y,
+    toleranceRadius,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
   ctx.shadowBlur = 14;
   ctx.shadowColor =
     connected ? "#fff1a9" : "#ff7184";
@@ -1845,20 +1961,24 @@ function drawSlidePadLegend(event, songTime) {
   ctx.arc(
     targetPoint.x,
     targetPoint.y,
-    8,
+    7,
     0,
     Math.PI * 2
   );
   ctx.stroke();
 
-  // Player stick: it can travel freely over the whole circle.
-  ctx.shadowBlur = 16;
+  ctx.shadowBlur =
+    control.held ? 16 : 7;
   ctx.shadowColor = "#eaf7ff";
-  ctx.strokeStyle = "rgba(234,247,255,.72)";
-  ctx.lineWidth = 5;
+  ctx.strokeStyle =
+    "rgba(234,247,255,.70)";
+  ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(center.x, center.y);
-  ctx.lineTo(playerPoint.x, playerPoint.y);
+  ctx.lineTo(
+    playerPoint.x,
+    playerPoint.y
+  );
   ctx.stroke();
 
   ctx.fillStyle =
@@ -1876,8 +1996,10 @@ function drawSlidePadLegend(event, songTime) {
   ctx.fill();
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(255,255,255,.62)";
-  ctx.font = "900 9px system-ui, sans-serif";
+  ctx.fillStyle =
+    "rgba(255,255,255,.58)";
+  ctx.font =
+    "900 9px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(
@@ -1948,10 +2070,10 @@ function drawSlide(event, songTime) {
       beat <= event.durationBeats + 0.001;
       beat += SLIDE.nodeBeats
     ) {
-      const position =
-        slidePositionAtBeat(event, beat);
+      const vector =
+        slideVectorAtBeat(event, beat);
       const tip =
-        slideTipPoint(event.side, position);
+        slideTipPoint(event.side, vector);
       previewPoints.push(tip);
     }
 
@@ -1985,7 +2107,7 @@ function drawSlide(event, songTime) {
     ctx.fillStyle =
       "rgba(240,248,255,.55)";
     ctx.fillText(
-      "después mueve el joystick libremente",
+      "mueve el joystick libremente dentro del círculo",
       DESIGN.width / 2,
       661
     );
@@ -2086,13 +2208,13 @@ function drawSlide(event, songTime) {
     );
   }
 
-  const targetPosition =
-    slidePositionAtTime(event, songTime);
+  const targetVector =
+    slideVectorAtTime(event, songTime);
 
   const target =
     slideTipPoint(
       event.side,
-      targetPosition
+      targetVector
     );
 
   const actual =
@@ -2137,7 +2259,7 @@ function drawSlide(event, songTime) {
   ctx.fillStyle =
     "rgba(240,248,255,.55)";
   ctx.fillText(
-    "stick blanco = tú · aro amarillo = objetivo",
+    "punto blanco = tú · aro amarillo = objetivo",
     DESIGN.width / 2,
     661
   );
@@ -2968,11 +3090,11 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.19 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.20 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap: impacto = PERFECT · slide: joystick libre + aim · wave ${wave} · 3 cartas`,
+    `tap PERFECT · slide joystick 2D libre · wave ${wave} · power orb · 3 cartas`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
-    `slide L:${slideControl.left.position.toFixed(2)} R:${slideControl.right.position.toFixed(2)} · draw ${drawGesture ? "ACTIVO" : "—"}`,
+    `stick L:${slideControl.left.x.toFixed(2)},${slideControl.left.y.toFixed(2)} R:${slideControl.right.x.toFixed(2)},${slideControl.right.y.toFixed(2)}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`
   ];
@@ -3048,10 +3170,10 @@ function resetWaveState() {
   for (const side of ["left", "right"]) {
     slideControl[side].held = false;
     slideControl[side].pointerId = null;
-    slideControl[side].position = 0;
-    const neutralAngle = slideAimCenter(side);
-    slideControl[side].x = Math.cos(neutralAngle);
-    slideControl[side].y = Math.sin(neutralAngle);
+    const neutral =
+      defaultSlideVector(side);
+    slideControl[side].x = neutral.x;
+    slideControl[side].y = neutral.y;
     slideControl[side].releasedAt = -Infinity;
   }
 
@@ -3123,7 +3245,7 @@ function openUpgradePanel() {
   impactFlashes = [];
 
   upgradeTitle.textContent =
-    `OLEADA ${wave} COMPLETA · ELIGE 1`;
+    "ELIGE 1";
 
   render(clock.songTime);
   renderUpgradeChoices();
