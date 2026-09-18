@@ -1,141 +1,189 @@
-# Aura Farm — Vertical Slice v0.24
+# Aura Farm — Vertical Slice v0.25
 
 **BUILD THE BEAT.**
 
-Aura Farm ya no se plantea como un rhythm game tradicional con una lista creciente de tipos de nota. La vertical slice prueba un núcleo de **rhythm-action roguelite / hybrid arcade**:
-
-> Golpea al ritmo → la nota sobrevive como proyectil → modifica físicamente las notas futuras → construye una máquina musical diferente durante la run.
+Aura Farm continúa desarrollándose como **rhythm-action roguelite / hybrid arcade**. La prioridad de v0.25 es que la vertical slice se sienta como una run con escalada, lectura y presencia, no como siete repeticiones de un laboratorio.
 
 ## Run
 
-Una run completa tiene **7 actos**.
+Una run completa mantiene **7 actos** de unos 68 beats a 110 BPM.
 
-- Cada acto usa 68 beats a 110 BPM (~37 s de gameplay).
-- Entre los actos 1–6 se elige una de tres mejoras.
-- Con count-ins y decisiones, una run completa queda aproximadamente en la franja de 4–5 minutos.
-- El acto 7 activa **AURA CORE**, un boss/reactor físico que recibe daño de los proyectiles.
-- Al terminar se muestra resumen de score, PERFECT, CHAIN, MISS, daño al Core y build.
+Los actos ahora tienen identidad propia:
 
-## Core
+1. **IGNITION** — enciende la máquina.
+2. **CURRENT** — mantén el flujo.
+3. **RELAY** — empieza a buscar CHAIN.
+4. **OVERDRIVE** — construye momento.
+5. **FRACTURE** — rompe patrones más densos.
+6. **ASCENT** — prepara el clímax.
+7. **AURA CORE** — boss final.
 
-### Tap
+Cada acto ilumina más circuitería y celdas del chasis. La escalada visual y musical aumenta sin acelerar las bolas: el movimiento gameplay sigue siendo constante.
 
-- Contacto físico de pinza con bola = PERFECT.
-- Si no hay contacto, MISS.
-- La bola acertada se transforma en proyectil a velocidad constante.
-- Los proyectiles interactúan con notas, paredes, bumpers, otros proyectiles y AURA CORE.
+## Tap / proyectiles / CHAIN
 
-### CHAIN intencional
+- Contacto físico = PERFECT.
+- La nota golpeada sobrevive como proyectil.
+- Rebotes, perforaciones, fragmentos, duplicación y Power Orbs mantienen velocidades constantes.
+- Los grupos `chainGroup` tienen ahora:
+  - conexión discontinua;
+  - chevrons de dirección;
+  - objetivo líder pulsante;
+  - etiqueta `CHAIN ×N` en oportunidades grandes.
 
-El chart puede declarar `chainGroup`.
+La intención es que CHAIN pase de accidente espectacular a decisión previsible.
 
-- Las notas del mismo grupo muestran un aro amarillo y una conexión discontinua.
-- El objetivo es que el jugador empiece a prever trayectorias y busque cadenas deliberadamente.
-- Los actos 3, 5 y 7 añaden capas extra de notas para que el mismo tema se vuelva más denso durante la run.
+## Firmas visuales de upgrades
 
-### Slide experimental
+Las cartas todavía recibirán un rediseño visual dedicado más adelante. En gameplay, sin embargo, las mejoras empiezan a reconocerse sin leer UI:
 
-El chart sigue comparando dos modelos:
+- **Rebote** — aro/trail turquesa mientras quedan rebotes.
+- **Perfora** — eje/trail rosa mientras quedan perforaciones.
+- **Shock** — onda expansiva con el radio real del AOE.
+- **Fusión** — anillo discontinuo violeta en detonaciones de fusión.
+- **Astillas / Duplicador / Relevo** — proyectiles secundarios con símbolos y escala propios.
+- **Nova / Espejo** — Power Orbs con lenguaje dorado.
 
-- **TRACE · DEDO**: el dedo mueve directamente la punta de la garra sobre el riel.
-- **FOLLOW · STICK**: la palanca funciona como velocidad 2D; izquierda desplaza la garra a la izquierda, sin mapping angular absoluto.
+## AURA CORE v0.25
 
-La telemetría local registra intentos y éxitos de ambos modos para orientar la siguiente decisión de diseño.
+El boss deja de ser únicamente una barra de vida.
 
-## Build / upgrades
+### Fase 1
 
-Las cartas son cambios visibles de reglas, no estadísticas abstractas.
+- Tres nodos de armadura orbitan el Core.
+- Cada nodo es una hitbox física.
+- Mientras quede armadura, el Core está protegido.
+- Un proyectil que golpea directamente el Core protegido **rebota físicamente** conservando su velocidad.
+- Romper los tres nodos expone el Core.
 
-Pool actual:
+### Fase 2
 
-- Gemela
-- Rebote
-- Perfora
-- Astillas
-- Bumper
-- Nova
-- Espejo
-- Relevo
-- Shock
-- Fusión
-- Carga
-- Duplicador
-- Shield
+Al bajar el Core a 50% de vida:
 
-Las opciones intentan pertenecer a familias distintas. Las familias tienen color consistente tanto en selección como en resumen.
+- la armadura se recarga;
+- aumenta la velocidad orbital;
+- cambia la lectura visual del reactor;
+- hay una transición audiovisual/háptica clara.
+
+Romper el Core produce el clímax de la run.
+
+## Game feel
+
+v0.25 introduce una jerarquía de impacto puramente visual/háptica, sin alterar el reloj maestro:
+
+- PERFECT normal;
+- PERFECT en combo alto;
+- Slide PERFECT;
+- CHAIN;
+- explosión;
+- nodo de armadura;
+- cambio de fase;
+- CORE BREAK.
+
+El mundo puede hacer shake y flash, pero la simulación de notas/proyectiles no se pausa ni acelera.
+
+## Operator Socket — base para el futuro PJ
+
+Se añadió una presencia reactiva en el centro inferior de la máquina.
+
+No es el personaje final. Es deliberadamente un **operator prototype** abstracto para validar si una presencia expresiva mejora vínculo y legibilidad antes de invertir en diseño definitivo.
+
+Reacciona a:
+
+- PERFECT;
+- FLOW/combo;
+- CHAIN;
+- MISS;
+- escudo;
+- Slide;
+- boss;
+- victoria.
+
+La arquitectura separa ya la reacción del operador del dibujo actual, por lo que un futuro PJ animado podrá sustituir esta silueta sin rehacer el core jugable.
+
+## Practice
+
+La pantalla inicial incluye **PRACTICE · 1 ACTO**.
+
+- Dura aproximadamente un acto.
+- Permite probar Tap, TRACE y FOLLOW rápidamente.
+- No incrementa runs completadas.
+- No desbloquea máquinas.
+- No altera best score ni Daily record.
+- Sí registra localmente intentos/éxitos TRACE y FOLLOW.
+- El resumen de Practice muestra directamente ambos ratios.
+
+Esto permite iterar sobre Slide sin jugar una run completa.
+
+## Slide experimental
+
+Seguimos comparando dos modelos, sin añadir un tercero:
+
+### TRACE · DEDO
+
+El dedo controla directamente la punta de la garra sobre el riel.
+
+### FOLLOW · STICK
+
+El joystick funciona como velocidad 2D: izquierda mueve físicamente la garra a la izquierda, derecha a la derecha, etc.
+
+La decisión futura debe ser eliminar uno, fusionarlos sólo si existe una razón fuerte, o retirar Slide si ninguno consigue desaparecer de la cabeza del jugador.
 
 ## Música reactiva
 
-La Web Audio API sigue siendo el reloj maestro, pero la música ya reacciona a la build.
+Web Audio sigue siendo reloj maestro y generador del groove.
 
-- La densidad del groove aumenta con los actos y el número de upgrades.
-- Upgrades de Slide añaden una capa lead.
-- Upgrades de explosión/fusión/pared añaden pulsos de Aura.
-- Gemela/Relevo/Duplicador añaden clicks rítmicos.
-- El acto 7 añade un drone específico del boss.
-- CHAIN produce una respuesta tonal ascendente.
+La mezcla responde a:
 
-Esto permite probar la tesis de producto: **la misma canción debe sonar distinta cuando la build crece**.
+- acto actual;
+- cantidad de upgrades;
+- familias de build;
+- CHAIN;
+- boss;
+- cambio de fase.
 
-## Identidad visual
+La meta sigue siendo que la misma pieza se sienta progresivamente transformada por la run.
 
-La arena deja de ser únicamente “fondo oscuro + neón”.
+## Máquinas / progresión
 
-- Chasis y raíles laterales de una máquina musical.
-- Energía reactiva al beat y progreso de acto integrado en el escenario.
-- Brazos mecánicos con actuador, junta y pinza física.
-- Boss/reactor central en el último acto.
-- Tres máquinas cosméticas con paleta propia:
-  - FORGE — inicial.
-  - PRISM — desbloqueada tras completar 1 run.
-  - PULSE — desbloqueada tras completar 3 runs.
+- **FORGE** — inicial.
+- **PRISM** — 1 run completada.
+- **PULSE** — 3 runs completadas.
 
-Estas máquinas son progresión cosmética, no poder estadístico.
+Son progresión cosmética, no stat boosts.
 
 ## Daily
 
-**DAILY SEED** usa una semilla determinista derivada de la fecha local.
-
-- El orden aleatorio de mejoras es reproducible para esa fecha.
-- Se guarda el mejor Daily del día en el dispositivo.
-- Es la base técnica para una futura Daily Run compartida/leaderboard sin introducir todavía backend.
-
-## Calibración
-
-La pantalla inicial expone controles táctiles de offset.
-
-- ±15 ms desde UI.
-- `[` / `]` ajustan ±5 ms desde teclado.
-- El ajuste se guarda localmente.
-- Bluetooth sigue requiriendo calibración manual; no se oculta esa limitación.
+Daily Seed permanece determinista por fecha local y guarda Daily Best en el dispositivo. Es la base para un leaderboard futuro; aún no existe backend.
 
 ## Métricas locales
 
-No se envían datos a ningún servidor.
+No se transmite información a servidores.
 
 Se guardan localmente:
 
+- sesiones;
 - runs iniciadas/completadas;
-- total de CHAIN;
+- Practice iniciados/completados;
+- total CHAIN;
 - intentos/éxitos TRACE;
 - intentos/éxitos FOLLOW;
 - best score;
 - Daily best;
-- runs completadas para unlocks.
+- calibración;
+- máquina seleccionada.
 
-El objetivo es aprender del core antes de construir analytics remotos, monetización o live ops.
+## Chart
 
-## Chart data-driven
+El chart data-driven mantiene:
 
-`charts/tap-lab.json` admite:
+- `tap`;
+- `slide`;
+- `mode: trace | follow`;
+- `chainGroup`;
+- `minAct: 1..7`.
 
-- `tap`
-- `slide`
-- `mode: trace | follow`
-- `chainGroup`
-- `minAct: 1..7`
-
-El chart actual tiene 41 eventos totales, con capas adicionales para actos 3, 5 y 7.
+La densidad progresa desde 26 eventos base hasta 41 en el acto final.
 
 ## Física
 
@@ -143,16 +191,18 @@ Regla no negociable:
 
 **las bolas se mueven con velocidad constante entre colisiones.**
 
-Sin gravedad, aceleración ni easing jugable.
+La armadura orbitante del boss es un objeto del encuentro; no cambia la cinemática constante de bolas/notas.
 
-## Qué debe validar esta slice
+## Próximas decisiones
 
-1. ¿Tap → proyectil → CHAIN genera decisiones intencionales?
-2. ¿La build cambia realmente cómo se juega y cómo suena la run?
-3. ¿TRACE o FOLLOW merece convertirse en el Slide definitivo?
-4. ¿El acto 7 produce suficiente clímax?
-5. ¿Terminar una run da ganas de empezar otra?
-6. ¿FORGE/PRISM/PULSE empiezan a construir una identidad visual propia?
+Después de probar v0.25, las siguientes áreas de producción son:
+
+1. decidir TRACE vs FOLLOW con sensación + métricas;
+2. diseñar el PJ/operator definitivo;
+3. hacer una pasada visual específica de cartas/upgrades;
+4. sustituir/profundizar el groove provisional con una canción vertical-slice compuesta en stems;
+5. ajustar boss/CHAIN para que las oportunidades sean intencionales y no RNG visual;
+6. después estudiar backend Daily/leaderboards y contenido adicional.
 
 ## GitHub Pages
 
