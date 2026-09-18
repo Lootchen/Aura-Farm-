@@ -92,3 +92,16 @@ The desired loop is:
 > keep tapping to the music while the projectiles you created prepare later beats instead of removing them.
 
 If playtests confirm this feels better, Shield Notes should become the default target type for authored CHAIN opportunities while ordinary unshielded notes remain available for destructive projectile interactions and build spectacle.
+
+
+## v0.36.2 readability correction
+
+The first membrane implementation used `destination-over` after the opaque world had already been rendered. That could place most of the halo behind the existing canvas content and make it effectively invisible.
+
+The corrected order is:
+
+1. Shield membrane;
+2. normal Tap body/core;
+3. CHAIN markings and transient break feedback.
+
+Base CHAIN phrase notes are now Shield-authored by default unless they are later-act `minAct` inserts. This increases repetition without removing all destructive projectile targets.
