@@ -1793,10 +1793,21 @@ function createExplosion(
     side = "neutral"
   } = {}
 ) {
+  const shockRadius =
+    scale > 1.2 &&
+    runMods.shockwave > 0
+      ? 68 +
+        runMods.shockwave * 24
+      : 0;
+  const fusionBurst =
+    scale >= 1.80;
+
   explosions.push({
     x,
     y,
     scale,
+    shockRadius,
+    fusionBurst,
     life: 0,
     duration: 0.28 + 0.05 * Math.max(0, scale - 1),
     particles: Array.from({ length: 7 }, (_, index) => {
@@ -1821,10 +1832,7 @@ function createExplosion(
     playTone(105, 0.09, 0.045, "sine");
   }
 
-  if (scale > 1.2 && runMods.shockwave > 0) {
-    const shockRadius =
-      68 + runMods.shockwave * 24;
-
+  if (shockRadius > 0) {
     for (const target of [...active.values()]) {
       if (
         target.type !== "tap" ||
@@ -4782,14 +4790,42 @@ function drawTrail(note) {
     const ux = note.vx / speed;
     const uy = note.vy / speed;
 
-    ctx.strokeStyle =
-      note.side === "left"
-        ? "rgba(110,215,255,.20)"
-        : "rgba(216,139,255,.20)";
+    const pierceReady =
+      Number(note.piercesLeft || 0) > 0;
+    const ricochetReady =
+      Number(note.ricochetsLeft || 0) > 0;
 
-    ctx.lineWidth = note.power ? 12 : 6;
-    ctx.shadowBlur = note.power ? 18 : 0;
-    ctx.shadowColor = note.power ? "#fff1a9" : "transparent";
+    ctx.strokeStyle =
+      note.power
+        ? "rgba(255,241,169,.34)"
+        : pierceReady
+          ? "rgba(255,125,153,.32)"
+          : ricochetReady
+            ? "rgba(94,226,215,.30)"
+            : note.side === "left"
+              ? "rgba(110,215,255,.20)"
+              : "rgba(216,139,255,.20)";
+
+    ctx.lineWidth =
+      note.power
+        ? 12
+        : pierceReady
+          ? 8
+          : 6;
+    ctx.shadowBlur =
+      note.power || pierceReady
+        ? 18
+        : ricochetReady
+          ? 10
+          : 0;
+    ctx.shadowColor =
+      note.power
+        ? "#fff1a9"
+        : pierceReady
+          ? "#ff7d99"
+          : ricochetReady
+            ? "#5ee2d7"
+            : "transparent";
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(note.x, note.y);
@@ -4860,9 +4896,17 @@ function drawChainOpportunities() {
         a.targetTime - b.targetTime
     );
 
+    const alpha =
+      clamp(
+        0.18 +
+        notes.length * 0.055,
+        0.18,
+        0.48
+      );
+
     ctx.save();
     ctx.strokeStyle =
-      "rgba(255,229,109,.24)";
+      `rgba(255,229,109,${alpha})`;
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 8]);
     ctx.beginPath();
@@ -4877,9 +4921,91 @@ function drawChainOpportunities() {
 
     ctx.stroke();
     ctx.setLineDash([]);
+
+    for (
+      let index = 0;
+      index < notes.length - 1;
+      index += 1
+    ) {
+      const a = notes[index];
+      const b = notes[index + 1];
+      const mx =
+        (a.x + b.x) / 2;
+      const my =
+        (a.y + b.y) / 2;
+      const angle =
+        Math.atan2(
+          b.y - a.y,
+          b.x - a.x
+        );
+
+      ctx.save();
+      ctx.translate(mx, my);
+      ctx.rotate(angle);
+      ctx.strokeStyle =
+        "rgba(255,238,143,.58)";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-5, -5);
+      ctx.lineTo(2, 0);
+      ctx.lineTo(-5, 5);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const lead = notes[0];
+    const pulse =
+      0.5 +
+      0.5 *
+        Math.sin(
+          performance.now() /
+          125
+        );
+
+    ctx.strokeStyle =
+      `rgba(255,229,109,${0.38 + pulse * 0.32})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(
+      lead.x,
+      lead.y,
+      noteRadius(lead) +
+        13 +
+        pulse * 3,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+
+    if (notes.length >= 3) {
+      const centroid =
+        notes.reduce(
+          (acc, note) => ({
+            x: acc.x + note.x,
+            y: acc.y + note.y
+          }),
+          { x: 0, y: 0 }
+        );
+
+      centroid.x /= notes.length;
+      centroid.y /= notes.length;
+
+      ctx.fillStyle =
+        "rgba(255,238,143,.66)";
+      ctx.font =
+        "900 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        `CHAIN ×${notes.length}`,
+        centroid.x,
+        centroid.y - 18
+      );
+    }
+
     ctx.restore();
   }
 }
+
 
 function drawTap(note) {
   drawTrail(note);
@@ -4933,6 +5059,39 @@ function drawTap(note) {
     );
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  if (
+    note.launched &&
+    Number(note.ricochetsLeft || 0) > 0
+  ) {
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle =
+      "rgba(94,226,215,.86)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius + 7,
+      -Math.PI * 0.75,
+      Math.PI * 0.75
+    );
+    ctx.stroke();
+  }
+
+  if (
+    note.launched &&
+    Number(note.piercesLeft || 0) > 0
+  ) {
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle =
+      "rgba(255,125,153,.90)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, -radius - 9);
+    ctx.lineTo(0, radius + 9);
+    ctx.stroke();
   }
 
   if (note.power) {
@@ -5408,6 +5567,51 @@ function drawExplosions() {
       Math.PI * 2
     );
     ctx.stroke();
+
+    if (explosion.shockRadius > 0) {
+      const shockProgress =
+        clamp(
+          explosion.life /
+            explosion.duration,
+          0,
+          1
+        );
+
+      ctx.strokeStyle =
+        `rgba(255,190,92,${alpha * 0.58})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(
+        explosion.x,
+        explosion.y,
+        Math.max(
+          8,
+          explosion.shockRadius *
+            shockProgress
+        ),
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+    }
+
+    if (explosion.fusionBurst) {
+      ctx.strokeStyle =
+        `rgba(211,139,255,${alpha * 0.72})`;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([7, 6]);
+      ctx.beginPath();
+      ctx.arc(
+        explosion.x,
+        explosion.y,
+        (15 + t * 38) *
+          explosion.scale,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     for (const particle of explosion.particles) {
       const distance = particle.speed * explosion.life;
