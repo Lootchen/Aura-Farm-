@@ -1,5 +1,5 @@
 {
-  "name": "Mechanics Lab 09 · Free Aim",
+  "name": "Mechanics Lab 10 · Free Joystick",
   "bpm": 110,
   "loopBeats": 44,
   "countInBeats": 4,
@@ -41,23 +41,28 @@
       "anchors": [
         {
           "beat": 0,
-          "position": -0.45
+          "x": 0.78,
+          "y": -0.62
         },
         {
           "beat": 2,
-          "position": 0.72
+          "x": 0.12,
+          "y": -0.96
         },
         {
           "beat": 4,
-          "position": -0.82
+          "x": -0.38,
+          "y": -0.82
         },
         {
           "beat": 6,
-          "position": 0.88
+          "x": 0.94,
+          "y": -0.2
         },
         {
           "beat": 8,
-          "position": 0.15
+          "x": 0.7,
+          "y": -0.58
         }
       ]
     },
@@ -98,23 +103,28 @@
       "anchors": [
         {
           "beat": 0,
-          "position": 0.42
+          "x": -0.78,
+          "y": -0.62
         },
         {
           "beat": 2,
-          "position": -0.74
+          "x": -0.12,
+          "y": -0.96
         },
         {
           "beat": 4,
-          "position": 0.84
+          "x": 0.38,
+          "y": -0.82
         },
         {
           "beat": 6,
-          "position": -0.88
+          "x": -0.94,
+          "y": -0.2
         },
         {
           "beat": 8,
-          "position": -0.12
+          "x": -0.7,
+          "y": -0.58
         }
       ]
     },
