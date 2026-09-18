@@ -54,7 +54,9 @@ const SLIDE = {
   inputRadius: 62,
   reachMin: 0.88,
   reachMax: 1.15,
-  nodeBeats: 0.5
+  nodeBeats: 0.5,
+  followSpeed: 2.25,
+  traceGrabRadius: 48
 };
 
 const POWER_ORB_BASE_SCALE = 1.55;
@@ -523,7 +525,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.22", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.23", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -807,12 +809,19 @@ function spawnReady(songTime) {
           targetTime,
           endTime: targetTime + beatToSeconds(event.durationBeats),
           path,
+          mode:
+            event.mode === "trace"
+              ? "trace"
+              : "follow",
           started: false,
           goodTime: 0,
           trackingTime: 0,
           lastGoodTime: -Infinity,
           startDelta: null,
-          lastErrorPx: Infinity
+          lastErrorPx: Infinity,
+          playerVector: null,
+          traceHeld: false,
+          tracePointerId: null
         });
       }
 
@@ -880,7 +889,7 @@ function flipperSegment(side, songTime) {
     const segment =
       slideSegmentFromVector(
         side,
-        slideControl[side]
+        slidePlayerVector(slide)
       );
 
     return {
@@ -1796,6 +1805,67 @@ function slideSegmentFromVector(side, vector) {
     }
   };
 }
+function slideMode(event) {
+  return event?.mode === "trace"
+    ? "trace"
+    : "follow";
+}
+
+function slidePlayerVector(event) {
+  return clampSlideVector(
+    event?.playerVector ??
+    slideVectorAtBeat(event, 0)
+  );
+}
+
+function pointToSlideVector(side, point) {
+  const pivot =
+    view().pivot[side];
+  const dx =
+    point.x - pivot.x;
+  const dy =
+    point.y - pivot.y;
+  const radius =
+    Math.hypot(dx, dy);
+  const angle =
+    Math.atan2(dy, dx);
+  const reach =
+    clamp(
+      radius / FLIPPER.length,
+      SLIDE.reachMin,
+      SLIDE.reachMax
+    );
+  const magnitude =
+    clamp(
+      (
+        reach -
+        SLIDE.reachMin
+      ) /
+      Math.max(
+        0.001,
+        SLIDE.reachMax -
+        SLIDE.reachMin
+      ),
+      0,
+      1
+    );
+
+  return {
+    x: Math.cos(angle) * magnitude,
+    y: Math.sin(angle) * magnitude
+  };
+}
+
+function slideInputHeld(event) {
+  if (slideMode(event) === "trace") {
+    return Boolean(event.traceHeld);
+  }
+
+  return Boolean(
+    slideControl[event.side].held
+  );
+}
+
 function activeSlideAt(songTime, side = null) {
   return [...active.values()]
     .filter((event) => event.type === "slide")
@@ -1813,7 +1883,13 @@ function activeSlideAt(songTime, side = null) {
 }
 
 function slidePressReserved(event, side, songTime) {
-  if (!event || event.side !== side) return false;
+  if (
+    !event ||
+    event.side !== side ||
+    slideMode(event) !== "follow"
+  ) {
+    return false;
+  }
 
   if (event.started) {
     return songTime <= event.endTime;
@@ -1855,33 +1931,42 @@ function updateSlidePadPosition(side, event) {
     (clamped / SLIDE.inputRadius);
 }
 function beginSlide(event, side, songTime) {
-  if (!event.started) {
-    event.started = true;
-    event.startDelta = songTime - event.targetTime;
-    event.lastGoodTime = songTime;
+  if (event.started) return;
 
-    const receiver = slideTipPoint(
+  event.started = true;
+  event.startDelta =
+    songTime - event.targetTime;
+  event.lastGoodTime = songTime;
+
+  if (!event.playerVector) {
+    event.playerVector =
+      slideVectorAtBeat(event, 0);
+  }
+
+  const receiver =
+    slideTipPoint(
       side,
       slideVectorAtBeat(event, 0)
     );
 
-    createImpactFlash(
-      receiver.x,
-      receiver.y,
-      JUDGEMENTS.perfect
-    );
+  createImpactFlash(
+    receiver.x,
+    receiver.y,
+    JUDGEMENTS.perfect
+  );
 
-    showMessage(
-      "SLIDE · ARRASTRA EL PULGAR",
-      "#fff1a9",
-      520
-    );
+  showMessage(
+    slideMode(event) === "trace"
+      ? "TRACE · SIGUE LA CUERDA"
+      : "FOLLOW · MUEVE EL STICK",
+    "#fff1a9",
+    620
+  );
 
-    successTone(620);
+  successTone(620);
 
-    if (navigator.vibrate) {
-      navigator.vibrate(6);
-    }
+  if (navigator.vibrate) {
+    navigator.vibrate(6);
   }
 }
 
@@ -1902,7 +1987,7 @@ function slideTipErrorPx(event, songTime) {
   const actual =
     slideSegmentFromVector(
       event.side,
-      slideControl[event.side]
+      slidePlayerVector(event)
     ).tip;
 
   return Math.hypot(
@@ -1914,12 +1999,12 @@ function slideTipErrorPx(event, songTime) {
 function slideConnected(event, songTime) {
   if (!event.started) return false;
 
-  const control = slideControl[event.side];
-  const error = slideTipErrorPx(event, songTime);
+  const error =
+    slideTipErrorPx(event, songTime);
   event.lastErrorPx = error;
 
   if (
-    control.held &&
+    slideInputHeld(event) &&
     error <= slideTolerance()
   ) {
     event.lastGoodTime = songTime;
@@ -1942,6 +2027,30 @@ function updateSlide(event, dt, songTime) {
     }
 
     return;
+  }
+
+  if (
+    slideMode(event) === "follow" &&
+    slideControl[event.side].held
+  ) {
+    const control =
+      slideControl[event.side];
+    const player =
+      slidePlayerVector(event);
+
+    event.playerVector =
+      clampSlideVector({
+        x:
+          player.x +
+          control.x *
+          SLIDE.followSpeed *
+          dt,
+        y:
+          player.y +
+          control.y *
+          SLIDE.followSpeed *
+          dt
+      });
   }
 
   if (
@@ -2093,6 +2202,8 @@ function finishSlide(event) {
   const control = slideControl[event.side];
   control.x = 0;
   control.y = 0;
+  event.traceHeld = false;
+  event.tracePointerId = null;
 
   updateHud();
 }
@@ -2175,7 +2286,7 @@ function drawSlideOrb(
 function slideVisualConnected(event, songTime) {
   return (
     event.started &&
-    slideControl[event.side].held &&
+    slideInputHeld(event) &&
     slideTipErrorPx(event, songTime) <=
       slideTolerance()
   );
@@ -3320,7 +3431,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.22 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.23 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide riel físico · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
