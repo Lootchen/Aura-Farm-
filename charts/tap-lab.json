@@ -1,7 +1,7 @@
 {
-  "name": "Mechanics Lab 10 · Free Joystick",
+  "name": "Mechanics Lab 11 · Physical Rail",
   "bpm": 110,
-  "loopBeats": 44,
+  "loopBeats": 64,
   "countInBeats": 4,
   "events": [
     {
@@ -34,72 +34,62 @@
     },
     {
       "type": "slide",
-      "beat": 7,
+      "beat": 6,
       "side": "left",
       "route": 1,
-      "durationBeats": 8,
+      "durationBeats": 4,
       "anchors": [
         {
           "beat": 0,
-          "x": 0.78,
-          "y": -0.62
+          "x": 0.84,
+          "y": -0.36
         },
         {
           "beat": 2,
-          "x": 0.12,
-          "y": -0.96
+          "x": 0.22,
+          "y": -0.95
         },
         {
           "beat": 4,
-          "x": -0.38,
-          "y": -0.82
-        },
-        {
-          "beat": 6,
-          "x": 0.94,
-          "y": -0.2
-        },
-        {
-          "beat": 8,
-          "x": 0.7,
-          "y": -0.58
+          "x": -0.55,
+          "y": -0.72
         }
       ]
     },
     {
       "type": "tap",
-      "beat": 18,
-      "side": "left",
+      "beat": 12,
+      "side": "right",
       "route": 2,
       "symbol": "♬"
     },
     {
       "type": "tap",
-      "beat": 19,
-      "side": "right",
-      "route": 2,
+      "beat": 13,
+      "side": "left",
+      "route": 0,
       "symbol": "♪"
     },
     {
       "type": "tap",
-      "beat": 20,
-      "side": "left",
-      "route": 0,
+      "beat": 14,
+      "side": "right",
+      "route": 1,
       "symbol": "♩"
     },
     {
       "type": "tap",
-      "beat": 21,
-      "side": "right",
-      "route": 0,
+      "beat": 15,
+      "side": "left",
+      "route": 2,
       "symbol": "♪"
     },
     {
       "type": "slide",
-      "beat": 25,
+      "beat": 18,
       "side": "right",
       "route": 1,
-      "durationBeats": 8,
+      "durationBeats": 6,
       "anchors": [
         {
           "beat": 0,
@@ -108,52 +98,185 @@
         },
         {
           "beat": 2,
-          "x": -0.12,
-          "y": -0.96
+          "x": -0.34,
+          "y": -0.94
         },
         {
           "beat": 4,
-          "x": 0.38,
-          "y": -0.82
+          "x": 0.28,
+          "y": -0.92
         },
         {
           "beat": 6,
-          "x": -0.94,
-          "y": -0.2
-        },
-        {
-          "beat": 8,
-          "x": -0.7,
-          "y": -0.58
+          "x": 0.75,
+          "y": -0.62
         }
       ]
     },
     {
       "type": "tap",
-      "beat": 36,
+      "beat": 26,
       "side": "left",
-      "route": 1,
-      "symbol": "♪"
-    },
-    {
-      "type": "tap",
-      "beat": 37,
-      "side": "right",
-      "route": 1,
+      "route": 0,
       "symbol": "♩"
     },
     {
       "type": "tap",
-      "beat": 38,
+      "beat": 27,
+      "side": "right",
+      "route": 0,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 28,
       "side": "left",
       "route": 2,
       "symbol": "♬"
     },
     {
       "type": "tap",
-      "beat": 39,
+      "beat": 29,
       "side": "right",
       "route": 2,
+      "symbol": "♪"
+    },
+    {
+      "type": "slide",
+      "beat": 32,
+      "side": "left",
+      "route": 2,
+      "durationBeats": 6,
+      "anchors": [
+        {
+          "beat": 0,
+          "x": 0.82,
+          "y": -0.55
+        },
+        {
+          "beat": 2.25,
+          "x": 0.08,
+          "y": -0.98
+        },
+        {
+          "beat": 2.55,
+          "x": 0.94,
+          "y": -0.2
+        },
+        {
+          "beat": 4.2,
+          "x": 0.18,
+          "y": -0.96
+        },
+        {
+          "beat": 6,
+          "x": -0.62,
+          "y": -0.68
+        }
+      ]
+    },
+    {
+      "type": "tap",
+      "beat": 40,
+      "side": "right",
+      "route": 1,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 41,
+      "side": "left",
+      "route": 1,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 42,
+      "side": "right",
+      "route": 0,
+      "symbol": "♬"
+    },
+    {
+      "type": "tap",
+      "beat": 43,
+      "side": "left",
+      "route": 0,
+      "symbol": "♪"
+    },
+    {
+      "type": "slide",
+      "beat": 46,
+      "side": "right",
+      "route": 2,
+      "durationBeats": 6,
+      "anchors": [
+        {
+          "beat": 0,
+          "x": -0.34,
+          "y": -0.24
+        },
+        {
+          "beat": 1.5,
+          "x": -0.88,
+          "y": -0.46
+        },
+        {
+          "beat": 3,
+          "x": -0.42,
+          "y": -0.23
+        },
+        {
+          "beat": 4.5,
+          "x": -0.9,
+          "y": -0.42
+        },
+        {
+          "beat": 6,
+          "x": -0.55,
+          "y": -0.36
+        }
+      ]
+    },
+    {
+      "type": "tap",
+      "beat": 54,
+      "side": "left",
+      "route": 1,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 55,
+      "side": "right",
+      "route": 1,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 56,
+      "side": "left",
+      "route": 2,
+      "symbol": "♬"
+    },
+    {
+      "type": "tap",
+      "beat": 57,
+      "side": "right",
+      "route": 2,
+      "symbol": "♪"
+    },
+    {
+      "type": "tap",
+      "beat": 58,
+      "side": "left",
+      "route": 0,
+      "symbol": "♩"
+    },
+    {
+      "type": "tap",
+      "beat": 59,
+      "side": "right",
+      "route": 0,
       "symbol": "♪"
     }
   ]
