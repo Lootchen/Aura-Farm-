@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.26";
+import { loadGameChart } from "./chart.js?v=0.27";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -87,6 +87,8 @@ const SLIDE = {
 };
 
 const POWER_ORB_BASE_SCALE = 1.55;
+const POWER_ORB_SPEED = 505;
+const POWER_ORB_BONUS_RICOCHETS = 1;
 
 const BUMPER_LAYOUT = [
   { x: 270, y: 535, radius: 31 },
@@ -1400,7 +1402,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.26", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.27", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -1924,7 +1926,8 @@ function configureLaunchedProjectile(
     power = false,
     radiusScale = 1,
     fragment = false,
-    inheritMods = true
+    inheritMods = true,
+    bonusRicochets = 0
   } = {}
 ) {
   note.launched = true;
@@ -1936,7 +1939,15 @@ function configureLaunchedProjectile(
   note.radiusScale = radiusScale;
   note.fragment = fragment;
   note.ricochetsLeft =
-    inheritMods ? runMods.ricochetBounces : 0;
+    (
+      inheritMods
+        ? runMods.ricochetBounces
+        : 0
+    ) +
+    Math.max(
+      0,
+      bonusRicochets
+    );
   note.piercesLeft =
     inheritMods ? runMods.pierceHits : 0;
 }
@@ -1951,7 +1962,8 @@ function spawnLaunchedProjectile({
   radiusScale = 1,
   fragment = false,
   speed = POST_HIT_SPEED,
-  inheritMods = true
+  inheritMods = true,
+  bonusRicochets = 0
 }) {
   const key =
     `fx:${performance.now().toFixed(3)}:${Math.random().toString(36).slice(2)}`;
@@ -1981,7 +1993,8 @@ function spawnLaunchedProjectile({
       power,
       radiusScale,
       fragment,
-      inheritMods
+      inheritMods,
+      bonusRicochets
     }
   );
 
@@ -3423,6 +3436,29 @@ function updateSlide(event, dt, songTime) {
   }
 }
 
+function slideRewardAngle(
+  point,
+  side,
+  laneOffset = 0
+) {
+  const target = {
+    x:
+      DESIGN.width / 2 +
+      (
+        side === "left"
+          ? 52
+          : -52
+      ) +
+      laneOffset,
+    y: 150
+  };
+
+  return Math.atan2(
+    target.y - point.y,
+    target.x - point.x
+  );
+}
+
 function spawnSlideProjectile(event) {
   const finalVector =
     slideVectorAtBeat(
@@ -3437,8 +3473,17 @@ function spawnSlideProjectile(event) {
   const point = segment.tip;
   const shotCount =
     1 + runMods.slideNova * 2;
+  const baseAngle =
+    slideRewardAngle(
+      point,
+      event.side
+    );
   const angles =
-    fanAngles(segment.angle, shotCount, 0.18);
+    fanAngles(
+      baseAngle,
+      shotCount,
+      0.16
+    );
 
   for (const angle of angles) {
     spawnLaunchedProjectile({
@@ -3449,7 +3494,10 @@ function spawnSlideProjectile(event) {
       symbol: "★",
       power: true,
       radiusScale: POWER_ORB_BASE_SCALE,
-      inheritMods: true
+      speed: POWER_ORB_SPEED,
+      inheritMods: true,
+      bonusRicochets:
+        POWER_ORB_BONUS_RICOCHETS
     });
   }
 
@@ -3468,13 +3516,24 @@ function spawnSlideProjectile(event) {
         mirrorVector
       );
     const mirrorCount =
-      Math.min(3, runMods.slideMirror);
+      Math.min(
+        3,
+        runMods.slideMirror
+      );
+    const mirrorBase =
+      slideRewardAngle(
+        mirrorSegment.tip,
+        mirrorSide
+      );
 
-    for (const angle of fanAngles(
-      mirrorSegment.angle,
-      mirrorCount,
-      0.15
-    )) {
+    for (
+      const angle of
+      fanAngles(
+        mirrorBase,
+        mirrorCount,
+        0.14
+      )
+    ) {
       spawnLaunchedProjectile({
         x: mirrorSegment.tip.x,
         y: mirrorSegment.tip.y,
@@ -3482,8 +3541,14 @@ function spawnSlideProjectile(event) {
         side: mirrorSide,
         symbol: "◇",
         power: true,
-        radiusScale: POWER_ORB_BASE_SCALE * 0.88,
-        inheritMods: true
+        radiusScale:
+          POWER_ORB_BASE_SCALE *
+          0.88,
+        speed:
+          POWER_ORB_SPEED,
+        inheritMods: true,
+        bonusRicochets:
+          POWER_ORB_BONUS_RICOCHETS
       });
     }
   }
@@ -3566,7 +3631,7 @@ function finishSlide(event) {
   );
 
   showMessage(
-    "SLIDE PERFECT · POWER ORB",
+    "SLIDE PERFECT · POWER RETURN",
     JUDGEMENTS.perfect.color,
     620
   );
@@ -6027,7 +6092,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.26 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.27 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
