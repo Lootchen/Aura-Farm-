@@ -156,3 +156,83 @@ button { font: inherit; }
   color: #0c1322;
   font-weight: 900;
 }
+
+
+.upgrade-panel {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4,7,13,.94);
+  backdrop-filter: blur(8px);
+}
+
+.upgrade-panel[hidden] {
+  display: none;
+}
+
+.upgrade-shell {
+  width: min(100%, 430px);
+  display: grid;
+  gap: 14px;
+  text-align: center;
+}
+
+.upgrade-kicker {
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .18em;
+  opacity: .58;
+}
+
+.upgrade-shell h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.upgrade-shell small {
+  opacity: .5;
+}
+
+.upgrade-cards {
+  display: grid;
+  gap: 10px;
+}
+
+.upgrade-card {
+  width: 100%;
+  min-height: 104px;
+  padding: 16px 17px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,241,169,.10), transparent 46%),
+    rgba(15,22,38,.94);
+  color: #f5f8ff;
+  text-align: left;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.upgrade-card:active {
+  transform: scale(.985);
+}
+
+.upgrade-card strong,
+.upgrade-card span {
+  display: block;
+}
+
+.upgrade-card strong {
+  margin-bottom: 7px;
+  font-size: 1.02rem;
+  letter-spacing: .02em;
+}
+
+.upgrade-card span {
+  font-size: .82rem;
+  line-height: 1.4;
+  opacity: .68;
+}
