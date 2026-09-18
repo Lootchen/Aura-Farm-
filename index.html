@@ -4,16 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
-  <title>Aura Farm — Mechanics Lab</title>
-  <link rel="stylesheet" href="./styles.css?v=0.23">
+  <title>Aura Farm — Build the Beat</title>
+  <link rel="stylesheet" href="./styles.css?v=0.24">
 </head>
 <body>
-  <main class="app">
-    <canvas id="game" width="540" height="960" aria-label="Prototipo de juego rítmico"></canvas>
+  <main class="app" data-machine="forge">
+    <canvas id="game" width="540" height="960" aria-label="Aura Farm"></canvas>
 
     <div class="topbar" aria-live="polite">
       <div><span>PUNTOS</span><strong id="score">0</strong></div>
       <div><span>COMBO</span><strong id="combo">0</strong></div>
+      <div><span>ACTO</span><strong id="act">1/7</strong></div>
       <div><span>ÚLTIMO</span><strong id="lastHit">—</strong></div>
     </div>
 
@@ -23,10 +24,35 @@
     </div>
 
     <section id="startPanel" class="start-panel">
-      <h1>Aura Farm</h1>
-      <p>Lab v0.23 experimental: compara TRACE directo con FOLLOW por joystick; upgrades centrados y coloreados por familia.</p>
-      <button id="startButton" type="button">INICIAR PRUEBA</button>
-      <small>Tap: contacto físico = PERFECT. TRACE: toca y sigue la cuerda directamente. FOLLOW: usa el stick como velocidad 2D; izquierda mueve la garra a la izquierda.</small>
+      <div class="brand-mark" aria-hidden="true">◉</div>
+      <span class="eyebrow">AURA FARM · VERTICAL SLICE</span>
+      <h1>BUILD THE BEAT</h1>
+      <p>Golpea notas, conviértelas en proyectiles y construye una máquina musical distinta en cada run.</p>
+
+      <div class="machine-picker" aria-label="Máquina">
+        <button class="machine-option is-selected" type="button" data-machine="forge">
+          <span>01</span><strong>FORGE</strong><small>Impacto cálido</small>
+        </button>
+        <button class="machine-option" type="button" data-machine="prism">
+          <span>02</span><strong>PRISM</strong><small>Completa 1 run</small>
+        </button>
+        <button class="machine-option" type="button" data-machine="pulse">
+          <span>03</span><strong>PULSE</strong><small>Completa 3 runs</small>
+        </button>
+      </div>
+
+      <div class="start-actions">
+        <button id="startButton" class="primary-action" type="button">RUN · 7 ACTOS</button>
+        <button id="dailyButton" class="secondary-action" type="button">DAILY SEED</button>
+      </div>
+
+      <div class="calibration-row" aria-label="Calibración de audio">
+        <button id="calibrationMinus" type="button">−15ms</button>
+        <span>OFFSET <strong id="calibrationValue">0ms</strong></span>
+        <button id="calibrationPlus" type="button">+15ms</button>
+      </div>
+
+      <small>Tap = contacto físico. TRACE = sigue la cuerda con el dedo. FOLLOW = mueve la garra con el stick. Auriculares Bluetooth: calibra el offset antes de una run seria.</small>
     </section>
 
     <section id="upgradePanel" class="upgrade-panel" hidden>
@@ -34,11 +60,34 @@
         <span class="upgrade-kicker">AURA UPGRADE</span>
         <h2 id="upgradeTitle">ELIGE 1 MEJORA</h2>
         <div id="upgradeCards" class="upgrade-cards"></div>
-        <small>La mejora se aplica al resto de la run.</small>
+        <small>La mejora altera el resto de la run y también su mezcla musical.</small>
+      </div>
+    </section>
+
+    <section id="summaryPanel" class="summary-panel" hidden>
+      <div class="summary-shell">
+        <span class="eyebrow">RUN COMPLETE</span>
+        <h2 id="summaryTitle">MÁQUINA ESTABLE</h2>
+        <div class="summary-score"><span>PUNTOS</span><strong id="summaryScore">0</strong></div>
+        <div class="summary-grid">
+          <div><span>PERFECT</span><strong id="summaryHits">0</strong></div>
+          <div><span>CHAIN</span><strong id="summaryChains">0</strong></div>
+          <div><span>MISS</span><strong id="summaryMisses">0</strong></div>
+          <div><span>CORE</span><strong id="summaryBoss">0%</strong></div>
+        </div>
+        <div>
+          <span class="summary-label">BUILD</span>
+          <div id="summaryBuild" class="summary-build"></div>
+        </div>
+        <p id="summaryUnlock" class="summary-unlock"></p>
+        <div class="summary-actions">
+          <button id="rerunButton" class="primary-action" type="button">OTRA RUN</button>
+          <button id="summaryDailyButton" class="secondary-action" type="button">DAILY</button>
+        </div>
       </div>
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.23"></script>
+  <script type="module" src="./src/main.js?v=0.24"></script>
 </body>
 </html>
