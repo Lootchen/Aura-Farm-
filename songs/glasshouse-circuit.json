@@ -1,0 +1,1422 @@
+{
+  "schemaVersion": 1,
+  "id": "glasshouse-circuit",
+  "title": "GLASSHOUSE CIRCUIT",
+  "artist": "AURA FARM",
+  "trackNumber": 1,
+  "description": "Golpea el beat. Convierte notas en proyectiles. Construye una máquina distinta en cada run.",
+  "timing": {
+    "mode": "constant",
+    "bpm": 110,
+    "beats": 68,
+    "beatsPerBar": 4,
+    "stepsPerBeat": 2,
+    "countInBeats": 4,
+    "offsetMs": 0
+  },
+  "audio": {
+    "mode": "procedural",
+    "engine": "aura-procedural-v1",
+    "stems": [
+      "drums",
+      "bass",
+      "harmony",
+      "lead",
+      "aura",
+      "boss"
+    ]
+  },
+  "composition": {
+    "drumPatterns": {
+      "seed": {
+        "kick": [
+          0,
+          4
+        ],
+        "snare": [
+          2,
+          6
+        ],
+        "hat": [
+          0,
+          2,
+          4,
+          6
+        ]
+      },
+      "flow": {
+        "kick": [
+          0,
+          3,
+          4,
+          7
+        ],
+        "snare": [
+          2,
+          6
+        ],
+        "hat": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "relay": {
+        "kick": [
+          0,
+          4,
+          5
+        ],
+        "snare": [
+          2,
+          6
+        ],
+        "hat": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "fracture": {
+        "kick": [
+          0,
+          2,
+          4,
+          7
+        ],
+        "snare": [
+          2,
+          5,
+          6
+        ],
+        "hat": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "ascent": {
+        "kick": [
+          0,
+          2,
+          4,
+          6,
+          7
+        ],
+        "snare": [
+          2,
+          6
+        ],
+        "hat": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "boss": {
+        "kick": [
+          0,
+          1,
+          4,
+          6
+        ],
+        "snare": [
+          2,
+          5,
+          6
+        ],
+        "hat": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      }
+    },
+    "bassPatterns": {
+      "pulse": [
+        0,
+        null,
+        0,
+        7,
+        0,
+        null,
+        5,
+        7
+      ],
+      "walk": [
+        0,
+        null,
+        7,
+        null,
+        5,
+        null,
+        7,
+        10
+      ],
+      "drive": [
+        0,
+        0,
+        7,
+        null,
+        5,
+        5,
+        7,
+        10
+      ],
+      "climb": [
+        0,
+        null,
+        3,
+        5,
+        7,
+        null,
+        10,
+        12
+      ],
+      "boss": [
+        0,
+        0,
+        1,
+        null,
+        7,
+        6,
+        5,
+        1
+      ]
+    },
+    "leadPatterns": {
+      "rest": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "seed": [
+        12,
+        null,
+        15,
+        null,
+        19,
+        null,
+        17,
+        null
+      ],
+      "answer": [
+        19,
+        null,
+        17,
+        15,
+        12,
+        null,
+        10,
+        null
+      ],
+      "relay": [
+        12,
+        15,
+        null,
+        17,
+        19,
+        null,
+        22,
+        19
+      ],
+      "lift": [
+        19,
+        null,
+        22,
+        null,
+        24,
+        22,
+        19,
+        17
+      ],
+      "fracture": [
+        24,
+        22,
+        19,
+        null,
+        20,
+        17,
+        15,
+        null
+      ],
+      "boss": [
+        12,
+        13,
+        19,
+        null,
+        18,
+        13,
+        12,
+        7
+      ]
+    },
+    "auraPatterns": {
+      "rest": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "spark": [
+        null,
+        null,
+        24,
+        null,
+        null,
+        null,
+        27,
+        null
+      ],
+      "bloom": [
+        24,
+        null,
+        null,
+        27,
+        null,
+        31,
+        null,
+        29
+      ],
+      "pulse": [
+        24,
+        null,
+        31,
+        null,
+        27,
+        null,
+        34,
+        null
+      ],
+      "boss": [
+        24,
+        25,
+        null,
+        31,
+        null,
+        30,
+        29,
+        null
+      ]
+    },
+    "bars": [
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "bass": "pulse",
+        "lead": "rest",
+        "aura": "rest",
+        "drums": "seed",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 41,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "pulse",
+        "lead": "rest",
+        "aura": "rest",
+        "drums": "seed",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "walk",
+        "lead": "seed",
+        "aura": "rest",
+        "drums": "flow",
+        "section": "SPROUT"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "walk",
+        "lead": "answer",
+        "aura": "spark",
+        "drums": "flow",
+        "section": "SPROUT",
+        "fill": true
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "bass": "drive",
+        "lead": "relay",
+        "aura": "spark",
+        "drums": "flow",
+        "section": "CURRENT"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "drive",
+        "lead": "answer",
+        "aura": "spark",
+        "drums": "relay",
+        "section": "CURRENT"
+      },
+      {
+        "root": 41,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "drive",
+        "lead": "relay",
+        "aura": "bloom",
+        "drums": "relay",
+        "section": "RELAY"
+      },
+      {
+        "root": 44,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "walk",
+        "lead": "lift",
+        "aura": "bloom",
+        "drums": "relay",
+        "section": "RELAY",
+        "fill": true
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "bass": "drive",
+        "lead": "fracture",
+        "aura": "pulse",
+        "drums": "fracture",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 41,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "climb",
+        "lead": "relay",
+        "aura": "pulse",
+        "drums": "fracture",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "bass": "climb",
+        "lead": "lift",
+        "aura": "bloom",
+        "drums": "fracture",
+        "section": "OVERDRIVE"
+      },
+      {
+        "root": 44,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "drive",
+        "lead": "answer",
+        "aura": "pulse",
+        "drums": "flow",
+        "section": "OVERDRIVE",
+        "fill": true
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "bass": "climb",
+        "lead": "lift",
+        "aura": "pulse",
+        "drums": "ascent",
+        "section": "ASCENT"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "climb",
+        "lead": "fracture",
+        "aura": "pulse",
+        "drums": "ascent",
+        "section": "ASCENT"
+      },
+      {
+        "root": 41,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "drive",
+        "lead": "lift",
+        "aura": "bloom",
+        "drums": "ascent",
+        "section": "BLOOM"
+      },
+      {
+        "root": 44,
+        "chord": [
+          0,
+          4,
+          7
+        ],
+        "bass": "drive",
+        "lead": "answer",
+        "aura": "pulse",
+        "drums": "ascent",
+        "section": "BLOOM",
+        "fill": true
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "bass": "boss",
+        "lead": "boss",
+        "aura": "boss",
+        "drums": "boss",
+        "section": "ROOT",
+        "fill": true
+      }
+    ]
+  },
+  "defaultChart": "standard",
+  "charts": [
+    {
+      "id": "standard",
+      "name": "Vertical Slice 01",
+      "difficulty": "standard",
+      "mechanicsVersion": "aura-chart-v1",
+      "events": [
+        {
+          "type": "tap",
+          "beat": 0,
+          "side": "left",
+          "route": 0,
+          "symbol": "♩",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.58,
+            "phrase": "germinate-pulse"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 1,
+          "side": "right",
+          "route": 0,
+          "symbol": "♪",
+          "music": {
+            "stem": "drums",
+            "intent": "backbeat",
+            "energy": 0.64,
+            "phrase": "germinate-pulse"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 2,
+          "side": "left",
+          "route": 1,
+          "symbol": "♪",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.6,
+            "phrase": "germinate-pulse"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 3,
+          "side": "right",
+          "route": 1,
+          "symbol": "♩",
+          "music": {
+            "stem": "drums",
+            "intent": "backbeat",
+            "energy": 0.66,
+            "phrase": "germinate-pulse"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 4,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.6,
+            "phrase": "germinate-repeat"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 5,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "backbeat",
+            "energy": 0.66,
+            "phrase": "germinate-repeat"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 6,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "minAct": 2,
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.62,
+            "phrase": "germinate-repeat"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 7,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "minAct": 2,
+          "music": {
+            "stem": "drums",
+            "intent": "backbeat",
+            "energy": 0.68,
+            "phrase": "germinate-repeat"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 8,
+          "side": "left",
+          "route": 1,
+          "durationBeats": 4,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.62,
+              "y": -0.68
+            },
+            {
+              "beat": 2,
+              "x": 0,
+              "y": -0.96
+            },
+            {
+              "beat": 4,
+              "x": 0.62,
+              "y": -0.68
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.68,
+            "phrase": "sprout-rise",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 13,
+          "side": "left",
+          "route": 2,
+          "symbol": "·",
+          "chainGroup": "spark-a",
+          "minAct": 3,
+          "music": {
+            "stem": "aura",
+            "intent": "accent",
+            "energy": 0.72,
+            "phrase": "spark-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 13.5,
+          "side": "right",
+          "route": 0,
+          "symbol": "·",
+          "chainGroup": "spark-a",
+          "minAct": 5,
+          "music": {
+            "stem": "lead",
+            "intent": "syncopation",
+            "energy": 0.62,
+            "phrase": "spark-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 14,
+          "side": "right",
+          "route": 2,
+          "symbol": "♬",
+          "chainGroup": "spark-a",
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.66,
+            "phrase": "spark-a"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 15,
+          "side": "left",
+          "route": 0,
+          "symbol": "♪",
+          "chainGroup": "spark-a",
+          "music": {
+            "stem": "aura",
+            "intent": "fill",
+            "energy": 0.84,
+            "phrase": "spark-a"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 15.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "minAct": 4,
+          "chainGroup": "spark-a",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 0.86,
+            "phrase": "spark-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 16,
+          "side": "right",
+          "route": 1,
+          "symbol": "♩",
+          "chainGroup": "current-answer",
+          "music": {
+            "stem": "lead",
+            "intent": "accent",
+            "energy": 0.7,
+            "phrase": "current-answer"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 17,
+          "side": "left",
+          "route": 2,
+          "symbol": "♪",
+          "chainGroup": "current-answer",
+          "music": {
+            "stem": "aura",
+            "intent": "response",
+            "energy": 0.72,
+            "phrase": "current-answer"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 18.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "·",
+          "chainGroup": "current-answer",
+          "minAct": 7,
+          "music": {
+            "stem": "bass",
+            "intent": "pickup",
+            "energy": 0.54,
+            "phrase": "current-answer"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 20,
+          "side": "right",
+          "route": 1,
+          "durationBeats": 6,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.78,
+              "y": -0.58
+            },
+            {
+              "beat": 2,
+              "x": -0.46,
+              "y": -0.86
+            },
+            {
+              "beat": 4,
+              "x": -0.08,
+              "y": -0.97
+            },
+            {
+              "beat": 6,
+              "x": 0.3,
+              "y": -0.88
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.74,
+            "phrase": "current-release",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 27,
+          "side": "right",
+          "route": 2,
+          "symbol": "·",
+          "chainGroup": "relay-a",
+          "minAct": 3,
+          "music": {
+            "stem": "lead",
+            "intent": "accent",
+            "energy": 0.7,
+            "phrase": "relay-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 27.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "·",
+          "chainGroup": "relay-a",
+          "minAct": 5,
+          "music": {
+            "stem": "aura",
+            "intent": "syncopation",
+            "energy": 0.72,
+            "phrase": "relay-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 28,
+          "side": "left",
+          "route": 0,
+          "symbol": "♩",
+          "chainGroup": "relay-a",
+          "music": {
+            "stem": "aura",
+            "intent": "accent",
+            "energy": 0.76,
+            "phrase": "relay-a"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 29,
+          "side": "right",
+          "route": 0,
+          "symbol": "♪",
+          "chainGroup": "relay-a",
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.7,
+            "phrase": "relay-a"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 30,
+          "side": "left",
+          "route": 2,
+          "symbol": "♬",
+          "chainGroup": "relay-a",
+          "music": {
+            "stem": "lead",
+            "intent": "accent",
+            "energy": 0.76,
+            "phrase": "relay-a"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 31,
+          "side": "right",
+          "route": 2,
+          "symbol": "♪",
+          "chainGroup": "relay-a",
+          "music": {
+            "stem": "lead",
+            "intent": "fill",
+            "energy": 0.8,
+            "phrase": "relay-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 31.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "minAct": 4,
+          "chainGroup": "relay-a",
+          "music": {
+            "stem": "aura",
+            "intent": "fill",
+            "energy": 0.84,
+            "phrase": "relay-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 32.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "·",
+          "chainGroup": "fracture-entry",
+          "minAct": 7,
+          "music": {
+            "stem": "lead",
+            "intent": "pickup",
+            "energy": 0.74,
+            "phrase": "fracture-entry"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 34,
+          "side": "right",
+          "route": 2,
+          "durationBeats": 6,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.76,
+              "y": -0.56
+            },
+            {
+              "beat": 1,
+              "x": -0.22,
+              "y": -0.97
+            },
+            {
+              "beat": 2.2,
+              "x": 0.54,
+              "y": -0.76
+            },
+            {
+              "beat": 3.4,
+              "x": 0.88,
+              "y": -0.24
+            },
+            {
+              "beat": 4.7,
+              "x": 0.12,
+              "y": -0.98
+            },
+            {
+              "beat": 6,
+              "x": -0.62,
+              "y": -0.68
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.86,
+            "phrase": "fracture-arc",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 41,
+          "side": "left",
+          "route": 2,
+          "symbol": "·",
+          "chainGroup": "overdrive-a",
+          "minAct": 3,
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.82,
+            "phrase": "overdrive-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 41.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "·",
+          "chainGroup": "overdrive-a",
+          "minAct": 5,
+          "music": {
+            "stem": "aura",
+            "intent": "syncopation",
+            "energy": 0.78,
+            "phrase": "overdrive-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 42,
+          "side": "right",
+          "route": 1,
+          "symbol": "♪",
+          "chainGroup": "overdrive-a",
+          "music": {
+            "stem": "lead",
+            "intent": "accent",
+            "energy": 0.76,
+            "phrase": "overdrive-a"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 43,
+          "side": "left",
+          "route": 1,
+          "symbol": "♩",
+          "chainGroup": "overdrive-a",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.72,
+            "phrase": "overdrive-a"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 44,
+          "side": "right",
+          "route": 0,
+          "symbol": "♬",
+          "chainGroup": "overdrive-a",
+          "music": {
+            "stem": "aura",
+            "intent": "accent",
+            "energy": 0.78,
+            "phrase": "overdrive-a"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 45,
+          "side": "left",
+          "route": 0,
+          "symbol": "♪",
+          "chainGroup": "overdrive-a",
+          "music": {
+            "stem": "aura",
+            "intent": "phrase",
+            "energy": 0.82,
+            "phrase": "overdrive-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 46.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "·",
+          "chainGroup": "overdrive-a",
+          "minAct": 7,
+          "music": {
+            "stem": "bass",
+            "intent": "pickup",
+            "energy": 0.62,
+            "phrase": "overdrive-a"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 47.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "minAct": 5,
+          "chainGroup": "overdrive-a",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 0.88,
+            "phrase": "overdrive-a"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 48,
+          "side": "left",
+          "route": 2,
+          "durationBeats": 8,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": 0.78,
+              "y": -0.54
+            },
+            {
+              "beat": 2,
+              "x": 0.44,
+              "y": -0.86
+            },
+            {
+              "beat": 4,
+              "x": 0.04,
+              "y": -0.98
+            },
+            {
+              "beat": 6,
+              "x": -0.38,
+              "y": -0.86
+            },
+            {
+              "beat": 8,
+              "x": -0.72,
+              "y": -0.58
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.9,
+            "phrase": "ascent-line",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 56.5,
+          "side": "right",
+          "route": 0,
+          "symbol": "✦",
+          "chainGroup": "bloom-fan",
+          "minAct": 7,
+          "music": {
+            "stem": "boss",
+            "intent": "pickup",
+            "energy": 0.72,
+            "phrase": "bloom-fan"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 57,
+          "side": "left",
+          "route": 2,
+          "symbol": "✦",
+          "chainGroup": "bloom-fan",
+          "minAct": 5,
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.86,
+            "phrase": "bloom-fan"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 57.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "✦",
+          "chainGroup": "bloom-fan",
+          "minAct": 7,
+          "music": {
+            "stem": "aura",
+            "intent": "syncopation",
+            "energy": 0.82,
+            "phrase": "bloom-fan"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 58,
+          "side": "left",
+          "route": 1,
+          "symbol": "♩",
+          "chainGroup": "finale",
+          "music": {
+            "stem": "lead",
+            "intent": "accent",
+            "energy": 0.82,
+            "phrase": "finale"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 59,
+          "side": "right",
+          "route": 1,
+          "symbol": "♪",
+          "chainGroup": "finale",
+          "music": {
+            "stem": "drums",
+            "intent": "backbeat",
+            "energy": 0.86,
+            "phrase": "finale"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 60,
+          "side": "left",
+          "route": 2,
+          "symbol": "♬",
+          "chainGroup": "finale",
+          "music": {
+            "stem": "aura",
+            "intent": "accent",
+            "energy": 0.88,
+            "phrase": "finale"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 61,
+          "side": "right",
+          "route": 2,
+          "symbol": "♪",
+          "chainGroup": "finale",
+          "music": {
+            "stem": "aura",
+            "intent": "response",
+            "energy": 0.9,
+            "phrase": "finale"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 62,
+          "side": "left",
+          "route": 0,
+          "symbol": "♩",
+          "chainGroup": "finale",
+          "music": {
+            "stem": "lead",
+            "intent": "resolve",
+            "energy": 0.88,
+            "phrase": "finale"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 63,
+          "side": "right",
+          "route": 0,
+          "symbol": "♪",
+          "chainGroup": "finale",
+          "music": {
+            "stem": "aura",
+            "intent": "fill",
+            "energy": 0.94,
+            "phrase": "finale"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 63.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "minAct": 3,
+          "chainGroup": "finale",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 0.96,
+            "phrase": "finale"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 64,
+          "side": "left",
+          "route": 1,
+          "symbol": "✦",
+          "chainGroup": "core-fan",
+          "minAct": 7,
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 0.96,
+            "phrase": "core-fan"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 64.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "✦",
+          "chainGroup": "core-fan",
+          "minAct": 7,
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 0.98,
+            "phrase": "core-fan"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 65,
+          "side": "left",
+          "route": 2,
+          "symbol": "✦",
+          "chainGroup": "core-fan",
+          "minAct": 7,
+          "music": {
+            "stem": "boss",
+            "intent": "resolve",
+            "energy": 1,
+            "phrase": "core-fan"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 66,
+          "side": "right",
+          "route": 2,
+          "symbol": "◆",
+          "minAct": 7,
+          "chainGroup": "core-fan",
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 0.98,
+            "phrase": "core-fan"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 67,
+          "side": "left",
+          "route": 2,
+          "symbol": "◆",
+          "minAct": 7,
+          "chainGroup": "core-fan",
+          "music": {
+            "stem": "boss",
+            "intent": "resolve",
+            "energy": 1,
+            "phrase": "core-fan"
+          }
+        }
+      ]
+    }
+  ]
+}
