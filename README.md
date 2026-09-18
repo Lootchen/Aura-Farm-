@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.31
+# Aura Farm — Vertical Slice v0.32
 
 **BUILD THE BEAT.**
 
@@ -6,7 +6,59 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
-v0.31 focuses on two things: making upgrade choices look like **actual gameplay**, and making more of the chart geometry/patterning come from the music rather than arbitrary authoring.
+v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.32 — lobby, TRACE and balance
+
+### Game-like front menu
+
+The old configuration-heavy start screen has been rebuilt as a real game lobby:
+
+- AURI/track hero area
+- dominant **INICIAR RUN** card
+- Daily and Practice as secondary modes
+- compact machine garage
+- profile readout for BEST / RUNS / SLIDE
+- latency and control explanations moved into **Ajustes**
+- run summary now has a real **MENÚ** return action
+
+The goal is hierarchy: start playing first, configure only when needed.
+
+### TRACE is now the only Slide input
+
+FOLLOW has been removed from the chart contract and active input path.
+
+Slide now means:
+
+> touch the rail head → drag directly along the rail → physical claw follows the traced position
+
+All four authored Slides use `mode: "trace"`.
+
+The bottom left/right touch zones remain Tap controls; they no longer steer Slide.
+
+This removes the indirect/inverted joystick interpretation that made leftward movement feel unintuitive.
+
+### Four-slot build balance pass
+
+The 4 active / 4 reserve / LV3 structure remains, but explosive scaling is more controlled:
+
+- Nova: **2 / 3 / 4** Power Orbs at LV1–3
+- Astillas: **3 / 4 / 5** fragments at LV1–3
+- Shock radius grows more gradually
+- module gameplay previews now read the actual offered/current level
+
+This keeps specialization powerful without making the arena unreadable too early.
+
+### Prototype audio polish
+
+The Web Audio version now includes:
+
+- gentle master saturation before compression
+- restrained reactive build percussion
+- slightly clearer authored fills
+- subtle harmonic section stingers at major transitions
+
+This is still prototype audio. The next large audio jump should come from produced stems in a DAW while keeping the same six-bus contract.
 
 ## Module Bay 3.0
 
@@ -62,7 +114,7 @@ The goal is that a player can hide the title/description and still understand mo
 
 ## Build system
 
-v0.31 keeps:
+v0.32 keeps:
 
 - 4 active module slots
 - 4 reserve slots
@@ -213,7 +265,7 @@ Primary gameplay remains minimal:
 
 ## Existing run systems
 
-v0.31 keeps:
+v0.32 keeps:
 
 - 7-act run
 - AURI
@@ -237,7 +289,7 @@ Non-negotiable:
 
 Music semantics can change approach path, radius and feedback strength, but do not introduce hidden acceleration or timing windows.
 
-## What to test in v0.31
+## What to test in v0.32
 
 1. Do module previews finally look like Aura Farm gameplay instead of animated icons?
 2. Can Gemela/Rebote/Perfora/Nova be understood without reading the description?
@@ -253,18 +305,18 @@ Music semantics can change approach path, radius and feedback strength, but do n
 
 - `docs/art-bible-v1.md`
 - `docs/product-direction-v0.28.md`
-- `docs/musical-intent-v0.31.md`
+- `docs/musical-intent-v0.32.md`
 
 ## Next production order
 
-After v0.31 the next high-value work should be:
+After v0.32 the next high-value work should be:
 
-1. playtest and balance the 4-slot build economy;
-2. decide TRACE vs FOLLOW and remove the losing Slide model;
+1. playtest and tune the now TRACE-only Slide for finger occlusion, grab radius and rail readability;
+2. playtest the rebalanced 4-slot build economy and identify dominant/weak module combinations;
 3. produce a professional audio/stem version of GLASSHOUSE CIRCUIT using the current six-bus contract;
 4. create final AURI concept/animation language;
 5. replace prototype arena vectors with production environmental assets while preserving geometry;
-6. tune boss/CHAIN opportunities around the final music;
+6. tune boss/CHAIN opportunities around the final produced music;
 7. only then expand song/content volume or online systems.
 
 ## GitHub Pages
