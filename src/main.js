@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.28";
+import { loadGameChart } from "./chart.js?v=0.29";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.28";
+} from "./music.js?v=0.29";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -63,6 +63,39 @@ const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
 const DESIGN = { width: 540, height: 960 };
+
+const WORLD_ASSETS = {
+  far: new Image(),
+  mid: new Image()
+};
+
+WORLD_ASSETS.far.src =
+  "./assets/world/glasshouse-far.svg?v=0.29";
+WORLD_ASSETS.mid.src =
+  "./assets/world/growth-bays.svg?v=0.29";
+
+function drawWorldAsset(
+  image,
+  alpha
+) {
+  if (
+    !image.complete ||
+    image.naturalWidth === 0
+  ) {
+    return;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(
+    image,
+    0,
+    0,
+    DESIGN.width,
+    DESIGN.height
+  );
+  ctx.restore();
+}
 
 let BPM = 110;
 let LOOP_BEATS = 24;
@@ -1981,7 +2014,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.28", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.29", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -4521,49 +4554,51 @@ function drawSlideRailBody(
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  // Exact playable corridor.
+  // One subtle playable corridor. It communicates judgement without becoming decoration.
   ctx.strokeStyle =
     connected
-      ? "rgba(255,241,169,.20)"
-      : `rgba(${sideColor},.14)`;
+      ? "rgba(255,241,169,.12)"
+      : `rgba(${sideColor},.09)`;
   ctx.lineWidth =
     slideTolerance() * 2;
   traceSlideRail(points);
   ctx.stroke();
 
-  // Dark channel gives the slide the weight of a sustained note.
+  // Single dark rail body.
   ctx.strokeStyle =
-    "rgba(7,10,18,.82)";
-  ctx.lineWidth = 25;
+    "rgba(7,11,18,.90)";
+  ctx.lineWidth = 18;
   traceSlideRail(points);
   ctx.stroke();
 
-  // Guitar-like luminous rope: continuous and clearly distinct from Tap paths.
+  // Functional colored edge.
   ctx.shadowBlur =
-    connected ? 20 : 14;
+    connected ? 10 : 4;
   ctx.shadowColor =
     connected
       ? "#fff1a9"
-      : "#a970ff";
+      : `rgba(${sideColor},.60)`;
   ctx.strokeStyle =
     connected
-      ? "rgba(255,225,145,.92)"
-      : "rgba(171,104,255,.88)";
-  ctx.lineWidth = 13;
+      ? "rgba(255,241,169,.92)"
+      : `rgba(${sideColor},.78)`;
+  ctx.lineWidth = 8;
   traceSlideRail(points);
   ctx.stroke();
 
+  // Thin white core gives clean musical continuity.
   ctx.shadowBlur = 0;
   ctx.strokeStyle =
     connected
-      ? "rgba(255,255,224,.92)"
-      : "rgba(238,218,255,.88)";
-  ctx.lineWidth = 3;
+      ? "rgba(255,255,240,.88)"
+      : "rgba(238,244,255,.54)";
+  ctx.lineWidth = 2;
   traceSlideRail(points);
   ctx.stroke();
 
   ctx.restore();
 }
+
 
 function drawSlideGem(
   event,
@@ -4654,54 +4689,35 @@ function drawSlideFretPlate(
       : "216,139,255";
 
   ctx.save();
-  ctx.globalAlpha =
-    alpha;
+  ctx.globalAlpha = alpha;
   ctx.translate(
     point.x,
     point.y
   );
   ctx.rotate(tangent);
 
-  ctx.shadowBlur =
-    anchor ? 14 : 7;
-  ctx.shadowColor =
-    `rgba(${sideColor},.72)`;
-  ctx.fillStyle =
-    "rgba(7,11,19,.90)";
+  // A fret is one clean crossbar, not another node.
   ctx.strokeStyle =
-    `rgba(${sideColor},${anchor ? .88 : .62})`;
+    anchor
+      ? "rgba(255,255,255,.78)"
+      : `rgba(${sideColor},.58)`;
   ctx.lineWidth =
     anchor ? 3 : 2;
-
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.roundRect(
-    -4.5,
-    anchor ? -22 : -18,
-    9,
-    anchor ? 44 : 36,
-    4
+  ctx.moveTo(
+    0,
+    anchor ? -17 : -14
   );
-  ctx.fill();
+  ctx.lineTo(
+    0,
+    anchor ? 17 : 14
+  );
   ctx.stroke();
-
-  ctx.shadowBlur = 0;
-  ctx.fillStyle =
-    `rgba(${sideColor},.82)`;
-
-  for (const y of [-11, 0, 11]) {
-    ctx.beginPath();
-    ctx.arc(
-      0,
-      y,
-      anchor ? 2.4 : 1.8,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-  }
 
   ctx.restore();
 }
+
 
 function drawSlideBeatGems(
   event,
@@ -4710,7 +4726,10 @@ function drawSlideBeatGems(
   alpha = 1
 ) {
   const first =
-    Math.ceil(startBeat / SLIDE.nodeBeats) *
+    Math.ceil(
+      startBeat /
+      SLIDE.nodeBeats
+    ) *
     SLIDE.nodeBeats;
 
   for (
@@ -4718,59 +4737,62 @@ function drawSlideBeatGems(
     beat <= endBeat + 0.001;
     beat += SLIDE.nodeBeats
   ) {
-    const anchor =
-      event.anchors.some(
-        (item) =>
-          Math.abs(item.beat - beat) < 0.02
-      );
-
     const fullBeat =
       Math.abs(
         beat -
         Math.round(beat)
       ) < 0.02;
+    const anchor =
+      event.anchors.some(
+        (item) =>
+          Math.abs(
+            item.beat - beat
+          ) < 0.02
+      );
 
     if (fullBeat) {
       drawSlideFretPlate(
         event,
         beat,
-        anchor
-          ? alpha
-          : alpha * 0.86,
+        alpha *
+          (
+            anchor
+              ? 0.92
+              : 0.72
+          ),
         anchor
       );
-    } else {
-      drawSlideGem(
-        event,
-        beat,
-        {
-          radius: 4.5,
-          alpha:
-            alpha * 0.58
-        }
-      );
-    }
-  }
-
-  for (const anchor of event.anchors) {
-    if (
-      anchor.beat < startBeat - 0.001 ||
-      anchor.beat > endBeat + 0.001
-    ) {
       continue;
     }
 
-    drawSlideGem(
-      event,
-      anchor.beat,
-      {
-        radius: 11.5,
-        alpha,
-        anchor: true
-      }
+    const point =
+      slideRailPoint(
+        event,
+        beat
+      );
+    const sideColor =
+      event.side === "left"
+        ? "110,215,255"
+        : "216,139,255";
+
+    ctx.save();
+    ctx.globalAlpha =
+      alpha * 0.40;
+    ctx.fillStyle =
+      `rgba(${sideColor},.78)`;
+    ctx.beginPath();
+    ctx.arc(
+      point.x,
+      point.y,
+      2.2,
+      0,
+      Math.PI * 2
     );
+    ctx.fill();
+    ctx.restore();
   }
 }
+
 
 function drawSlideDirectionMarkers(
   event,
@@ -4823,26 +4845,34 @@ function drawSlideCatcher(
   alpha = 1
 ) {
   const point =
-    slideRailPoint(event, beat);
+    slideRailPoint(
+      event,
+      beat
+    );
   const tangent =
-    slideRailTangent(event, beat);
-  const pulse =
-    1 +
-    Math.sin(performance.now() / 110) *
-    0.08;
+    slideRailTangent(
+      event,
+      beat
+    );
+  const sideColor =
+    event.side === "left"
+      ? "110,215,255"
+      : "216,139,255";
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.translate(point.x, point.y);
+  ctx.translate(
+    point.x,
+    point.y
+  );
   ctx.rotate(tangent);
 
-  // The outer ring is the real physical hit corridor.
+  // Thin outer tolerance ring = actual judgement geometry.
   ctx.strokeStyle =
     connected
-      ? "rgba(255,241,169,.62)"
-      : "rgba(255,126,148,.55)";
-  ctx.lineWidth = 3;
-  ctx.setLineDash([7, 5]);
+      ? "rgba(255,241,169,.40)"
+      : `rgba(${sideColor},.28)`;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(
     0,
@@ -4852,44 +4882,43 @@ function drawSlideCatcher(
     Math.PI * 2
   );
   ctx.stroke();
-  ctx.setLineDash([]);
 
-  // A note-catcher crossing the rope makes the current target unmistakable.
-  ctx.shadowBlur = connected ? 24 : 16;
+  // One bright crossbar marks the exact current target.
+  ctx.shadowBlur =
+    connected ? 14 : 5;
   ctx.shadowColor =
-    connected ? "#fff1a9" : "#ff7e94";
+    connected
+      ? "#fff1a9"
+      : `rgba(${sideColor},.70)`;
   ctx.strokeStyle =
-    connected ? "#fff1a9" : "#ff8ca0";
-  ctx.lineWidth = 5;
+    connected
+      ? "#fff1a9"
+      : `rgba(${sideColor},.90)`;
+  ctx.lineWidth = 4;
   ctx.lineCap = "round";
-
   ctx.beginPath();
-  ctx.moveTo(0, -19);
-  ctx.lineTo(0, 19);
+  ctx.moveTo(0, -16);
+  ctx.lineTo(0, 16);
   ctx.stroke();
 
+  ctx.shadowBlur = 0;
+  ctx.fillStyle =
+    connected
+      ? "#fff1a9"
+      : `rgb(${sideColor})`;
   ctx.beginPath();
   ctx.arc(
     0,
     0,
-    12 * pulse,
+    connected ? 5 : 4,
     0,
     Math.PI * 2
   );
-  ctx.stroke();
+  ctx.fill();
 
   ctx.restore();
-
-  drawSlideGem(
-    event,
-    beat,
-    {
-      radius: 10,
-      alpha,
-      active: connected
-    }
-  );
 }
+
 
 function drawIncomingSlideHead(
   event,
@@ -4901,43 +4930,37 @@ function drawIncomingSlideHead(
       : "#d88bff";
 
   ctx.save();
-  ctx.translate(head.x, head.y);
-  ctx.shadowBlur = 22;
-  ctx.shadowColor = "#a970ff";
-  ctx.fillStyle = "rgba(18,13,29,.86)";
-  ctx.strokeStyle = sideColor;
-  ctx.lineWidth = 4;
+  ctx.translate(
+    head.x,
+    head.y
+  );
+
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = sideColor;
+  ctx.fillStyle =
+    "rgba(7,11,18,.94)";
+  ctx.strokeStyle =
+    sideColor;
+  ctx.lineWidth = 3;
 
   ctx.beginPath();
   ctx.arc(
     0,
     0,
-    24,
+    19,
     0,
     Math.PI * 2
   );
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = "#b27cff";
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.arc(
-    0,
-    0,
-    15,
-    Math.PI * 0.08,
-    Math.PI * 1.92
-  );
-  ctx.stroke();
-
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "#f2ddff";
+  ctx.fillStyle = sideColor;
   ctx.beginPath();
   ctx.arc(
     0,
     0,
-    4,
+    6,
     0,
     Math.PI * 2
   );
@@ -4945,6 +4968,7 @@ function drawIncomingSlideHead(
 
   ctx.restore();
 }
+
 
 function drawSlideModeBadge(event) {
   const trace =
@@ -5023,8 +5047,8 @@ function drawSlide(event, songTime) {
     // Lead-in tail for the first slider gem.
     ctx.lineCap = "round";
     ctx.strokeStyle =
-      "rgba(169,112,255,.34)";
-    ctx.lineWidth = 13;
+      "rgba(216,139,255,.18)";
+    ctx.lineWidth = 7;
     ctx.beginPath();
     ctx.moveTo(head.x, head.y);
     ctx.lineTo(behind.x, behind.y);
@@ -5042,12 +5066,6 @@ function drawSlide(event, songTime) {
       event.durationBeats,
       0.82
     );
-    drawSlideDirectionMarkers(
-      event,
-      0,
-      event.durationBeats,
-      0.45
-    );
 
     // When the head gets close, visually join it to the rope.
     const startDistance =
@@ -5058,9 +5076,9 @@ function drawSlide(event, songTime) {
 
     if (startDistance < 220) {
       ctx.strokeStyle =
-        "rgba(181,124,255,.52)";
-      ctx.lineWidth = 6;
-      ctx.setLineDash([7, 8]);
+        "rgba(216,139,255,.24)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 9]);
       ctx.beginPath();
       ctx.moveTo(head.x, head.y);
       ctx.lineTo(
@@ -5158,12 +5176,6 @@ function drawSlide(event, songTime) {
     event.durationBeats,
     connected ? 0.92 : 0.74
   );
-  drawSlideDirectionMarkers(
-    event,
-    currentBeat,
-    event.durationBeats,
-    0.58
-  );
 
   drawSlideCatcher(
     event,
@@ -5171,7 +5183,6 @@ function drawSlide(event, songTime) {
     connected,
     1
   );
-  drawSlideModeBadge(event);
 
   ctx.restore();
 }
@@ -5375,6 +5386,15 @@ function drawBackground() {
     720
   );
 
+  drawWorldAsset(
+    WORLD_ASSETS.far,
+    0.62
+  );
+  drawWorldAsset(
+    WORLD_ASSETS.mid,
+    0.42
+  );
+
   // Chassis rails.
   ctx.strokeStyle =
     `rgba(${ar},${ag},${ab},${0.09 + intensity * 0.11})`;
@@ -5388,17 +5408,6 @@ function drawBackground() {
   ctx.lineTo(435, 905);
   ctx.stroke();
 
-  ctx.strokeStyle =
-    "rgba(255,255,255,.035)";
-  ctx.lineWidth = 1;
-
-  for (let y = 130; y < 800; y += 72) {
-    ctx.beginPath();
-    ctx.moveTo(35, y);
-    ctx.lineTo(505, y);
-    ctx.stroke();
-  }
-
   // Mechanical fasteners.
   for (const x of [42, 498]) {
     for (let y = 150; y < 770; y += 122) {
@@ -5410,22 +5419,6 @@ function drawBackground() {
     }
   }
 
-  // Dust/energy motes.
-  for (let i = 0; i < 24; i += 1) {
-    const x =
-      (((i * 73) % 521) / 521) *
-      DESIGN.width;
-    const y =
-      (((i * 113) % 601) / 601) *
-      DESIGN.height *
-      0.62;
-
-    ctx.fillStyle =
-      i % 4 === 0
-        ? `rgba(${ar},${ag},${ab},.18)`
-        : "rgba(255,255,255,.10)";
-    ctx.fillRect(x, y, 1.2, 1.2);
-  }
 
   // Each act physically lights another cell in the chassis.
   for (let index = 0; index < RUN_ACTS; index += 1) {
@@ -5508,58 +5501,6 @@ function drawBackground() {
     4
   );
 
-  // Glasshouse ribs: a recognisable playfield silhouette without adding lanes.
-  ctx.save();
-  ctx.lineCap = "round";
-
-  for (let rib = 0; rib < 4; rib += 1) {
-    const y =
-      150 + rib * 158;
-    const bow =
-      76 - rib * 8;
-
-    ctx.strokeStyle =
-      `rgba(${sr},${sg},${sb},${0.035 + intensity * 0.024})`;
-    ctx.lineWidth =
-      rib === 0 ? 2 : 1.2;
-    ctx.beginPath();
-    ctx.moveTo(49, y + 26);
-    ctx.bezierCurveTo(
-      130,
-      y - bow,
-      410,
-      y - bow,
-      491,
-      y + 26
-    );
-    ctx.stroke();
-  }
-
-  // Vertical glass seams and faint reflections.
-  for (const x of [118, 202, 338, 422]) {
-    const shimmer =
-      0.014 +
-      (
-        0.5 +
-        0.5 *
-          Math.sin(
-            clock.songTime * 0.42 +
-            x
-          )
-      ) *
-        0.018;
-
-    ctx.strokeStyle =
-      `rgba(255,255,255,${shimmer})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, 130);
-    ctx.lineTo(
-      x + (x < 270 ? -26 : 26),
-      770
-    );
-    ctx.stroke();
-  }
 
   // Growth conduits: small bio-electric leaves appear as the machine wakes.
   for (let index = 0; index < wave; index += 1) {
@@ -6443,7 +6384,12 @@ function currentStemLevels(songTime) {
 }
 
 function drawStemRack(songTime) {
-  if (!running) return;
+  if (
+    !running ||
+    !showDebug
+  ) {
+    return;
+  }
 
   const palette =
     machinePalette();
@@ -6869,15 +6815,8 @@ function drawChainOpportunities() {
 function drawTap(note) {
   drawTrail(note);
 
-  const radius = noteRadius(note);
-
-  ctx.save();
-  ctx.translate(note.x, note.y);
-
-  if (note.launched) {
-    ctx.rotate(Math.atan2(note.vy, note.vx) + Math.PI / 2);
-  }
-
+  const radius =
+    noteRadius(note);
   const noteColor =
     note.side === "left"
       ? "#6ed7ff"
@@ -6885,10 +6824,28 @@ function drawTap(note) {
         ? "#d88bff"
         : "#dfeaff";
 
+  ctx.save();
+  ctx.translate(
+    note.x,
+    note.y
+  );
+
+  if (note.launched) {
+    ctx.rotate(
+      Math.atan2(
+        note.vy,
+        note.vx
+      ) +
+      Math.PI / 2
+    );
+  }
+
   if (note.power) {
-    ctx.shadowBlur = 28;
-    ctx.shadowColor = "#fff1a9";
-    ctx.fillStyle = "#fff1a9";
+    ctx.shadowBlur = 16;
+    ctx.shadowColor =
+      "#fff1a9";
+    ctx.fillStyle =
+      "#fff1a9";
     ctx.beginPath();
     ctx.arc(
       0,
@@ -6898,10 +6855,26 @@ function drawTap(note) {
       Math.PI * 2
     );
     ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle =
+      "rgba(255,255,255,.76)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius + 4,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
   } else if (note.fragment) {
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = "#ffffff";
-    ctx.fillStyle = "#ffffff";
+    ctx.shadowBlur = 7;
+    ctx.shadowColor =
+      "#ffffff";
+    ctx.fillStyle =
+      "#ffffff";
     ctx.beginPath();
     ctx.arc(
       0,
@@ -6912,7 +6885,7 @@ function drawTap(note) {
     );
     ctx.fill();
   } else if (note.launched) {
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 7;
     ctx.shadowColor =
       noteColor;
     ctx.fillStyle =
@@ -6927,12 +6900,12 @@ function drawTap(note) {
     );
     ctx.fill();
   } else {
-    // Incoming notes are seed capsules: dark shell, luminous rim, bright core.
-    ctx.shadowBlur = 12;
+    // Minimal incoming note: ring, body, core.
+    ctx.shadowBlur = 5;
     ctx.shadowColor =
       noteColor;
     ctx.fillStyle =
-      "#0c1520";
+      "rgba(7,12,20,.94)";
     ctx.strokeStyle =
       noteColor;
     ctx.lineWidth = 3;
@@ -6949,33 +6922,17 @@ function drawTap(note) {
     ctx.stroke();
 
     ctx.shadowBlur = 0;
-    ctx.globalAlpha = 0.86;
     ctx.fillStyle =
       noteColor;
     ctx.beginPath();
     ctx.arc(
       0,
       0,
-      radius * 0.62,
+      radius * 0.34,
       0,
       Math.PI * 2
     );
     ctx.fill();
-
-    ctx.globalAlpha = 0.38;
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.ellipse(
-      -radius * 0.18,
-      -radius * 0.24,
-      radius * 0.20,
-      radius * 0.10,
-      -0.5,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-    ctx.globalAlpha = 1;
   }
 
   if (
@@ -6984,60 +6941,59 @@ function drawTap(note) {
   ) {
     ctx.shadowBlur = 0;
     ctx.strokeStyle =
-      "rgba(255,229,109,.78)";
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([4, 5]);
+      "rgba(255,229,109,.66)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(
       0,
       0,
-      radius + 7,
-      0,
-      Math.PI * 2
-    );
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  if (
-    note.launched &&
-    Number(note.ricochetsLeft || 0) > 0
-  ) {
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle =
-      "rgba(94,226,215,.86)";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(
-      0,
-      0,
-      radius + 7,
-      -Math.PI * 0.75,
-      Math.PI * 0.75
+      radius + 6,
+      -Math.PI * 0.78,
+      -Math.PI * 0.20
     );
     ctx.stroke();
   }
 
   if (
     note.launched &&
-    Number(note.piercesLeft || 0) > 0
+    Number(
+      note.ricochetsLeft || 0
+    ) > 0
   ) {
     ctx.shadowBlur = 0;
     ctx.strokeStyle =
-      "rgba(255,125,153,.90)";
-    ctx.lineWidth = 3;
+      "rgba(94,226,215,.76)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, -radius - 9);
-    ctx.lineTo(0, radius + 9);
+    ctx.arc(
+      0,
+      0,
+      radius + 5,
+      -Math.PI * 0.64,
+      Math.PI * 0.64
+    );
     ctx.stroke();
   }
 
-  if (note.power) {
+  if (
+    note.launched &&
+    Number(
+      note.piercesLeft || 0
+    ) > 0
+  ) {
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = "rgba(255,255,255,.88)";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle =
+      "rgba(255,125,153,.84)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(0, 0, radius + 5, 0, Math.PI * 2);
+    ctx.moveTo(
+      0,
+      -radius - 6
+    );
+    ctx.lineTo(
+      0,
+      radius + 6
+    );
     ctx.stroke();
   }
 
@@ -7751,7 +7707,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.28 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.29 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
