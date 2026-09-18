@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "replace-me",
+  "title": "REPLACE ME",
+  "artist": "ARTIST",
+  "trackNumber": 2,
+  "description": "External audio song package template.",
+  "timing": {
+    "mode": "constant",
+    "bpm": 120,
+    "beats": 128,
+    "beatsPerBar": 4,
+    "stepsPerBeat": 4,
+    "countInBeats": 4,
+    "offsetMs": 0
+  },
+  "audio": {
+    "mode": "file",
+    "src": "../assets/audio/replace-me.ogg",
+    "gain": 0.9,
+    "stems": [
+      "mix"
+    ]
+  },
+  "defaultChart": "standard",
+  "charts": [
+    {
+      "id": "standard",
+      "name": "Standard",
+      "difficulty": "standard",
+      "mechanicsVersion": "aura-chart-v1",
+      "events": []
+    }
+  ]
+}
