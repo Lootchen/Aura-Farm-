@@ -1418,5 +1418,64 @@
         }
       ]
     }
-  ]
+  ],
+  "presentation": {
+    "accent": [
+      110,
+      215,
+      255
+    ],
+    "secondary": [
+      255,
+      196,
+      92
+    ],
+    "sections": {
+      "GERMINATE": {
+        "energy": 0.14,
+        "pulse": 0.18,
+        "bloom": 0.08
+      },
+      "SPROUT": {
+        "energy": 0.26,
+        "pulse": 0.3,
+        "bloom": 0.16
+      },
+      "CURRENT": {
+        "energy": 0.4,
+        "pulse": 0.46,
+        "bloom": 0.22
+      },
+      "RELAY": {
+        "energy": 0.52,
+        "pulse": 0.58,
+        "bloom": 0.3
+      },
+      "FRACTURE": {
+        "energy": 0.66,
+        "pulse": 0.72,
+        "bloom": 0.34
+      },
+      "OVERDRIVE": {
+        "energy": 0.74,
+        "pulse": 0.82,
+        "bloom": 0.44
+      },
+      "ASCENT": {
+        "energy": 0.86,
+        "pulse": 0.9,
+        "bloom": 0.58
+      },
+      "BLOOM": {
+        "energy": 0.92,
+        "pulse": 0.94,
+        "bloom": 0.74
+      },
+      "ROOT": {
+        "energy": 1,
+        "pulse": 1,
+        "bloom": 0.88
+      }
+    }
+  }
 }
