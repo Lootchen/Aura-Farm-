@@ -911,6 +911,15 @@ class RhythmClock {
       );
     }
 
+    if (frame.fill) {
+      this.scheduleDrumFill(
+        time,
+        frame.step,
+        0.022 +
+          actEnergy * 0.012
+      );
+    }
+
     // STEM 2 — BASS
     if (frame.bassMidi !== null) {
       this.scheduleBassStem(
@@ -1115,6 +1124,81 @@ class RhythmClock {
     oscillator.start(time);
     oscillator.stop(
       time + 0.14
+    );
+  }
+
+  scheduleDrumFill(
+    time,
+    step,
+    volume
+  ) {
+    const oscillator =
+      this.context.createOscillator();
+    const source =
+      this.context.createBufferSource();
+    const toneGain =
+      this.context.createGain();
+    const noiseGain =
+      this.context.createGain();
+    const filter =
+      this.context.createBiquadFilter();
+
+    oscillator.type =
+      "triangle";
+    oscillator.frequency.value =
+      step % 2 === 0
+        ? 172
+        : 224;
+
+    source.buffer =
+      this.noiseBuffer;
+    filter.type = "bandpass";
+    filter.frequency.value =
+      step % 2 === 0
+        ? 1200
+        : 2100;
+    filter.Q.value = 1.1;
+
+    toneGain.gain.setValueAtTime(
+      volume,
+      time
+    );
+    toneGain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.08
+    );
+
+    noiseGain.gain.setValueAtTime(
+      volume * 0.72,
+      time
+    );
+    noiseGain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      time + 0.055
+    );
+
+    oscillator.connect(
+      toneGain
+    );
+    source.connect(filter);
+    filter.connect(
+      noiseGain
+    );
+
+    toneGain.connect(
+      this.stemBus("drums")
+    );
+    noiseGain.connect(
+      this.stemBus("drums")
+    );
+
+    oscillator.start(time);
+    source.start(time);
+    oscillator.stop(
+      time + 0.09
+    );
+    source.stop(
+      time + 0.06
     );
   }
 
