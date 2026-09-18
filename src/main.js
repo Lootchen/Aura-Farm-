@@ -4273,6 +4273,77 @@ function drawSlideGem(
   ctx.restore();
 }
 
+function drawSlideFretPlate(
+  event,
+  beat,
+  alpha = 1,
+  anchor = false
+) {
+  const point =
+    slideRailPoint(
+      event,
+      beat
+    );
+  const tangent =
+    slideRailTangent(
+      event,
+      beat
+    );
+  const sideColor =
+    event.side === "left"
+      ? "110,215,255"
+      : "216,139,255";
+
+  ctx.save();
+  ctx.globalAlpha =
+    alpha;
+  ctx.translate(
+    point.x,
+    point.y
+  );
+  ctx.rotate(tangent);
+
+  ctx.shadowBlur =
+    anchor ? 14 : 7;
+  ctx.shadowColor =
+    `rgba(${sideColor},.72)`;
+  ctx.fillStyle =
+    "rgba(7,11,19,.90)";
+  ctx.strokeStyle =
+    `rgba(${sideColor},${anchor ? .88 : .62})`;
+  ctx.lineWidth =
+    anchor ? 3 : 2;
+
+  ctx.beginPath();
+  ctx.roundRect(
+    -4.5,
+    anchor ? -22 : -18,
+    9,
+    anchor ? 44 : 36,
+    4
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle =
+    `rgba(${sideColor},.82)`;
+
+  for (const y of [-11, 0, 11]) {
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      y,
+      anchor ? 2.4 : 1.8,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
 function drawSlideBeatGems(
   event,
   startBeat,
@@ -4294,18 +4365,32 @@ function drawSlideBeatGems(
           Math.abs(item.beat - beat) < 0.02
       );
 
-    drawSlideGem(
-      event,
-      beat,
-      {
-        radius: anchor ? 10 : 5.5,
-        alpha:
-          anchor
-            ? alpha
-            : alpha * 0.72,
+    const fullBeat =
+      Math.abs(
+        beat -
+        Math.round(beat)
+      ) < 0.02;
+
+    if (fullBeat) {
+      drawSlideFretPlate(
+        event,
+        beat,
         anchor
-      }
-    );
+          ? alpha
+          : alpha * 0.86,
+        anchor
+      );
+    } else {
+      drawSlideGem(
+        event,
+        beat,
+        {
+          radius: 4.5,
+          alpha:
+            alpha * 0.58
+        }
+      );
+    }
   }
 
   for (const anchor of event.anchors) {
@@ -5059,26 +5144,99 @@ function drawBackground() {
     4
   );
 
-  ctx.fillStyle =
-    `rgba(${ar},${ag},${ab},.58)`;
-  ctx.font =
-    "900 10px ui-monospace, SFMono-Regular, Menlo, monospace";
-  ctx.textAlign = "center";
-  ctx.fillText(
-    `ACT ${wave} · ${act.name}`,
-    DESIGN.width / 2,
-    107
-  );
+  // Glasshouse ribs: a recognisable playfield silhouette without adding lanes.
+  ctx.save();
+  ctx.lineCap = "round";
 
-  ctx.fillStyle =
-    "rgba(255,255,255,.25)";
-  ctx.font =
-    "700 8px system-ui, sans-serif";
-  ctx.fillText(
-    act.cue,
-    DESIGN.width / 2,
-    121
-  );
+  for (let rib = 0; rib < 4; rib += 1) {
+    const y =
+      150 + rib * 158;
+    const bow =
+      76 - rib * 8;
+
+    ctx.strokeStyle =
+      `rgba(${sr},${sg},${sb},${0.035 + intensity * 0.024})`;
+    ctx.lineWidth =
+      rib === 0 ? 2 : 1.2;
+    ctx.beginPath();
+    ctx.moveTo(49, y + 26);
+    ctx.bezierCurveTo(
+      130,
+      y - bow,
+      410,
+      y - bow,
+      491,
+      y + 26
+    );
+    ctx.stroke();
+  }
+
+  // Vertical glass seams and faint reflections.
+  for (const x of [118, 202, 338, 422]) {
+    const shimmer =
+      0.014 +
+      (
+        0.5 +
+        0.5 *
+          Math.sin(
+            clock.songTime * 0.42 +
+            x
+          )
+      ) *
+        0.018;
+
+    ctx.strokeStyle =
+      `rgba(255,255,255,${shimmer})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, 130);
+    ctx.lineTo(
+      x + (x < 270 ? -26 : 26),
+      770
+    );
+    ctx.stroke();
+  }
+
+  // Growth conduits: small bio-electric leaves appear as the machine wakes.
+  for (let index = 0; index < wave; index += 1) {
+    const y =
+      205 + index * 72;
+    const side =
+      index % 2 === 0
+        ? -1
+        : 1;
+    const x =
+      side < 0 ? 54 : 486;
+
+    ctx.strokeStyle =
+      `rgba(${ar},${ag},${ab},${0.13 + intensity * 0.10})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 12);
+    ctx.quadraticCurveTo(
+      x - side * 13,
+      y,
+      x - side * 7,
+      y - 15
+    );
+    ctx.stroke();
+
+    ctx.fillStyle =
+      `rgba(${ar},${ag},${ab},${0.18 + intensity * 0.14})`;
+    ctx.beginPath();
+    ctx.ellipse(
+      x - side * 10,
+      y - 7,
+      5,
+      2.4,
+      side * 0.55,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
 function drawBossCore(songTime) {
@@ -5969,26 +6127,105 @@ function drawTap(note) {
     ctx.rotate(Math.atan2(note.vy, note.vx) + Math.PI / 2);
   }
 
+  const noteColor =
+    note.side === "left"
+      ? "#6ed7ff"
+      : note.side === "right"
+        ? "#d88bff"
+        : "#dfeaff";
+
   if (note.power) {
     ctx.shadowBlur = 28;
     ctx.shadowColor = "#fff1a9";
     ctx.fillStyle = "#fff1a9";
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
   } else if (note.fragment) {
     ctx.shadowBlur = 12;
     ctx.shadowColor = "#ffffff";
     ctx.fillStyle = "#ffffff";
-  } else {
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  } else if (note.launched) {
+    ctx.shadowBlur = 10;
+    ctx.shadowColor =
+      noteColor;
     ctx.fillStyle =
-      note.side === "left"
-        ? "#6ed7ff"
-        : note.side === "right"
-          ? "#d88bff"
-          : "#dfeaff";
-  }
+      noteColor;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  } else {
+    // Incoming notes are seed capsules: dark shell, luminous rim, bright core.
+    ctx.shadowBlur = 12;
+    ctx.shadowColor =
+      noteColor;
+    ctx.fillStyle =
+      "#0c1520";
+    ctx.strokeStyle =
+      noteColor;
+    ctx.lineWidth = 3;
 
-  ctx.beginPath();
-  ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  ctx.fill();
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 0.86;
+    ctx.fillStyle =
+      noteColor;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius * 0.62,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.globalAlpha = 0.38;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.ellipse(
+      -radius * 0.18,
+      -radius * 0.24,
+      radius * 0.20,
+      radius * 0.10,
+      -0.5,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 
   if (
     note.chainGroup &&
@@ -6055,7 +6292,13 @@ function drawTap(note) {
 
   ctx.fillStyle = "#08101d";
   ctx.font =
-    `900 ${Math.round(note.power ? 31 : 25)}px system-ui, sans-serif`;
+    `900 ${Math.round(
+      note.power
+        ? 31
+        : note.launched
+          ? 25
+          : 20
+    )}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(
