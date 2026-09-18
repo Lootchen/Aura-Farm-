@@ -18,6 +18,10 @@ const leftButton = document.querySelector("#leftButton");
 const rightButton = document.querySelector("#rightButton");
 const scoreEl = document.querySelector("#score");
 const comboEl = document.querySelector("#combo");
+const comboMultEl = document.querySelector("#comboMult");
+const trackSectionEl = document.querySelector("#trackSection");
+const trackProgressEl = document.querySelector("#trackProgress");
+const topbarEl = document.querySelector(".topbar");
 const actEl = document.querySelector("#act");
 const lastHitEl = document.querySelector("#lastHit");
 const upgradePanel = document.querySelector("#upgradePanel");
@@ -4645,7 +4649,13 @@ function updateHud() {
 
   scoreEl.textContent = String(score);
   comboEl.textContent =
-    combo ? `${combo} · x${comboMultiplier(combo)}` : "0";
+    String(combo);
+  comboMultEl.textContent =
+    `×${comboMultiplier(combo)}`;
+  topbarEl.classList.toggle(
+    "is-flow",
+    combo >= 10
+  );
   actEl.textContent =
     `${Math.min(wave, runTargetActs())}/${runTargetActs()}`;
 
@@ -4653,6 +4663,57 @@ function updateHud() {
     lastDeltaMs === null
       ? lastJudgement
       : `${lastJudgement} ${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`;
+}
+
+let lastHudSection = "";
+let lastHudProgressBucket = -1;
+
+function updateLiveHud(songTime) {
+  if (!chartLoaded) return;
+
+  const beat =
+    songTime /
+    (60 / BPM);
+  const frame =
+    songFrameAtBeat(
+      Math.max(0, beat)
+    );
+  const section =
+    frame.section;
+  const progress =
+    clamp(
+      beat /
+        Math.max(
+          1,
+          LOOP_BEATS
+        ),
+      0,
+      1
+    );
+  const bucket =
+    Math.round(
+      progress * 200
+    );
+
+  if (
+    section !==
+    lastHudSection
+  ) {
+    lastHudSection =
+      section;
+    trackSectionEl.textContent =
+      section;
+  }
+
+  if (
+    bucket !==
+    lastHudProgressBucket
+  ) {
+    lastHudProgressBucket =
+      bucket;
+    trackProgressEl.style.width =
+      `${progress * 100}%`;
+  }
 }
 
 function drawBackground() {
@@ -6688,6 +6749,9 @@ async function beginAct() {
   };
 
   updateHud();
+  lastHudSection = "";
+  lastHudProgressBucket = -1;
+  trackProgressEl.style.width = "0%";
 
   const act =
     currentActMeta();
@@ -6971,6 +7035,7 @@ function frame(now) {
   resolveBossCollisions(songTime);
   resolveProjectileCollisions();
   updateEffects(dt);
+  updateLiveHud(songTime);
   render(songTime);
 
   if (clock.beat >= LOOP_BEATS) {
