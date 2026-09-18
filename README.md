@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.38.1
+# Aura Farm — Vertical Slice v0.39
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,41 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.39 — Visible Build / TRACE Pre-Catch
+
+v0.39 addresses two real-device usability problems.
+
+### Upgrades are now physically visible
+
+Active modules are no longer represented only by tiny icon/level pills.
+
+- the HUD build dock shows icon + short module name + level;
+- the dock can scroll horizontally on narrow phones instead of hiding active information;
+- four physical module sockets now live around AURI in the lower chassis;
+- active sockets use each module family's color, icon and level dots;
+- empty sockets remain visible so the four-slot build structure is obvious;
+- installing or levelling a module now announces its actual gameplay effect, not only `ACTIVO`.
+
+The gameplay-specific projectile effects remain unchanged, but the player can now always answer “what is installed?” without opening the manager.
+
+### TRACE pre-catch
+
+The previous visual timing was misleading: the incoming TRACE head reached the claw at the exact moment tracking began.
+
+v0.39 separates arrival from execution:
+
+- the TRACE head reaches the claw 0.65 s before its target beat;
+- it stays docked there and pulses gold with a `MANTÉN` cue;
+- the input window opens 0.86 s early and remains 0.50 s late;
+- initial pickup radius grows to 92 px;
+- rail tolerance grows to 36 px;
+- disconnect grace grows to 0.24 s;
+- required coverage drops to 58%;
+- grabbing before the beat displays `TRACE ARMADO · MANTÉN Y PREPÁRATE`;
+- actual rail scoring still starts on the authored target beat.
+
+This changes reaction time and presentation, not the musical timing of the TRACE phrase.
 
 ## v0.38.1 — Compact Shield visual
 
