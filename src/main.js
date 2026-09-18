@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.36";
+import { loadGameChart } from "./chart.js?v=0.36.1";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.36";
+} from "./music.js?v=0.36.1";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -19,6 +19,7 @@ const menuSettings = document.querySelector("#menuSettings");
 const menuBestScore = document.querySelector("#menuBestScore");
 const menuRuns = document.querySelector("#menuRuns");
 const menuAuriLine = document.querySelector("#menuAuriLine");
+const menuVersion = document.querySelector("#menuVersion");
 const rerunButton = document.querySelector("#rerunButton");
 const summaryDailyButton = document.querySelector("#summaryDailyButton");
 const summaryMenuButton = document.querySelector("#summaryMenuButton");
@@ -80,7 +81,13 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
+const GAME_VERSION = "0.36.1";
 const DESIGN = { width: 540, height: 960 };
+
+if (menuVersion) {
+  menuVersion.textContent =
+    `v${GAME_VERSION}`;
+}
 
 const WORLD_ASSETS = {
   far: new Image(),
@@ -88,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.36";
+  "./assets/world/glasshouse-far.svg?v=0.36.1";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.36";
+  "./assets/world/growth-bays.svg?v=0.36.1";
 
 function drawWorldAsset(
   image,
@@ -3112,7 +3119,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.36", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.36.1", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -9806,7 +9813,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.36 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v${GAME_VERSION} · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE directo · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
