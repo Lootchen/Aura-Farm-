@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.39";
+import { loadGameChart } from "./chart.js?v=0.39.1";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.39";
+} from "./music.js?v=0.39.1";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.39";
+const GAME_VERSION = "0.39.1";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.39";
+  "./assets/world/glasshouse-far.svg?v=0.39.1";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.39";
+  "./assets/world/growth-bays.svg?v=0.39.1";
 
 function drawWorldAsset(
   image,
@@ -3123,7 +3123,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.39", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.39.1", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -3484,7 +3484,9 @@ function spawnReady(songTime) {
           lastErrorPx: Infinity,
           playerVector: null,
           traceHeld: false,
-          tracePointerId: null
+          tracePointerId: null,
+          traceArmed: false,
+          traceArmedAt: null
         });
       }
 
@@ -5745,6 +5747,7 @@ function beginSlide(event, side, songTime) {
   if (event.started) return;
 
   event.started = true;
+  event.traceArmed = false;
   event.startDelta =
     songTime - event.targetTime;
   event.lastGoodTime = songTime;
@@ -5844,13 +5847,37 @@ function slideConnected(event, songTime) {
 function updateSlide(event, dt, songTime) {
   if (!event.started) {
     if (
-      songTime >
-      event.targetTime + SLIDE.startLate
+      event.traceArmed &&
+      event.traceHeld &&
+      songTime >=
+        event.targetTime
     ) {
-      failEvent(event, "SLIDE MISS");
+      event.playerVector =
+        slideVectorAtBeat(
+          event,
+          0
+        );
+      beginSlide(
+        event,
+        event.side,
+        songTime
+      );
     }
 
-    return;
+    if (!event.started) {
+      if (
+        songTime >
+        event.targetTime +
+          SLIDE.startLate
+      ) {
+        failEvent(
+          event,
+          "SLIDE MISS"
+        );
+      }
+
+      return;
+    }
   }
 
   if (
@@ -6736,7 +6763,9 @@ function drawIncomingSlideHead(
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     ctx.fillText(
-      "MANTÉN",
+      event.traceArmed
+        ? "ARMADO"
+        : "MANTÉN",
       0,
       -38
     );
@@ -6835,7 +6864,9 @@ function drawSlide(event, songTime) {
       event,
       head,
       {
-        docked
+        docked:
+          docked ||
+          event.traceArmed
       }
     );
     drawSlideCatcher(
@@ -13084,11 +13115,36 @@ function activeTraceSlideCandidate(songTime) {
 }
 
 function traceTargetPoint(event, songTime) {
-  return slideTipPoint(
-    event.side,
-    event.started
-      ? slideVectorAtTime(event, songTime)
-      : slideVectorAtBeat(event, 0)
+  if (event.started) {
+    return slideTipPoint(
+      event.side,
+      slideVectorAtTime(
+        event,
+        songTime
+      )
+    );
+  }
+
+  const visualArrivalTime =
+    event.targetTime -
+    SLIDE.catchLead;
+  const rawDistance =
+    event.path.length -
+    NOTE_SPEED *
+      (
+        visualArrivalTime -
+        songTime
+      );
+  const distance =
+    clamp(
+      rawDistance,
+      0,
+      event.path.length
+    );
+
+  return pointAtDistance(
+    event.path,
+    distance
   );
 }
 
@@ -13127,29 +13183,60 @@ canvas.addEventListener(
       pointerEvent.pointerId
     );
 
-    const startingNow =
-      !slide.started;
+    const beforeBeat =
+      !slide.started &&
+      songTime <
+        slide.targetTime;
 
     slide.traceHeld = true;
     slide.tracePointerId =
       pointerEvent.pointerId;
-    slide.playerVector =
-      startingNow
-        ? slideVectorAtBeat(
-            slide,
-            0
-          )
-        : pointToSlideVector(
-            slide.side,
-            point
-          );
 
-    if (startingNow) {
+    if (beforeBeat) {
+      slide.traceArmed = true;
+      slide.traceArmedAt =
+        songTime;
+      slide.playerVector =
+        slideVectorAtBeat(
+          slide,
+          0
+        );
+
+      showMessage(
+        "TRACE ARMADO · MANTÉN",
+        "#fff1a9",
+        520
+      );
+      setOperatorMood(
+        "slide",
+        0.48
+      );
+      setOperatorLean(
+        slide.side,
+        0.52
+      );
+      successTone(520);
+
+      if (navigator.vibrate) {
+        navigator.vibrate(4);
+      }
+    } else if (!slide.started) {
+      slide.playerVector =
+        pointToSlideVector(
+          slide.side,
+          point
+        );
       beginSlide(
         slide,
         slide.side,
         songTime
       );
+    } else {
+      slide.playerVector =
+        pointToSlideVector(
+          slide.side,
+          point
+        );
     }
 
     lastInputType = "trace";
@@ -13200,6 +13287,16 @@ function releaseTracePointer(pointerEvent) {
   pointerEvent.preventDefault();
   slide.traceHeld = false;
   slide.tracePointerId = null;
+
+  if (!slide.started) {
+    slide.traceArmed = false;
+    slide.traceArmedAt = null;
+    slide.playerVector =
+      slideVectorAtBeat(
+        slide,
+        0
+      );
+  }
 }
 
 canvas.addEventListener(
