@@ -32,7 +32,7 @@ function validateGameChart(chart) {
     throw new Error("El chart necesita un array de events.");
   }
 
-  const supported = new Set(["tap", "slide", "draw"]);
+  const supported = new Set(["tap", "slide"]);
 
   for (const [index, event] of chart.events.entries()) {
     if (!supported.has(event.type)) {
@@ -112,18 +112,5 @@ function validateGameChart(chart) {
       }
     }
 
-    if (event.type === "draw") {
-      if (!["u", "l", "z"].includes(event.symbol)) {
-        throw new Error(`Evento ${index}: símbolo de draw inválido.`);
-      }
-
-      if (!Number.isFinite(event.windowBeats) || event.windowBeats <= 0) {
-        throw new Error(`Evento ${index}: windowBeats de draw inválido.`);
-      }
-
-      if (event.beat + event.windowBeats > chart.loopBeats) {
-        throw new Error(`Evento ${index}: draw excede el loop.`);
-      }
-    }
   }
 }
