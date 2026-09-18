@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.33
+# Aura Farm — Vertical Slice v0.34
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,22 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.34 — Readability / Shield Telegraphing
+
+v0.34 turns Shield from a thin secondary ring into a clearly readable material state.
+
+- intact Shield Notes sit inside a pale translucent membrane/halo;
+- the normal Tap body remains unchanged inside the membrane;
+- the membrane keeps four structural breaks so the state is readable beyond hue alone;
+- on break, four short fragments expand outward while the original Tap visibly continues;
+- the Shield tutorial now teaches survival explicitly: the membrane breaks, the beat remains;
+- TRACE start pickup is slightly larger on mobile;
+- the active TRACE exposes a short look-ahead segment beyond the fingertip without changing judged geometry;
+- the chart validator now rejects every Slide mode except `trace`;
+- remaining joystick language has been removed from chart validation.
+
+The goal is to make the rule legible before impact: a player should recognise an armored beat in peripheral vision and understand why it survives a projectile.
 
 ## v0.33 — Shield Notes / Rhythm Relay
 
