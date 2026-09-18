@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
   <title>Aura Farm — Build the Beat</title>
-  <link rel="stylesheet" href="./styles.css?v=0.25">
+  <link rel="stylesheet" href="./styles.css?v=0.26">
 </head>
 <body>
   <main class="app" data-machine="forge">
@@ -17,6 +17,14 @@
       <div><span>ACTO</span><strong id="act">1/7</strong></div>
       <div><span>ÚLTIMO</span><strong id="lastHit">—</strong></div>
     </div>
+
+    <aside id="buildDock" class="build-dock" aria-label="Build actual">
+      <span class="build-dock-label">BUILD</span>
+      <div id="buildDockItems" class="build-dock-items">
+        <span class="build-empty">SIN MODS</span>
+      </div>
+      <span id="synergyBadge" class="synergy-badge" hidden></span>
+    </aside>
 
     <div class="controls" aria-label="Controles de pinzas">
       <button id="leftButton" class="touch-zone left-touch" type="button" aria-label="Pinza izquierda"></button>
@@ -60,6 +68,11 @@
       <div class="upgrade-shell">
         <span class="upgrade-kicker">AURA UPGRADE</span>
         <h2 id="upgradeTitle">ELIGE 1 MEJORA</h2>
+        <div class="current-build-block">
+          <span>TU BUILD</span>
+          <div id="currentBuildList" class="current-build-list"></div>
+          <strong id="currentSynergy" class="current-synergy"></strong>
+        </div>
         <div id="upgradeCards" class="upgrade-cards"></div>
         <small>La mejora altera el resto de la run y también su mezcla musical.</small>
       </div>
@@ -89,6 +102,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.25"></script>
+  <script type="module" src="./src/main.js?v=0.26"></script>
 </body>
 </html>
