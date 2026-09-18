@@ -1536,3 +1536,53 @@ button { font: inherit; }
     font-size: .37rem;
   }
 }
+
+
+/* v0.28 — physical module installation */
+.upgrade-panel.installing .upgrade-card {
+  pointer-events: none;
+}
+
+.upgrade-panel.installing .upgrade-card:not(.is-installing) {
+  opacity: .14;
+  transform: scale(.94);
+  filter: saturate(.45);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    filter 180ms ease;
+}
+
+.upgrade-card.is-installing {
+  z-index: 5;
+  animation:
+    moduleInstall 390ms
+    cubic-bezier(.22,.72,.18,1)
+    both !important;
+}
+
+@keyframes moduleInstall {
+  0% {
+    transform:
+      translateY(0)
+      scale(1);
+    opacity: 1;
+  }
+
+  52% {
+    transform:
+      translateY(22px)
+      scale(1.03);
+    opacity: 1;
+    box-shadow:
+      0 0 35px
+      rgba(var(--accent),.24);
+  }
+
+  100% {
+    transform:
+      translateY(118px)
+      scale(.64);
+    opacity: 0;
+  }
+}
