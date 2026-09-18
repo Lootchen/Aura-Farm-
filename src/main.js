@@ -4121,18 +4121,23 @@ function createExplosion(
       if (distance > shockRadius) continue;
 
       if (
-        noteShieldIntact(
-          target
-        )
+        target.shield
       ) {
-        breakNoteShield(
-          target,
-          null,
-          {
-            source: "SHOCK",
-            chain: false
-          }
-        );
+        if (
+          noteShieldIntact(
+            target
+          )
+        ) {
+          breakNoteShield(
+            target,
+            null,
+            {
+              source: "SHOCK",
+              chain: false
+            }
+          );
+        }
+
         continue;
       }
 
@@ -4356,6 +4361,14 @@ function resolveProjectileCollisions() {
         projectile.key < other.key
           ? `${projectile.key}|${other.key}`
           : `${other.key}|${projectile.key}`;
+
+      if (
+        !other.launched &&
+        other.shield &&
+        !other.shieldIntact
+      ) {
+        continue;
+      }
 
       if (
         projectile.shieldPassKeys?.has(
