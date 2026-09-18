@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.37";
+import { loadGameChart } from "./chart.js?v=0.38";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.37";
+} from "./music.js?v=0.38";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.37";
+const GAME_VERSION = "0.38";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.37";
+  "./assets/world/glasshouse-far.svg?v=0.38";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.37";
+  "./assets/world/growth-bays.svg?v=0.38";
 
 function drawWorldAsset(
   image,
@@ -135,6 +135,9 @@ const PATH_SAMPLES = 160;
 const POST_HIT_SPEED = 455;
 
 const TAP_MISS_WINDOW = 0.160;
+const SHIELD_LATE_BREAK_THRESHOLD = 0.42;
+const SHIELD_BREAK_GRACE = 0.11;
+const SHIELD_CATCH_ASSIST = 12;
 
 const JUDGEMENTS = {
   perfect: { label: "PERFECT", points: 300, color: "#ffe47a" }
@@ -3119,7 +3122,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.37", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.38", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -3451,7 +3454,13 @@ function spawnReady(songTime) {
           shieldIntact:
             Boolean(
               event.shield
-            )
+            ),
+          shieldBreakAt:
+            -Infinity,
+          shieldBreakSongTime:
+            null,
+          shieldLateGrace:
+            false
         });
       }
 
@@ -4054,9 +4063,19 @@ function resolveFlipperCollisions(songTime) {
         segment.tip
       );
 
+      const shieldAssist =
+        note.shieldLateGrace &&
+        songTime <=
+          note.targetTime +
+          TAP_MISS_WINDOW +
+          SHIELD_BREAK_GRACE
+          ? SHIELD_CATCH_ASSIST
+          : 0;
+
       const collisionDistance =
         noteRadius(note) +
-        FLIPPER.width * 0.5;
+        FLIPPER.width * 0.5 +
+        shieldAssist;
 
       if (
         distance <= collisionDistance &&
@@ -4254,6 +4273,50 @@ function noteShieldIntact(note) {
   );
 }
 
+function drawShieldCellPath(
+  context,
+  x,
+  y,
+  radius,
+  rotation = 0
+) {
+  context.beginPath();
+
+  for (
+    let index = 0;
+    index < 6;
+    index += 1
+  ) {
+    const angle =
+      rotation -
+      Math.PI / 2 +
+      index *
+        Math.PI / 3;
+    const px =
+      x +
+      Math.cos(angle) *
+        radius;
+    const py =
+      y +
+      Math.sin(angle) *
+        radius;
+
+    if (index === 0) {
+      context.moveTo(
+        px,
+        py
+      );
+    } else {
+      context.lineTo(
+        px,
+        py
+      );
+    }
+  }
+
+  context.closePath();
+}
+
 function drawShieldMembrane(
   context,
   x,
@@ -4265,100 +4328,116 @@ function drawShieldMembrane(
   } = {}
 ) {
   const outer =
-    radius + 16 + pulse * 3.5;
+    radius + 20 + pulse * 3;
+  const rotation =
+    performance.now() /
+    3400;
   const halo =
     context.createRadialGradient(
       x,
       y,
-      radius * 0.30,
+      radius * 0.15,
       x,
       y,
-      outer
+      outer * 1.06
     );
 
   halo.addColorStop(
     0,
-    `rgba(205,247,255,${0.12 * alpha})`
+    `rgba(210,249,255,${0.18 * alpha})`
   );
   halo.addColorStop(
-    0.48,
-    `rgba(174,235,255,${0.19 * alpha})`
+    0.52,
+    `rgba(111,215,255,${0.18 * alpha})`
   );
   halo.addColorStop(
-    0.78,
-    `rgba(190,242,255,${0.27 * alpha})`
+    0.83,
+    `rgba(192,236,255,${0.32 * alpha})`
   );
   halo.addColorStop(
     1,
-    "rgba(190,242,255,0)"
+    "rgba(192,236,255,0)"
   );
 
   context.save();
+
   context.fillStyle = halo;
   context.beginPath();
   context.arc(
     x,
     y,
-    outer,
+    outer * 1.08,
     0,
     Math.PI * 2
   );
   context.fill();
 
   context.shadowBlur =
-    8 + pulse * 6;
+    12 + pulse * 8;
   context.shadowColor =
-    "rgba(205,247,255,.72)";
+    "rgba(184,241,255,.86)";
+  context.fillStyle =
+    `rgba(89,194,230,${0.105 * alpha})`;
   context.strokeStyle =
-    `rgba(225,250,255,${0.78 * alpha})`;
+    `rgba(221,250,255,${0.92 * alpha})`;
   context.lineWidth =
-    3.8 + pulse * 0.8;
-  context.lineCap = "round";
+    3.7 + pulse * 0.8;
+  context.lineJoin = "round";
 
-  for (
-    let segment = 0;
-    segment < 4;
-    segment += 1
-  ) {
-    const start =
-      -Math.PI / 2 +
-      segment * Math.PI / 2 +
-      0.15;
-    const end =
-      start +
-      Math.PI / 2 -
-      0.30;
-
-    context.beginPath();
-    context.arc(
-      x,
-      y,
-      outer - 3,
-      start,
-      end
-    );
-    context.stroke();
-  }
+  drawShieldCellPath(
+    context,
+    x,
+    y,
+    outer - 3,
+    rotation
+  );
+  context.fill();
+  context.stroke();
 
   context.shadowBlur = 0;
+  context.strokeStyle =
+    `rgba(151,220,246,${0.46 * alpha})`;
+  context.lineWidth = 1.5;
 
-  for (const angle of [
-    0,
-    Math.PI / 2,
-    Math.PI,
-    Math.PI * 1.5
-  ]) {
+  drawShieldCellPath(
+    context,
+    x,
+    y,
+    radius + 9,
+    -rotation * 0.65
+  );
+  context.stroke();
+
+  for (
+    let index = 0;
+    index < 6;
+    index += 1
+  ) {
+    const angle =
+      rotation -
+      Math.PI / 2 +
+      index *
+        Math.PI / 3;
+    const nodeRadius =
+      outer - 3;
+    const nx =
+      x +
+      Math.cos(angle) *
+        nodeRadius;
+    const ny =
+      y +
+      Math.sin(angle) *
+        nodeRadius;
+
     context.fillStyle =
-      `rgba(235,253,255,${0.82 * alpha})`;
+      index % 2 === 0
+        ? `rgba(230,253,255,${0.94 * alpha})`
+        : `rgba(211,139,255,${0.72 * alpha})`;
     context.beginPath();
     context.arc(
-      x +
-        Math.cos(angle) *
-          (outer - 3),
-      y +
-        Math.sin(angle) *
-          (outer - 3),
-      2.4 + pulse * 0.5,
+      nx,
+      ny,
+      2.8 + pulse * 0.6,
       0,
       Math.PI * 2
     );
@@ -4381,7 +4460,7 @@ function drawShieldBreakEcho(
 
   const age =
     performance.now() - breakAt;
-  const duration = 260;
+  const duration = 760;
 
   if (age < 0 || age > duration) {
     return;
@@ -4389,41 +4468,118 @@ function drawShieldBreakEcho(
 
   const t =
     clamp(age / duration, 0, 1);
-  const alpha =
-    (1 - t) * (1 - t);
-  const ringRadius =
-    radius + 10 + t * 17;
+  const burstT =
+    clamp(t / 0.48, 0, 1);
+  const burstAlpha =
+    (1 - burstT) *
+    (1 - burstT);
+  const exposedAlpha =
+    clamp(
+      1 -
+      Math.max(
+        0,
+        (t - 0.22) / 0.78
+      ),
+      0,
+      1
+    );
+  const rotation =
+    breakAt / 900;
 
   context.save();
+
   context.strokeStyle =
-    `rgba(224,246,255,${0.78 * alpha})`;
+    `rgba(232,253,255,${0.92 * burstAlpha})`;
   context.lineWidth =
     Math.max(
-      0.8,
-      3.5 * (1 - t)
+      1,
+      4.4 *
+        (1 - burstT)
     );
   context.lineCap = "round";
 
   for (
-    let segment = 0;
-    segment < 4;
-    segment += 1
+    let index = 0;
+    index < 6;
+    index += 1
   ) {
-    const center =
-      -Math.PI / 2 +
-      segment * Math.PI / 2;
-    const spread =
-      0.35 - t * 0.09;
+    const angle =
+      rotation +
+      index *
+        Math.PI / 3;
+    const startRadius =
+      radius + 15 +
+      burstT * 7;
+    const endRadius =
+      radius + 28 +
+      burstT * 20;
 
+    context.beginPath();
+    context.moveTo(
+      x +
+        Math.cos(angle) *
+          startRadius,
+      y +
+        Math.sin(angle) *
+          startRadius
+    );
+    context.lineTo(
+      x +
+        Math.cos(angle) *
+          endRadius,
+      y +
+        Math.sin(angle) *
+          endRadius
+    );
+    context.stroke();
+  }
+
+  context.shadowBlur =
+    10 *
+    exposedAlpha;
+  context.shadowColor =
+    "rgba(255,241,169,.68)";
+  context.strokeStyle =
+    `rgba(255,241,169,${0.70 * exposedAlpha})`;
+  context.lineWidth = 2.8;
+
+  for (const side of [-1, 1]) {
     context.beginPath();
     context.arc(
       x,
       y,
-      ringRadius,
-      center - spread,
-      center + spread
+      radius + 8,
+      side < 0
+        ? Math.PI * 0.62
+        : -Math.PI * 0.38,
+      side < 0
+        ? Math.PI * 1.10
+        : Math.PI * 0.10
     );
     context.stroke();
+  }
+
+  context.shadowBlur = 0;
+  context.fillStyle =
+    `rgba(255,249,218,${0.82 * exposedAlpha})`;
+
+  for (const angle of [
+    -Math.PI * 0.42,
+    Math.PI * 0.58
+  ]) {
+    context.beginPath();
+    context.arc(
+      x +
+        Math.cos(angle) *
+          (radius + 8),
+      y +
+        Math.sin(angle) *
+          (radius + 8),
+      2.4,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
   }
 
   context.restore();
@@ -4444,6 +4600,18 @@ function breakNoteShield(
   note.shieldIntact = false;
   note.shieldBreakAt =
     performance.now();
+  note.shieldBreakSongTime =
+    clock.songTime;
+
+  const timeToBeat =
+    note.targetTime -
+    clock.songTime;
+
+  note.shieldLateGrace =
+    timeToBeat <=
+      SHIELD_LATE_BREAK_THRESHOLD &&
+    timeToBeat >=
+      -TAP_MISS_WINDOW;
 
   if (chain) {
     chainCount += 1;
@@ -4471,14 +4639,18 @@ function breakNoteShield(
 
   showMessage(
     chain
-      ? "CHAIN · BREAK"
+      ? "CHAIN · ESCUDO ROTO"
       : source === "SHOCK"
-        ? "SHOCK · BREAK"
-        : "ARMOR BREAK",
+        ? "SHOCK · ESCUDO"
+        : note.shieldLateGrace
+          ? "ESCUDO ROTO · ¡AHORA!"
+          : "ESCUDO ROTO",
     chain
       ? "#ffe985"
       : "#bfeaff",
-    360
+    note.shieldLateGrace
+      ? 520
+      : 390
   );
 
   createImpactFlash(
@@ -4487,21 +4659,15 @@ function breakNoteShield(
     JUDGEMENTS.perfect
   );
 
-  createExplosion(
-    note.x,
-    note.y,
-    0.72,
-    {
-      emitFragments: false,
-      side:
-        projectile?.side ??
-        note.side
-    }
-  );
+  impactVeil =
+    Math.max(
+      impactVeil,
+      chain ? 0.10 : 0.065
+    );
 
   playTone(
-    chain ? 760 : 620,
-    0.045,
+    chain ? 820 : 690,
+    0.055,
     0.045,
     "triangle"
   );
@@ -4523,17 +4689,17 @@ function breakNoteShield(
   );
 
   playTone(
-    chain ? 1480 : 1240,
-    0.026,
-    chain ? 0.024 : 0.018,
+    chain ? 1760 : 1520,
+    0.035,
+    chain ? 0.028 : 0.022,
     "sine"
   );
 
   if (navigator.vibrate) {
     navigator.vibrate(
       chain
-        ? [6, 12, 7]
-        : 6
+        ? [7, 14, 9]
+        : [5, 12, 7]
     );
   }
 
@@ -5441,7 +5607,19 @@ function updateTap(note, dt, songTime) {
   note.x = point.x;
   note.y = point.y;
 
-  if (songTime - note.targetTime > TAP_MISS_WINDOW) {
+  const missWindow =
+    TAP_MISS_WINDOW +
+    (
+      note.shieldLateGrace
+        ? SHIELD_BREAK_GRACE
+        : 0
+    );
+
+  if (
+    songTime -
+      note.targetTime >
+    missWindow
+  ) {
     failEvent(note, "MISS");
   }
 }
@@ -8455,10 +8633,22 @@ function drawAuriFieldGuide(songTime) {
       "SLIDE: SIGUE LOS FRETS · EL RIEL ES LA REGLA";
   } else if (
     beat >= 12.7 &&
+    beat < 14.5
+  ) {
+    cue =
+      "ESCUDO = BEAT ENCAPSULADO";
+  } else if (
+    beat >= 14.5 &&
+    beat < 16.4
+  ) {
+    cue =
+      "TU BOLA ROMPE LA CÁPSULA · NO EL BEAT";
+  } else if (
+    beat >= 16.4 &&
     beat < 19.6
   ) {
     cue =
-      "MEMBRANA: TU BOLA LA ROMPE · EL BEAT SIGUE SIENDO TUYO";
+      "EXPUESTO = AHORA GOLPÉALO CON LA PINZA";
 
     if (
       !profile.shieldTutorialSeen
@@ -8624,7 +8814,7 @@ function drawShieldGuide(songTime) {
   ctx.font =
     "800 8px system-ui, sans-serif";
   ctx.fillText(
-    "ROMPE LA MEMBRANA · LA NOTA SOBREVIVE · GOLPEA EL BEAT",
+    "CÁPSULA = 1 IMPACTO · ROTA = EL BEAT SIGUE",
     x - width / 2 + 58,
     y
   );
@@ -9029,6 +9219,40 @@ function drawTap(note) {
       Math.PI * 2
     );
     ctx.fill();
+  }
+
+  if (
+    !profile.tutorialSeen &&
+    note.shieldIntact &&
+    note.beat === 14
+  ) {
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle =
+      "rgba(228,251,255,.92)";
+    ctx.font =
+      "900 10px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(
+      "ESCUDO",
+      0,
+      -radius - 30
+    );
+    ctx.strokeStyle =
+      "rgba(200,244,255,.62)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(
+      0,
+      -radius - 25
+    );
+    ctx.lineTo(
+      0,
+      -radius - 15
+    );
+    ctx.stroke();
+    ctx.restore();
   }
 
   if (
