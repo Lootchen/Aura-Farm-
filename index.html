@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
-  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.42" type="image/svg+xml">
+  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.43" type="image/svg+xml">
   <title>Aura Farm — Build the Beat</title>
-  <link rel="stylesheet" href="./styles.css?v=0.42">
+  <link rel="stylesheet" href="./styles.css?v=0.43">
 </head>
 <body>
   <main class="app" data-machine="forge">
@@ -55,11 +55,11 @@
       <div class="menu-shell">
         <header class="menu-top">
           <div class="menu-brand">
-            <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.42" alt=""></div>
+            <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.43" alt=""></div>
             <span><strong>AURA FARM</strong><small>BUILD THE BEAT</small></span>
           </div>
           <div class="menu-top-actions">
-            <span id="menuVersion" class="menu-version" aria-label="Versión del juego">v0.42</span>
+            <span id="menuVersion" class="menu-version" aria-label="Versión del juego">v0.43</span>
             <button id="menuSettingsButton" class="menu-icon-button" type="button" aria-label="Abrir ajustes">⚙</button>
           </div>
         </header>
@@ -70,7 +70,7 @@
             <i class="menu-reactor-halo"></i>
             <i class="menu-reactor-ring ring-a"></i>
             <i class="menu-reactor-ring ring-b"></i>
-            <span class="menu-reactor-core"><img src="./assets/ui/aura-mark.svg?v=0.42" alt=""></span>
+            <span class="menu-reactor-core"><img src="./assets/ui/aura-mark.svg?v=0.43" alt=""></span>
             <b class="menu-reactor-petal petal-a"></b>
             <b class="menu-reactor-petal petal-b"></b>
             <b class="menu-reactor-petal petal-c"></b>
@@ -84,9 +84,9 @@
           </div>
 
           <div class="menu-title">
-            <span class="eyebrow">TRACK 01 · 110 BPM</span>
-            <h1>GLASSHOUSE<br>CIRCUIT</h1>
-            <p>Golpea el beat. Convierte notas en proyectiles. Construye una máquina distinta en cada run.</p>
+            <span id="menuTrackMeta" class="eyebrow">TRACK 01 · 110 BPM</span>
+            <h1 id="menuTrackTitle">GLASSHOUSE CIRCUIT</h1>
+            <p id="menuTrackDescription">Golpea el beat. Convierte notas en proyectiles. Construye una máquina distinta en cada run.</p>
           </div>
         </section>
 
@@ -247,7 +247,7 @@
         <h2 id="summaryTitle">MÁQUINA ESTABLE</h2>
         <div class="summary-meta">
           <span id="summaryMachine">FORGE</span>
-          <span>TRACK 01 · GLASSHOUSE CIRCUIT</span>
+          <span id="summaryTrack">TRACK 01 · GLASSHOUSE CIRCUIT</span>
         </div>
         <div id="summaryRankCard" class="summary-rank" data-rank="C">
           <span>FLOW RANK</span>
@@ -275,6 +275,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.42"></script>
+  <script type="module" src="./src/main.js?v=0.43"></script>
 </body>
 </html>
