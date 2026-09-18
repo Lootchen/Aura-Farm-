@@ -1,9 +1,9 @@
-import { loadGameChart } from "./chart.js?v=0.39.1";
+import { loadGameChart } from "./chart.js?v=0.40";
 import {
   AURA_SONG,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.39.1";
+} from "./music.js?v=0.40";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -81,7 +81,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.39.1";
+const GAME_VERSION = "0.40";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -95,9 +95,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.39.1";
+  "./assets/world/glasshouse-far.svg?v=0.40";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.39.1";
+  "./assets/world/growth-bays.svg?v=0.40";
 
 function drawWorldAsset(
   image,
@@ -3123,7 +3123,7 @@ function musicalRouteForEvent(event) {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.39.1", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.40", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -5374,15 +5374,40 @@ function resolveBumperCollisions() {
 
 function drawBumpers() {
   const bumpers = activeBumpers();
+  const palette =
+    machinePalette();
+  const time =
+    performance.now() /
+    1000;
 
-  for (const bumper of bumpers) {
+  for (
+    let bumperIndex = 0;
+    bumperIndex < bumpers.length;
+    bumperIndex += 1
+  ) {
+    const bumper =
+      bumpers[bumperIndex];
+    const pulse =
+      0.5 +
+      0.5 *
+        Math.sin(
+          time * 3.2 +
+          bumperIndex * 1.7
+        );
+
     ctx.save();
 
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = "rgba(255,241,169,.38)";
-    ctx.fillStyle = "#1b2634";
-    ctx.strokeStyle = "#fff1a9";
-    ctx.lineWidth = 5;
+    // Dark ceramic body.
+    ctx.shadowBlur =
+      12 + pulse * 8;
+    ctx.shadowColor =
+      "rgba(255,241,169,.34)";
+    ctx.fillStyle =
+      "#111b27";
+    ctx.strokeStyle =
+      "#fff1a9";
+    ctx.lineWidth =
+      3.5 + pulse * 0.7;
 
     ctx.beginPath();
     ctx.arc(
@@ -5396,43 +5421,117 @@ function drawBumpers() {
     ctx.stroke();
 
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = "rgba(255,255,255,.42)";
-    ctx.lineWidth = 3;
+
+    // Six living petals make the bumper read as part of the reactor ecosystem.
+    for (
+      let petal = 0;
+      petal < 6;
+      petal += 1
+    ) {
+      const angle =
+        petal *
+          Math.PI /
+          3 +
+        time * 0.13;
+      const px =
+        bumper.x +
+        Math.cos(angle) *
+          (
+            bumper.radius +
+            7
+          );
+      const py =
+        bumper.y +
+        Math.sin(angle) *
+          (
+            bumper.radius +
+            7
+          );
+
+      ctx.fillStyle =
+        petal % 2 === 0
+          ? `rgba(${palette.accent.join(",")},.20)`
+          : `rgba(${palette.secondary.join(",")},.18)`;
+      ctx.beginPath();
+      ctx.ellipse(
+        px,
+        py,
+        5.5,
+        2.2,
+        angle,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    // Inner iris / seed core.
+    const iris =
+      ctx.createRadialGradient(
+        bumper.x,
+        bumper.y,
+        2,
+        bumper.x,
+        bumper.y,
+        bumper.radius * 0.55
+      );
+    iris.addColorStop(
+      0,
+      "rgba(255,249,210,.94)"
+    );
+    iris.addColorStop(
+      0.35,
+      `rgba(${palette.accent.join(",")},.38)`
+    );
+    iris.addColorStop(
+      1,
+      "rgba(7,12,20,0)"
+    );
+    ctx.fillStyle = iris;
     ctx.beginPath();
     ctx.arc(
-      bumper.x - bumper.radius * 0.18,
-      bumper.y - bumper.radius * 0.18,
-      bumper.radius * 0.52,
+      bumper.x,
+      bumper.y,
+      bumper.radius * 0.62,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.strokeStyle =
+      "rgba(255,255,255,.34)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(
+      bumper.x -
+        bumper.radius * 0.14,
+      bumper.y -
+        bumper.radius * 0.14,
+      bumper.radius * 0.44,
       Math.PI * 1.05,
-      Math.PI * 1.65
+      Math.PI * 1.64
     );
     ctx.stroke();
 
     if (runMods.bumperSplit > 0) {
-      const pulse =
-        0.5 +
-        0.5 *
-          Math.sin(
-            performance.now() /
-            150 +
-            bumper.x
-          );
-
       ctx.strokeStyle =
-        `rgba(82,224,207,${0.48 + pulse * 0.30})`;
+        `rgba(82,224,207,${0.52 + pulse * 0.32})`;
       ctx.lineWidth = 2.5;
 
-      for (const sign of [-1, 1]) {
+      for (
+        const sign of [-1, 1]
+      ) {
         ctx.beginPath();
         ctx.arc(
           bumper.x +
             sign *
               (
                 bumper.radius +
-                7
+                10
               ),
           bumper.y,
-          4 + pulse * 1.5,
+          4.5 +
+            pulse * 1.8,
           0,
           Math.PI * 2
         );
@@ -5440,9 +5539,9 @@ function drawBumpers() {
       }
 
       ctx.fillStyle =
-        "rgba(82,224,207,.72)";
+        "rgba(82,224,207,.82)";
       ctx.font =
-        "900 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+        "900 9px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(
@@ -5450,7 +5549,7 @@ function drawBumpers() {
         bumper.x,
         bumper.y +
           bumper.radius +
-          13
+          16
       );
     }
 
@@ -6337,6 +6436,50 @@ function drawSlideRailBody(
   ctx.lineWidth = 2;
   traceSlideRail(points);
   ctx.stroke();
+
+  const nodeStep =
+    Math.max(
+      4,
+      Math.floor(
+        points.length / 6
+      )
+    );
+  const flow =
+    Math.floor(
+      performance.now() /
+      130
+    );
+
+  for (
+    let index = 0;
+    index < points.length;
+    index += nodeStep
+  ) {
+    const point =
+      points[
+        (
+          index +
+          flow
+        ) %
+        points.length
+      ];
+
+    ctx.fillStyle =
+      connected
+        ? "rgba(255,241,169,.82)"
+        : `rgba(${sideColor},.48)`;
+    ctx.beginPath();
+    ctx.arc(
+      point.x,
+      point.y,
+      connected
+        ? 2.5
+        : 1.7,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
 
   ctx.restore();
 }
@@ -7896,6 +8039,162 @@ function moduleFamilyColor(
   }[family] ?? "#dfeaff";
 }
 
+function drawBuildConduits(
+  songTime
+) {
+  if (activeModuleIds.length === 0) {
+    return;
+  }
+
+  const sources = [
+    { x: 188, y: 894 },
+    { x: 224, y: 910 },
+    { x: 316, y: 910 },
+    { x: 352, y: 894 }
+  ];
+  const targets = [
+    { x: 38, y: 632 },
+    { x: 58, y: 514 },
+    { x: 482, y: 514 },
+    { x: 502, y: 632 }
+  ];
+  const pulse =
+    0.5 +
+    0.5 *
+      Math.sin(
+        songTime *
+        BPM /
+        60 *
+        Math.PI *
+        2
+      );
+
+  ctx.save();
+  ctx.lineCap = "round";
+
+  activeModuleIds.forEach(
+    (id, index) => {
+      const upgrade =
+        upgradeById(id);
+
+      if (!upgrade) {
+        return;
+      }
+
+      const source =
+        sources[index];
+      const target =
+        targets[index];
+      const color =
+        moduleFamilyColor(
+          upgrade.family
+        );
+      const level =
+        moduleLevel(id);
+
+      ctx.strokeStyle =
+        color;
+      ctx.globalAlpha =
+        0.055 +
+        level * 0.018;
+      ctx.lineWidth =
+        1.4 + level * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(
+        source.x,
+        source.y
+      );
+      ctx.bezierCurveTo(
+        lerp(
+          source.x,
+          target.x,
+          0.28
+        ),
+        820,
+        lerp(
+          source.x,
+          target.x,
+          0.72
+        ),
+        target.y + 82,
+        target.x,
+        target.y
+      );
+      ctx.stroke();
+
+      const travel =
+        (
+          songTime *
+            (0.22 +
+              level * 0.035) +
+          index * 0.21
+        ) % 1;
+      const u =
+        1 - travel;
+      const omt =
+        1 - u;
+      const c1 = {
+        x: lerp(
+          source.x,
+          target.x,
+          0.28
+        ),
+        y: 820
+      };
+      const c2 = {
+        x: lerp(
+          source.x,
+          target.x,
+          0.72
+        ),
+        y: target.y + 82
+      };
+      const px =
+        omt * omt * omt *
+          source.x +
+        3 * omt * omt * u *
+          c1.x +
+        3 * omt * u * u *
+          c2.x +
+        u * u * u *
+          target.x;
+      const py =
+        omt * omt * omt *
+          source.y +
+        3 * omt * omt * u *
+          c1.y +
+        3 * omt * u * u *
+          c2.y +
+        u * u * u *
+          target.y;
+
+      ctx.globalAlpha =
+        0.42 +
+        pulse * 0.24;
+      ctx.shadowBlur =
+        8 +
+        level * 3;
+      ctx.shadowColor =
+        color;
+      ctx.fillStyle =
+        color;
+      ctx.beginPath();
+      ctx.arc(
+        px,
+        py,
+        1.8 +
+          level * 0.45,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  );
+
+  ctx.restore();
+}
+
 function drawInstalledModuleRack(
   songTime
 ) {
@@ -9075,7 +9374,62 @@ function drawTrail(note) {
       note.y - uy * (note.power ? 48 : 30)
     );
     ctx.stroke();
+
+    const nx = -uy;
+    const ny = ux;
+    const filament =
+      note.power
+        ? "rgba(255,249,218,.68)"
+        : pierceReady
+          ? "rgba(255,174,190,.58)"
+          : ricochetReady
+            ? "rgba(164,255,238,.54)"
+            : "rgba(230,246,255,.36)";
+
     ctx.shadowBlur = 0;
+    ctx.strokeStyle =
+      filament;
+    ctx.lineWidth = 1.2;
+
+    for (
+      const sign of [-1, 1]
+    ) {
+      const offset =
+        sign *
+        (
+          note.power
+            ? 4.2
+            : 2.8
+        );
+
+      ctx.beginPath();
+      ctx.moveTo(
+        note.x +
+          nx * offset,
+        note.y +
+          ny * offset
+      );
+      ctx.lineTo(
+        note.x -
+          ux *
+            (
+              note.power
+                ? 34
+                : 22
+            ) +
+          nx * offset * 0.35,
+        note.y -
+          uy *
+            (
+              note.power
+                ? 34
+                : 22
+            ) +
+          ny * offset * 0.35
+      );
+      ctx.stroke();
+    }
+
     ctx.shadowColor = "transparent";
     return;
   }
@@ -9398,6 +9752,40 @@ function drawTap(note) {
       Math.PI * 2
     );
     ctx.fill();
+  }
+
+  if (
+    !note.launched &&
+    !note.power &&
+    !note.fragment
+  ) {
+    ctx.save();
+    ctx.strokeStyle =
+      noteColor;
+    ctx.globalAlpha =
+      0.30 +
+      musicEnergy * 0.18;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+
+    for (const sign of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(
+        sign * radius * 0.18,
+        -radius * 0.18,
+        radius * 0.42,
+        sign < 0
+          ? -Math.PI * 0.14
+          : -Math.PI * 0.86,
+        sign < 0
+          ? Math.PI * 0.24
+          : -Math.PI * 1.24,
+        sign > 0
+      );
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
   if (
@@ -9790,6 +10178,42 @@ function drawControlButton(side, songTime) {
   );
   ctx.fill();
 
+  ctx.strokeStyle =
+    `rgba(${sideRgb.join(",")},.34)`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(
+    cap.x,
+    cap.y,
+    15,
+    -Math.PI * 0.78,
+    Math.PI * 0.18
+  );
+  ctx.stroke();
+
+  ctx.fillStyle =
+    sideColor;
+  ctx.globalAlpha =
+    0.22 +
+    0.20 *
+      (
+        0.5 +
+        0.5 *
+          Math.sin(
+            songTime * 4.2
+          )
+      );
+  ctx.beginPath();
+  ctx.arc(
+    cap.x + 8,
+    cap.y + 6,
+    2.4,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
   ctx.restore();
 }
 
@@ -9890,6 +10314,63 @@ function drawFlipper(side, songTime) {
     segment.tip.y
   );
   ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  const veinPulse =
+    0.5 +
+    0.5 *
+      Math.sin(
+        songTime *
+        BPM /
+        60 *
+        Math.PI *
+        2
+      );
+
+  ctx.strokeStyle =
+    sideColor;
+  ctx.globalAlpha =
+    hot
+      ? 0.74
+      : 0.24;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(
+    segment.pivot.x,
+    segment.pivot.y
+  );
+  ctx.lineTo(
+    segment.tip.x,
+    segment.tip.y
+  );
+  ctx.stroke();
+
+  for (const t of [0.38, 0.70]) {
+    ctx.fillStyle =
+      sideColor;
+    ctx.globalAlpha =
+      0.34 +
+      veinPulse * 0.34;
+    ctx.beginPath();
+    ctx.arc(
+      lerp(
+        segment.pivot.x,
+        segment.tip.x,
+        t
+      ),
+      lerp(
+        segment.pivot.y,
+        segment.tip.y,
+        t
+      ),
+      2.2 +
+        veinPulse * 0.7,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
   ctx.globalAlpha = 1;
 
   // Pivot.
@@ -10314,6 +10795,7 @@ function render(songTime) {
   }
 
   drawBackground();
+  drawBuildConduits(songTime);
   drawBossCore(songTime);
   drawBumpers();
   drawOperatorSocket(songTime);
