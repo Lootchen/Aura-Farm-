@@ -1976,3 +1976,239 @@ button { font: inherit; }
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v0.29 — restrained Aura Modules */
+.upgrade-shell {
+  gap: 10px;
+}
+
+.upgrade-cards {
+  gap: 9px;
+  align-items: stretch;
+}
+
+.upgrade-card {
+  position: relative;
+  flex: 0 1 164px;
+  width: min(31vw, 164px);
+  height: 190px;
+  padding: 9px 8px 10px;
+  display: grid;
+  grid-template-rows: auto 86px auto auto 1fr;
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,.105);
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.022),
+      transparent 28%
+    ),
+    #0d1420;
+  color: #f4f7fb;
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.28);
+  overflow: hidden;
+}
+
+.upgrade-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  height: auto;
+  border: 0;
+  border-radius: 14px 0 0 14px;
+  background: rgb(var(--accent));
+  opacity: .68;
+}
+
+.upgrade-card::after {
+  content: "";
+  position: absolute;
+  left: 42%;
+  right: 42%;
+  bottom: 3px;
+  height: 2px;
+  background: rgb(var(--accent));
+  opacity: .26;
+}
+
+.upgrade-card.is-synergy {
+  border-color: rgba(255,229,109,.34);
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.28),
+    0 0 18px rgba(255,229,109,.055);
+}
+
+.upgrade-card.is-synergy::before {
+  background: #ffe56d;
+  opacity: .88;
+}
+
+.module-head {
+  width: 100%;
+  min-height: 13px;
+  padding: 0 1px;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  font: 800 .43rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .045em;
+}
+
+.module-head em {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  max-width: 48%;
+  color: rgba(255,255,255,.48);
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-head em i {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+  box-shadow: none;
+}
+
+.module-head > span {
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.34);
+  text-align: right;
+}
+
+.upgrade-card.is-continuation .module-head > span {
+  color: rgba(var(--accent),.64);
+}
+
+.upgrade-card.is-synergy .module-head > span {
+  color: #ffe56d;
+}
+
+.module-fit,
+.upgrade-synergy,
+.upgrade-icon {
+  display: none !important;
+}
+
+.module-preview {
+  position: relative;
+  width: 100%;
+  height: 86px;
+  display: block !important;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(var(--accent),.045),
+      transparent 62%
+    ),
+    #080e17;
+  box-shadow: none;
+}
+
+.module-preview::before {
+  content: "";
+  position: absolute;
+  inset: 50% 8% auto;
+  height: 1px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255,255,255,.035);
+}
+
+.demo-orb {
+  box-shadow:
+    0 0 8px rgba(var(--accent),.38);
+}
+
+.demo-node {
+  border-width: 1.5px;
+  background: #09111b;
+}
+
+.demo-ring {
+  border-width: 1.5px;
+}
+
+.demo-wall {
+  width: 3px;
+  background: rgba(255,255,255,.22);
+}
+
+.demo-beam {
+  height: 1px;
+  background: rgba(var(--accent),.52);
+}
+
+.upgrade-card > strong {
+  margin-top: 1px;
+  font-size: .76rem;
+  line-height: 1;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+
+.upgrade-effect {
+  justify-self: center;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid rgba(var(--accent),.16);
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: rgb(var(--accent));
+  font-size: .49rem;
+  letter-spacing: .035em;
+  opacity: .76;
+}
+
+.upgrade-desc {
+  align-self: start;
+  max-width: 18ch;
+  margin-inline: auto;
+  color: rgba(255,255,255,.58);
+  font-size: .54rem;
+  line-height: 1.22;
+  font-weight: 650;
+  opacity: 1;
+}
+
+@media (max-width: 370px) {
+  .upgrade-card {
+    width: 31%;
+    height: 176px;
+    padding-inline: 5px;
+    grid-template-rows: auto 74px auto auto 1fr;
+  }
+
+  .module-preview {
+    height: 74px;
+  }
+
+  .module-head {
+    font-size: .37rem;
+  }
+
+  .upgrade-card > strong {
+    font-size: .66rem;
+  }
+
+  .upgrade-desc {
+    font-size: .48rem;
+  }
+}
