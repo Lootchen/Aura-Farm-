@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.34
+# Aura Farm — Vertical Slice v0.35
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,19 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.35 — Contact / Game Feel
+
+v0.35 keeps the simulation rules intact and strengthens the physical read of existing actions.
+
+- a successful Tap now leaves a short launch ring around the newly created projectile, making the note-to-ball transformation explicit;
+- wall ricochets and bumper contacts get a restrained local impact pulse instead of relying only on trajectory change;
+- recent ricochets leave a short directional turquoise arc on the projectile;
+- Shield Break gives AURI a dedicated reaction instead of reusing the generic hit mood;
+- Shield Break adds a light high-frequency glass tick above the existing impact tone;
+- all additions are visual/audio feedback only: projectile speed, note speed, collision rules and timing are unchanged.
+
+The target is tactile causality: finger → claw → contact → projectile → world response.
 
 ## v0.34 — Readability / Shield Telegraphing
 
