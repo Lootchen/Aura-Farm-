@@ -4179,6 +4179,30 @@ function drawBackground() {
     112 * progress,
     4
   );
+
+  const act =
+    currentActMeta();
+
+  ctx.fillStyle =
+    `rgba(${ar},${ag},${ab},.58)`;
+  ctx.font =
+    "900 10px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(
+    `ACT ${wave} · ${act.name}`,
+    DESIGN.width / 2,
+    107
+  );
+
+  ctx.fillStyle =
+    "rgba(255,255,255,.25)";
+  ctx.font =
+    "700 8px system-ui, sans-serif";
+  ctx.fillText(
+    act.cue,
+    DESIGN.width / 2,
+    121
+  );
 }
 
 function drawBossCore(songTime) {
@@ -4202,15 +4226,70 @@ function drawBossCore(songTime) {
         2
       );
   const flash =
-    bossState.hitFlash > 0
-      ? 1
-      : 0;
+    bossState.hitFlash > 0;
+  const shielded =
+    bossShielded();
+  const armorNodes =
+    bossArmorNodes(songTime);
+
+  // Energy tethers make the armor read as one coherent system.
+  if (!bossState.broken) {
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 7]);
+
+    for (const node of armorNodes) {
+      if (node.broken) continue;
+
+      ctx.strokeStyle =
+        `rgba(${palette.secondary.join(",")},.32)`;
+      ctx.beginPath();
+      ctx.moveTo(
+        center.x,
+        center.y
+      );
+      ctx.lineTo(
+        node.x,
+        node.y
+      );
+      ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
 
   ctx.save();
   ctx.translate(
     center.x,
     center.y
   );
+
+  if (shielded) {
+    ctx.shadowBlur =
+      16 +
+      beatPulse * 12;
+    ctx.shadowColor =
+      `rgb(${palette.secondary.join(",")})`;
+    ctx.strokeStyle =
+      bossState.shieldFlash > 0
+        ? "#e9ffff"
+        : `rgba(${palette.secondary.join(",")},.72)`;
+    ctx.lineWidth =
+      bossState.shieldFlash > 0
+        ? 7
+        : 4;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      69 + beatPulse * 3,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
 
   ctx.shadowBlur =
     bossState.broken
@@ -4249,9 +4328,15 @@ function drawBossCore(songTime) {
   for (let i = 0; i < 6; i += 1) {
     const angle =
       (Math.PI * 2 * i) / 6 +
-      songTime * 0.22;
+      songTime *
+        (bossState.phase === 1
+          ? 0.22
+          : -0.34);
+
     ctx.strokeStyle =
-      "rgba(255,255,255,.18)";
+      bossState.phase === 1
+        ? "rgba(255,255,255,.18)"
+        : "rgba(255,145,190,.28)";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(
@@ -4283,37 +4368,343 @@ function drawBossCore(songTime) {
 
   ctx.restore();
 
+  // Physical armor nodes.
+  for (const node of armorNodes) {
+    ctx.save();
+    ctx.translate(
+      node.x,
+      node.y
+    );
+
+    if (node.broken) {
+      ctx.globalAlpha = 0.18;
+    }
+
+    ctx.rotate(
+      node.angle +
+      Math.PI / 2
+    );
+
+    ctx.shadowBlur =
+      node.broken ? 0 : 18;
+    ctx.shadowColor =
+      `rgb(${palette.secondary.join(",")})`;
+    ctx.fillStyle =
+      node.broken
+        ? "rgba(55,66,78,.45)"
+        : "#111b27";
+    ctx.strokeStyle =
+      node.broken
+        ? "rgba(255,255,255,.12)"
+        : `rgb(${palette.secondary.join(",")})`;
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(0, -18);
+    ctx.lineTo(15, 11);
+    ctx.lineTo(-15, 11);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle =
+      node.broken
+        ? "rgba(255,255,255,.12)"
+        : `rgb(${palette.accent.join(",")})`;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      2,
+      5,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   ctx.fillStyle =
     "rgba(5,8,14,.82)";
   ctx.fillRect(
-    190,
-    252,
-    160,
-    14
+    180,
+    250,
+    180,
+    16
   );
+
   ctx.fillStyle =
     bossState.broken
       ? "#ff637d"
       : `rgb(${palette.accent.join(",")})`;
   ctx.fillRect(
-    193,
-    255,
-    154 * healthRatio,
-    8
+    183,
+    253,
+    174 * healthRatio,
+    10
   );
 
   ctx.fillStyle =
-    "rgba(255,255,255,.62)";
+    "rgba(255,255,255,.68)";
   ctx.font =
     "900 10px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(
     bossState.broken
       ? "CORE BREAK"
-      : "AURA CORE",
+      : shielded
+        ? `PHASE ${bossState.phase} · ARMOR ${bossArmorRemaining()}`
+        : `PHASE ${bossState.phase} · CORE EXPOSED`,
     DESIGN.width / 2,
-    278
+    280
   );
+}
+
+function drawOperatorSocket(songTime) {
+  const palette =
+    machinePalette();
+  const act =
+    currentActMeta();
+  const pulse =
+    1 +
+    operatorPulse * 0.08;
+  const x =
+    DESIGN.width / 2;
+  const y = 822;
+  const comboFlow =
+    combo >= 8;
+  const mood =
+    comboFlow &&
+    operatorMood === "idle"
+      ? "flow"
+      : operatorMood;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(pulse, pulse);
+
+  // Cockpit / future character slot.
+  ctx.shadowBlur =
+    operatorPulse > 0
+      ? 18
+      : 7;
+  ctx.shadowColor =
+    `rgb(${palette.secondary.join(",")})`;
+  ctx.fillStyle =
+    "rgba(8,14,22,.88)";
+  ctx.strokeStyle =
+    `rgba(${palette.secondary.join(",")},.48)`;
+  ctx.lineWidth = 2.5;
+
+  ctx.beginPath();
+  ctx.roundRect(
+    -34,
+    -31,
+    68,
+    55,
+    18
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  // Abstract operator head. This is intentionally a placeholder silhouette.
+  ctx.shadowBlur = 0;
+  ctx.fillStyle =
+    `rgba(${palette.accent.join(",")},.18)`;
+  ctx.strokeStyle =
+    `rgb(${palette.accent.join(",")})`;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    -6,
+    19,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  const eyeY = -8;
+  const eyeSpread = 7;
+
+  ctx.strokeStyle =
+    `rgb(${palette.secondary.join(",")})`;
+  ctx.fillStyle =
+    `rgb(${palette.secondary.join(",")})`;
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+
+  if (mood === "miss") {
+    for (const sign of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(
+        sign * eyeSpread - 3,
+        eyeY - 2
+      );
+      ctx.lineTo(
+        sign * eyeSpread + 3,
+        eyeY + 2
+      );
+      ctx.moveTo(
+        sign * eyeSpread + 3,
+        eyeY - 2
+      );
+      ctx.lineTo(
+        sign * eyeSpread - 3,
+        eyeY + 2
+      );
+      ctx.stroke();
+    }
+  } else if (
+    mood === "chain" ||
+    mood === "victory"
+  ) {
+    ctx.beginPath();
+    ctx.arc(
+      -eyeSpread,
+      eyeY,
+      4,
+      Math.PI,
+      Math.PI * 2
+    );
+    ctx.arc(
+      eyeSpread,
+      eyeY,
+      4,
+      Math.PI,
+      Math.PI * 2
+    );
+    ctx.stroke();
+  } else {
+    const eyeRadius =
+      mood === "boss"
+        ? 3.5
+        : mood === "flow" ||
+            mood === "slide"
+          ? 3
+          : 2.4;
+
+    ctx.beginPath();
+    ctx.arc(
+      -eyeSpread,
+      eyeY,
+      eyeRadius,
+      0,
+      Math.PI * 2
+    );
+    ctx.arc(
+      eyeSpread,
+      eyeY,
+      eyeRadius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  // Mouth/status line.
+  ctx.strokeStyle =
+    "rgba(255,255,255,.46)";
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+
+  if (
+    mood === "chain" ||
+    mood === "victory"
+  ) {
+    ctx.arc(
+      0,
+      -1,
+      6,
+      0,
+      Math.PI
+    );
+  } else if (mood === "miss") {
+    ctx.arc(
+      0,
+      5,
+      5,
+      Math.PI,
+      Math.PI * 2
+    );
+  } else {
+    ctx.moveTo(-5, 1);
+    ctx.lineTo(5, 1);
+  }
+
+  ctx.stroke();
+
+  // Antenna reacts to beat.
+  const antenna =
+    Math.sin(
+      songTime *
+      BPM /
+      60 *
+      Math.PI *
+      2
+    ) * 2;
+
+  ctx.strokeStyle =
+    `rgba(${palette.accent.join(",")},.76)`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -25);
+  ctx.lineTo(
+    antenna,
+    -34
+  );
+  ctx.stroke();
+
+  ctx.fillStyle =
+    `rgb(${palette.accent.join(",")})`;
+  ctx.beginPath();
+  ctx.arc(
+    antenna,
+    -36,
+    2.5,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  ctx.restore();
+
+  ctx.fillStyle =
+    "rgba(255,255,255,.34)";
+  ctx.font =
+    "800 8px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(
+    `OPERATOR SLOT · ${act.name}`,
+    x,
+    y + 36
+  );
+}
+
+function drawImpactVeil() {
+  if (impactVeil <= 0) return;
+
+  const palette =
+    machinePalette();
+
+  ctx.save();
+  ctx.globalAlpha =
+    Math.min(
+      0.22,
+      impactVeil
+    );
+  ctx.fillStyle =
+    `rgb(${palette.accent.join(",")})`;
+  ctx.fillRect(
+    0,
+    0,
+    DESIGN.width,
+    DESIGN.height
+  );
+  ctx.restore();
 }
 
 
@@ -5033,9 +5424,22 @@ function drawDebug(songTime) {
 
 function render(songTime) {
   clearCanvas();
+
+  if (screenShake > 0) {
+    const time =
+      performance.now();
+    ctx.translate(
+      Math.sin(time * 0.087) *
+        screenShake,
+      Math.cos(time * 0.113) *
+        screenShake * 0.65
+    );
+  }
+
   drawBackground();
   drawBossCore(songTime);
   drawBumpers();
+  drawOperatorSocket(songTime);
 
   for (const event of active.values()) {
     if (event.type === "slide") {
@@ -5058,6 +5462,7 @@ function render(songTime) {
   drawExplosions();
   drawMessage();
   drawCountIn(songTime);
+  drawImpactVeil();
 
   if (showDebug) drawDebug(songTime);
 }
