@@ -29,16 +29,8 @@ const POST_HIT_SPEED = 455;
 
 const TAP_MISS_WINDOW = 0.160;
 
-const DRAW_WINDOWS = {
-  perfect: 0.200,
-  great: 0.400,
-  good: 0.850
-};
-
 const JUDGEMENTS = {
-  perfect: { label: "PERFECT", points: 300, color: "#ffe47a" },
-  great: { label: "GREAT", points: 200, color: "#ca8cff" },
-  good: { label: "GOOD", points: 100, color: "#79d8ff" }
+  perfect: { label: "PERFECT", points: 300, color: "#ffe47a" }
 };
 
 const FLIPPER = {
@@ -55,7 +47,7 @@ const SLIDE = {
   startEarly: 0.28,
   startLate: 0.28,
   scrollSpeed: 145,
-  positionTolerance: 0.34,
+  railTolerance: 25,
   disconnectGrace: 0.15,
   minCoverage: 0.68,
   joystickRadius: 40,
@@ -67,13 +59,13 @@ const SLIDE = {
 
 const POWER_ORB_BASE_SCALE = 1.55;
 
-const DRAW = {
-  previewSeconds: 1.35,
-  recognitionThreshold: 0.62,
-  minPoints: 6
-};
+const BUMPER_LAYOUT = [
+  { x: 270, y: 535, radius: 31 },
+  { x: 185, y: 430, radius: 27 },
+  { x: 355, y: 430, radius: 27 }
+];
 
-class RhythmClock {
+class RhythmClockclass RhythmClock {
   constructor() {
     this.context = null;
     this.startAt = 0;
@@ -299,105 +291,83 @@ let lastInputType = "—";
 let showDebug = false;
 let wave = 1;
 let awaitingUpgrade = false;
-let perfectTapCount = 0;
-
-let drawGesture = null;
 
 const runMods = {
-  slideToleranceBonus: 0,
-  slideGraceBonus: 0,
-  flipperHitBonus: 0,
-  powerOrbScale: 1,
-  powerOrbSpeed: 1,
-  powerExplosionScale: 1,
-  scoreMultiplier: 1,
-  comboShieldCharges: 0,
-  tapPowerEvery: 0
+  twinShots: 0,
+  ricochetBounces: 0,
+  pierceHits: 0,
+  fragmentCount: 0,
+  bumperCount: 0,
+  slideNova: 0,
+  comboShieldCharges: 0
 };
 
 const UPGRADES = [
   {
-    id: "aim-assist",
-    icon: "◎",
-    title: "Mira+",
-    effect: "+AIM",
+    id: "twin-shot",
+    icon: "Ⅱ",
+    title: "Gemela",
+    effect: "+1 ORB",
     apply: () => {
-      runMods.slideToleranceBonus += 0.05;
+      runMods.twinShots += 1;
     }
   },
   {
-    id: "stable-stick",
+    id: "ricochet",
+    icon: "↗",
+    title: "Rebote",
+    effect: "+1 REBOTE",
+    apply: () => {
+      runMods.ricochetBounces += 1;
+    }
+  },
+  {
+    id: "pierce",
+    icon: "➞",
+    title: "Perfora",
+    effect: "+1 BLANCO",
+    apply: () => {
+      runMods.pierceHits += 1;
+    }
+  },
+  {
+    id: "fragments",
+    icon: "✣",
+    title: "Astillas",
+    effect: "+FRAGMENTOS",
+    apply: () => {
+      runMods.fragmentCount += runMods.fragmentCount === 0 ? 3 : 2;
+    }
+  },
+  {
+    id: "bumper",
     icon: "◉",
-    title: "Grip",
-    effect: "+GRIP",
+    title: "Bumper",
+    effect: "+OBSTÁCULO",
+    available: () => runMods.bumperCount < BUMPER_LAYOUT.length,
     apply: () => {
-      runMods.slideGraceBonus += 0.04;
+      runMods.bumperCount = Math.min(
+        BUMPER_LAYOUT.length,
+        runMods.bumperCount + 1
+      );
     }
   },
   {
-    id: "wide-flipper",
-    icon: "━",
-    title: "Pinza+",
-    effect: "+HIT",
-    apply: () => {
-      runMods.flipperHitBonus += 3;
-    }
-  },
-  {
-    id: "big-core",
-    icon: "●",
-    title: "Core+",
-    effect: "ORB XL",
-    apply: () => {
-      runMods.powerOrbScale *= 1.18;
-    }
-  },
-  {
-    id: "shockwave",
+    id: "nova",
     icon: "✹",
-    title: "Shock",
-    effect: "AOE+",
+    title: "Nova",
+    effect: "+2 POWER",
     apply: () => {
-      runMods.powerExplosionScale *= 1.20;
-    }
-  },
-  {
-    id: "thruster",
-    icon: "➤",
-    title: "Boost",
-    effect: "SPD+",
-    apply: () => {
-      runMods.powerOrbSpeed *= 1.10;
-    }
-  },
-  {
-    id: "aura-amp",
-    icon: "✦",
-    title: "Aura+",
-    effect: "SCORE+",
-    apply: () => {
-      runMods.scoreMultiplier *= 1.15;
+      runMods.slideNova += 1;
     }
   },
   {
     id: "combo-shield",
     icon: "◇",
     title: "Shield",
-    effect: "SAVE 1",
+    effect: "SALVA 1",
     apply: () => {
       runMods.comboShieldCharges += 1;
-    }
-  },
-  {
-    id: "tap-overload",
-    icon: "⚡",
-    title: "Overload",
-    effect: "POWER",
-    apply: () => {
-      runMods.tapPowerEvery =
-        runMods.tapPowerEvery === 0
-          ? 4
-          : Math.max(2, runMods.tapPowerEvery - 1);
     }
   }
 ];
@@ -406,20 +376,20 @@ const slideControl = {
   left: {
     held: false,
     pointerId: null,
-    x: 0.78,
-    y: -0.62,
+    x: 0,
+    y: 0,
     releasedAt: -Infinity
   },
   right: {
     held: false,
     pointerId: null,
-    x: -0.78,
-    y: -0.62,
+    x: 0,
+    y: 0,
     releasedAt: -Infinity
   }
 };
 
-const flippers = {
+const flippers = {const flippers = {
   left: { startTime: -Infinity, hitThisSwing: false },
   right: { startTime: -Infinity, hitThisSwing: false }
 };
@@ -437,7 +407,7 @@ function normalizeAngle(angle) {
 }
 
 function awardScore(points) {
-  score += Math.round(points * runMods.scoreMultiplier);
+  score += Math.round(points);
 }
 
 function noteRadius(note) {
@@ -445,14 +415,14 @@ function noteRadius(note) {
 }
 
 function slideTolerance() {
-  return SLIDE.positionTolerance + runMods.slideToleranceBonus;
+  return SLIDE.railTolerance;
 }
 
 function slideGrace() {
-  return SLIDE.disconnectGrace + runMods.slideGraceBonus;
+  return SLIDE.disconnectGrace;
 }
 
-function beatToSeconds(beat) {
+function beatToSecondsfunction beatToSeconds(beat) {
   return beat * (60 / BPM);
 }
 
@@ -463,7 +433,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.20", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.21", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -712,9 +682,6 @@ function spawnReady(songTime) {
       } else if (event.type === "slide") {
         lead = SLIDE.leadSeconds;
         expireAt = targetTime + beatToSeconds(event.durationBeats) + 0.35;
-      } else if (event.type === "draw") {
-        lead = DRAW.previewSeconds;
-        expireAt = targetTime + beatToSeconds(event.windowBeats);
       }
 
       if (songTime > expireAt) return;
@@ -755,19 +722,10 @@ function spawnReady(songTime) {
           trackingTime: 0,
           lastGoodTime: -Infinity,
           startDelta: null,
-          lastError: 1
+          lastErrorPx: Infinity
         });
       }
 
-      if (event.type === "draw") {
-        active.set(key, {
-          key,
-          loop,
-          ...event,
-          targetTime,
-          endTime: targetTime + beatToSeconds(event.windowBeats)
-        });
-      }
     });
   }
 
@@ -899,22 +857,15 @@ function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
 
 function hitSound(side, judgement) {
   const base = side === "left" ? 330 : 405;
-  const bonus =
-    judgement === JUDGEMENTS.perfect
-      ? 150
-      : judgement === JUDGEMENTS.great
-        ? 80
-        : 25;
-
   playTone(
-    base + bonus,
+    base + (judgement === JUDGEMENTS.perfect ? 150 : 0),
     0.055,
-    judgement === JUDGEMENTS.perfect ? 0.075 : 0.055,
+    0.075,
     "triangle"
   );
 }
 
-function successTone(frequency = 700) {
+function successTonefunction successTone(frequency = 700) {
   playTone(frequency, 0.07, 0.055, "triangle");
 }
 
@@ -955,37 +906,124 @@ function createImpactFlash(x, y, judgement) {
   if (impactFlashes.length > 10) impactFlashes.shift();
 }
 
+function fanAngles(baseAngle, count, spread = 0.22) {
+  if (count <= 1) return [baseAngle];
+
+  const center = (count - 1) / 2;
+  return Array.from(
+    { length: count },
+    (_, index) => baseAngle + (index - center) * spread
+  );
+}
+
+function configureLaunchedProjectile(
+  note,
+  angle,
+  {
+    speed = POST_HIT_SPEED,
+    power = false,
+    radiusScale = 1,
+    fragment = false,
+    inheritMods = true
+  } = {}
+) {
+  note.launched = true;
+  note.prevX = note.x;
+  note.prevY = note.y;
+  note.vx = Math.cos(angle) * speed;
+  note.vy = Math.sin(angle) * speed;
+  note.power = power;
+  note.radiusScale = radiusScale;
+  note.fragment = fragment;
+  note.ricochetsLeft =
+    inheritMods ? runMods.ricochetBounces : 0;
+  note.piercesLeft =
+    inheritMods ? runMods.pierceHits : 0;
+}
+
+function spawnLaunchedProjectile({
+  x,
+  y,
+  angle,
+  side = "neutral",
+  symbol = "•",
+  power = false,
+  radiusScale = 1,
+  fragment = false,
+  speed = POST_HIT_SPEED,
+  inheritMods = true
+}) {
+  const key =
+    `fx:${performance.now().toFixed(3)}:${Math.random().toString(36).slice(2)}`;
+
+  const projectile = {
+    key,
+    type: "tap",
+    side,
+    symbol,
+    launched: true,
+    x,
+    y,
+    prevX: x,
+    prevY: y,
+    vx: 0,
+    vy: 0,
+    power,
+    radiusScale,
+    fragment
+  };
+
+  configureLaunchedProjectile(
+    projectile,
+    angle,
+    {
+      speed,
+      power,
+      radiusScale,
+      fragment,
+      inheritMods
+    }
+  );
+
+  active.set(key, projectile);
+  return projectile;
+}
+
 function resolveTapHit(note, side, songTime) {
   combo += 1;
   const multiplier = comboMultiplier(combo);
 
   awardScore(JUDGEMENTS.perfect.points * multiplier);
   hitCount += 1;
-  perfectTapCount += 1;
-
-  if (
-    runMods.tapPowerEvery > 0 &&
-    perfectTapCount % runMods.tapPowerEvery === 0
-  ) {
-    note.power = true;
-    note.radiusScale =
-      POWER_ORB_BASE_SCALE * runMods.powerOrbScale;
-  }
 
   lastDeltaMs = null;
   lastJudgement = "PERFECT";
 
-  note.launched = true;
-  note.prevX = note.x;
-  note.prevY = note.y;
-
   const segment = flipperSegment(side, songTime);
-  const dx = segment.tip.x - segment.pivot.x;
-  const dy = segment.tip.y - segment.pivot.y;
-  const length = Math.hypot(dx, dy) || 1;
+  const baseAngle = Math.atan2(
+    segment.tip.y - segment.pivot.y,
+    segment.tip.x - segment.pivot.x
+  );
 
-  note.vx = (dx / length) * POST_HIT_SPEED;
-  note.vy = (dy / length) * POST_HIT_SPEED;
+  const shotCount = 1 + runMods.twinShots;
+  const angles = fanAngles(baseAngle, shotCount, 0.20);
+
+  configureLaunchedProjectile(
+    note,
+    angles[0],
+    { inheritMods: true }
+  );
+
+  for (let index = 1; index < angles.length; index += 1) {
+    spawnLaunchedProjectile({
+      x: note.x,
+      y: note.y,
+      angle: angles[index],
+      side,
+      symbol: "•",
+      inheritMods: true
+    });
+  }
 
   resolved.add(note.key);
   flippers[side].hitThisSwing = true;
@@ -997,9 +1035,9 @@ function resolveTapHit(note, side, songTime) {
   );
 
   showMessage(
-    note.power ? "PERFECT · POWER ORB" : "PERFECT",
+    shotCount > 1 ? `PERFECT · ×${shotCount}` : "PERFECT",
     JUDGEMENTS.perfect.color,
-    note.power ? 500 : 360
+    shotCount > 1 ? 480 : 360
   );
   hitSound(side, JUDGEMENTS.perfect);
 
@@ -1011,7 +1049,7 @@ function resolveTapHit(note, side, songTime) {
   return true;
 }
 
-function failEvent(event, label = "MISS") {
+function failEventfunction failEvent(event, label = "MISS") {
   const protectedCombo =
     combo > 0 && runMods.comboShieldCharges > 0;
 
@@ -1070,8 +1108,7 @@ function resolveFlipperCollisions(songTime) {
 
       const collisionDistance =
         noteRadius(note) +
-        FLIPPER.width * 0.5 +
-        runMods.flipperHitBonus;
+        FLIPPER.width * 0.5;
 
       if (
         distance <= collisionDistance &&
@@ -1083,7 +1120,15 @@ function resolveFlipperCollisions(songTime) {
   }
 }
 
-function createExplosion(x, y, scale = 1) {
+function createExplosion(
+  x,
+  y,
+  scale = 1,
+  {
+    emitFragments = true,
+    side = "neutral"
+  } = {}
+) {
   explosions.push({
     x,
     y,
@@ -1107,9 +1152,29 @@ function createExplosion(x, y, scale = 1) {
   if (scale > 1.2) {
     playTone(105, 0.09, 0.045, "sine");
   }
+
+  if (emitFragments && runMods.fragmentCount > 0) {
+    for (let index = 0; index < runMods.fragmentCount; index += 1) {
+      const angle =
+        (Math.PI * 2 * index) /
+        runMods.fragmentCount;
+
+      spawnLaunchedProjectile({
+        x,
+        y,
+        angle,
+        side,
+        symbol: "·",
+        radiusScale: 0.48,
+        fragment: true,
+        speed: POST_HIT_SPEED * 0.72,
+        inheritMods: false
+      });
+    }
+  }
 }
 
-function sweptProjectileHit(a, b) {
+function sweptProjectileHitfunction sweptProjectileHit(a, b) {
   const ax0 = Number.isFinite(a.prevX) ? a.prevX : a.x;
   const ay0 = Number.isFinite(a.prevY) ? a.prevY : a.y;
   const bx0 = Number.isFinite(b.prevX) ? b.prevX : b.x;
@@ -1192,42 +1257,162 @@ function resolveProjectileCollisions() {
       checked.add(pairKey);
 
       const collision = sweptProjectileHit(projectile, other);
-
       if (!collision) continue;
 
       const chain = !other.launched;
+      const pierces =
+        chain &&
+        Number(projectile.piercesLeft || 0) > 0;
 
-      active.delete(projectile.key);
       active.delete(other.key);
 
       if (chain) {
         resolved.add(other.key);
         chainCount += 1;
         awardScore(100 * comboMultiplier(combo));
-        showMessage("CHAIN +100", "#ffe985", 300);
+        showMessage(
+          pierces ? "CHAIN · PERFORA" : "CHAIN +100",
+          "#ffe985",
+          300
+        );
       } else {
         collisionCount += 1;
         awardScore(50 * comboMultiplier(combo));
         showMessage("COLISIÓN +50", "#ffffff", 260);
       }
 
+      if (pierces) {
+        projectile.piercesLeft -= 1;
+      } else {
+        active.delete(projectile.key);
+      }
+
       const powerScale =
         projectile.power || other.power
-          ? 1.65 * runMods.powerExplosionScale
+          ? 1.65
           : 1;
 
       createExplosion(
         collision.x,
         collision.y,
-        powerScale
+        powerScale,
+        {
+          emitFragments:
+            !projectile.fragment &&
+            !other.fragment,
+          side: projectile.side
+        }
       );
+
       updateHud();
+
+      if (!active.has(projectile.key)) break;
+    }
+  }
+}
+
+function activeBumpers() {
+  return BUMPER_LAYOUT.slice(
+    0,
+    Math.min(runMods.bumperCount, BUMPER_LAYOUT.length)
+  );
+}
+
+function resolveBumperCollisions() {
+  const bumpers = activeBumpers();
+  if (bumpers.length === 0) return;
+
+  for (const projectile of [...active.values()]) {
+    if (
+      projectile.type !== "tap" ||
+      !projectile.launched
+    ) {
+      continue;
+    }
+
+    for (const bumper of bumpers) {
+      const dx = projectile.x - bumper.x;
+      const dy = projectile.y - bumper.y;
+      const distance = Math.hypot(dx, dy);
+      const limit = bumper.radius + noteRadius(projectile);
+
+      if (
+        distance <= 0.001 ||
+        distance > limit
+      ) {
+        continue;
+      }
+
+      const nx = dx / distance;
+      const ny = dy / distance;
+      const toward =
+        projectile.vx * nx +
+        projectile.vy * ny;
+
+      if (toward >= 0) continue;
+
+      projectile.vx -= 2 * toward * nx;
+      projectile.vy -= 2 * toward * ny;
+
+      projectile.x =
+        bumper.x + nx * (limit + 1);
+      projectile.y =
+        bumper.y + ny * (limit + 1);
+      projectile.prevX = projectile.x;
+      projectile.prevY = projectile.y;
+
+      createImpactFlash(
+        projectile.x,
+        projectile.y,
+        JUDGEMENTS.perfect
+      );
+      playTone(245, 0.04, 0.045, "triangle");
       break;
     }
   }
 }
 
-function updateTap(note, dt, songTime) {
+function drawBumpers() {
+  const bumpers = activeBumpers();
+
+  for (const bumper of bumpers) {
+    ctx.save();
+
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "rgba(255,241,169,.38)";
+    ctx.fillStyle = "#1b2634";
+    ctx.strokeStyle = "#fff1a9";
+    ctx.lineWidth = 5;
+
+    ctx.beginPath();
+    ctx.arc(
+      bumper.x,
+      bumper.y,
+      bumper.radius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255,255,255,.42)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(
+      bumper.x - bumper.radius * 0.18,
+      bumper.y - bumper.radius * 0.18,
+      bumper.radius * 0.52,
+      Math.PI * 1.05,
+      Math.PI * 1.65
+    );
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+function updateTapfunction updateTap(note, dt, songTime) {
   if (note.launched) {
     note.prevX = note.x;
     note.prevY = note.y;
@@ -1237,22 +1422,53 @@ function updateTap(note, dt, songTime) {
 
     const radius = noteRadius(note);
 
-    const hitWall =
+    const hitX =
       note.x <= radius ||
-      note.x >= DESIGN.width - radius ||
+      note.x >= DESIGN.width - radius;
+    const hitY =
       note.y <= 72 ||
       note.y >= DESIGN.height - radius;
+    const hitWall = hitX || hitY;
 
     if (hitWall) {
+      if (Number(note.ricochetsLeft || 0) > 0) {
+        if (hitX) note.vx *= -1;
+        if (hitY) note.vy *= -1;
+
+        note.ricochetsLeft -= 1;
+        note.x = clamp(
+          note.x,
+          radius + 1,
+          DESIGN.width - radius - 1
+        );
+        note.y = clamp(
+          note.y,
+          73,
+          DESIGN.height - radius - 1
+        );
+        note.prevX = note.x;
+        note.prevY = note.y;
+
+        createImpactFlash(
+          note.x,
+          note.y,
+          JUDGEMENTS.perfect
+        );
+        playTone(190, 0.035, 0.035, "triangle");
+        return;
+      }
+
       active.delete(note.key);
       wallExplosionCount += 1;
 
       createExplosion(
         clamp(note.x, radius, DESIGN.width - radius),
         clamp(note.y, 72, DESIGN.height - radius),
-        note.power
-          ? 1.65 * runMods.powerExplosionScale
-          : 1
+        note.power ? 1.65 : 1,
+        {
+          emitFragments: !note.fragment,
+          side: note.side
+        }
       );
     }
 
@@ -1274,7 +1490,7 @@ function updateTap(note, dt, songTime) {
   }
 }
 
-function defaultSlideVector(side) {
+function defaultSlideVectorfunction defaultSlideVector(side) {
   return side === "left"
     ? { x: 0.78, y: -0.62 }
     : { x: -0.78, y: -0.62 };
@@ -1488,20 +1704,31 @@ function slideTipPoint(side, vector) {
   ).tip;
 }
 
+function slideTipErrorPx(event, songTime) {
+  const target =
+    slideTipPoint(
+      event.side,
+      slideVectorAtTime(event, songTime)
+    );
+
+  const actual =
+    slideSegmentFromVector(
+      event.side,
+      slideControl[event.side]
+    ).tip;
+
+  return Math.hypot(
+    actual.x - target.x,
+    actual.y - target.y
+  );
+}
+
 function slideConnected(event, songTime) {
   if (!event.started) return false;
 
   const control = slideControl[event.side];
-  const target =
-    slideVectorAtTime(event, songTime);
-
-  const error =
-    slideVectorError(
-      control,
-      target
-    );
-
-  event.lastError = error;
+  const error = slideTipErrorPx(event, songTime);
+  event.lastErrorPx = error;
 
   if (
     control.held &&
@@ -1516,7 +1743,8 @@ function slideConnected(event, songTime) {
     slideGrace()
   );
 }
-function updateSlide(event, dt, songTime) {
+
+function updateSlide(event, dt, songTime) {function updateSlide(event, dt, songTime) {
   if (!event.started) {
     if (
       songTime >
@@ -1556,36 +1784,26 @@ function spawnSlideProjectile(event) {
       finalVector
     );
   const point = segment.tip;
-  const angle = segment.angle;
+  const shotCount =
+    1 + runMods.slideNova * 2;
+  const angles =
+    fanAngles(segment.angle, shotCount, 0.18);
 
-  const key =
-    `slidefx:${performance.now().toFixed(3)}:${Math.random().toString(36).slice(2)}`;
-
-  active.set(key, {
-    key,
-    type: "tap",
-    side: event.side,
-    symbol: "★",
-    launched: true,
-    x: point.x,
-    y: point.y,
-    prevX: point.x,
-    prevY: point.y,
-    vx:
-      Math.cos(angle) *
-      POST_HIT_SPEED *
-      runMods.powerOrbSpeed,
-    vy:
-      Math.sin(angle) *
-      POST_HIT_SPEED *
-      runMods.powerOrbSpeed,
-    power: true,
-    radiusScale:
-      POWER_ORB_BASE_SCALE *
-      runMods.powerOrbScale
-  });
+  for (const angle of angles) {
+    spawnLaunchedProjectile({
+      x: point.x,
+      y: point.y,
+      angle,
+      side: event.side,
+      symbol: "★",
+      power: true,
+      radiusScale: POWER_ORB_BASE_SCALE,
+      inheritMods: true
+    });
+  }
 }
-function finishSlide(event) {
+
+function finishSlide(event) {function finishSlide(event) {
   if (!active.has(event.key)) return;
 
   const duration =
@@ -1650,10 +1868,8 @@ function finishSlide(event) {
   }
 
   const control = slideControl[event.side];
-  const neutral =
-    defaultSlideVector(event.side);
-  control.x = neutral.x;
-  control.y = neutral.y;
+  control.x = 0;
+  control.y = 0;
 
   updateHud();
 }
@@ -1751,304 +1967,69 @@ function slideVisualConnected(event, songTime) {
   );
 }
 
-function drawSlideGuideArc(event, songTime) {
-  const m = view();
-  const pivot = m.pivot[event.side];
-  const targetVector =
-    slideVectorAtTime(
-      event,
-      Math.max(songTime, event.targetTime)
-    );
-  const targetSegment =
-    slideSegmentFromVector(
-      event.side,
-      targetVector
-    );
-  const connected =
-    slideVisualConnected(event, songTime);
-
+function drawSlideGate(
+  point,
+  angle,
+  connected
+) {
   ctx.save();
+  ctx.translate(point.x, point.y);
+  ctx.rotate(angle);
 
-  ctx.strokeStyle =
-    event.started
-      ? "rgba(255,255,255,.14)"
-      : "rgba(255,255,255,.07)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(
-    pivot.x,
-    pivot.y,
-    FLIPPER.length * SLIDE.reachMax,
-    0,
-    Math.PI * 2
-  );
-  ctx.stroke();
-
-  ctx.strokeStyle =
-    "rgba(255,255,255,.06)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(
-    pivot.x,
-    pivot.y,
-    FLIPPER.length * SLIDE.reachMin,
-    0,
-    Math.PI * 2
-  );
-  ctx.stroke();
-
-  ctx.strokeStyle =
-    event.started
-      ? connected
-        ? "rgba(255,241,169,.72)"
-        : "rgba(255,113,132,.62)"
-      : "rgba(255,241,169,.36)";
-  ctx.lineWidth = 8;
-  ctx.setLineDash([8, 7]);
-  ctx.beginPath();
-  ctx.moveTo(pivot.x, pivot.y);
-  ctx.lineTo(
-    targetSegment.tip.x,
-    targetSegment.tip.y
-  );
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  const toleranceRadius =
-    Math.max(
-      10,
-      slideTolerance() * 34
-    );
-
-  ctx.shadowBlur =
-    event.started ? 20 : 10;
+  ctx.shadowBlur = connected ? 22 : 12;
   ctx.shadowColor =
-    connected ? "#fff1a9" : "#ff7184";
+    connected ? "#fff1a9" : "#ff8c9b";
   ctx.strokeStyle =
-    event.started
-      ? connected
-        ? "#fff1a9"
-        : "#ff7184"
-      : "rgba(255,241,169,.76)";
+    connected ? "#fff1a9" : "#ff8c9b";
   ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+
   ctx.beginPath();
   ctx.arc(
-    targetSegment.tip.x,
-    targetSegment.tip.y,
-    toleranceRadius,
     0,
-    Math.PI * 2
+    0,
+    11,
+    -Math.PI * 0.72,
+    Math.PI * 0.72
   );
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-3, -15);
+  ctx.lineTo(8, -7);
+  ctx.moveTo(-3, 15);
+  ctx.lineTo(8, 7);
   ctx.stroke();
 
   ctx.restore();
 }
 
-function drawSlidePadLegend(event, songTime) {
-  const center =
-    controlButtonCenter(event.side);
-  const control =
-    slideControl[event.side];
-  const target =
-    event.started
-      ? slideVectorAtTime(event, songTime)
-      : slideVectorAtBeat(event, 0);
-  const targetPoint = {
-    x:
-      center.x +
-      target.x * SLIDE.joystickRadius,
-    y:
-      center.y +
-      target.y * SLIDE.joystickRadius
-  };
-  const playerPoint = {
-    x:
-      center.x +
-      control.x * SLIDE.joystickRadius,
-    y:
-      center.y +
-      control.y * SLIDE.joystickRadius
-  };
-  const connected =
-    slideVisualConnected(event, songTime);
-
-  ctx.save();
-
-  ctx.fillStyle =
-    "rgba(5,9,16,.64)";
-  ctx.strokeStyle =
-    event.started
-      ? connected
-        ? "rgba(255,241,169,.70)"
-        : "rgba(255,113,132,.56)"
-      : "rgba(255,255,255,.28)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(
-    center.x,
-    center.y,
-    SLIDE.joystickRadius + 7,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.strokeStyle =
-    "rgba(255,255,255,.09)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(
-    center.x,
-    center.y,
-    SLIDE.joystickRadius * 0.5,
-    0,
-    Math.PI * 2
-  );
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(
-    center.x - SLIDE.joystickRadius,
-    center.y
-  );
-  ctx.lineTo(
-    center.x + SLIDE.joystickRadius,
-    center.y
-  );
-  ctx.moveTo(
-    center.x,
-    center.y - SLIDE.joystickRadius
-  );
-  ctx.lineTo(
-    center.x,
-    center.y + SLIDE.joystickRadius
-  );
-  ctx.stroke();
-
-  const toleranceRadius =
-    Math.max(
-      6,
-      slideTolerance() *
-      SLIDE.joystickRadius
-    );
-
-  ctx.fillStyle =
-    connected
-      ? "rgba(255,241,169,.14)"
-      : "rgba(255,113,132,.10)";
-  ctx.beginPath();
-  ctx.arc(
-    targetPoint.x,
-    targetPoint.y,
-    toleranceRadius,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-
-  ctx.shadowBlur = 14;
-  ctx.shadowColor =
-    connected ? "#fff1a9" : "#ff7184";
-  ctx.strokeStyle =
-    event.started
-      ? connected
-        ? "#fff1a9"
-        : "#ff7184"
-      : "#fff1a9";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(
-    targetPoint.x,
-    targetPoint.y,
-    7,
-    0,
-    Math.PI * 2
-  );
-  ctx.stroke();
-
-  ctx.shadowBlur =
-    control.held ? 16 : 7;
-  ctx.shadowColor = "#eaf7ff";
-  ctx.strokeStyle =
-    "rgba(234,247,255,.70)";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(center.x, center.y);
-  ctx.lineTo(
-    playerPoint.x,
-    playerPoint.y
-  );
-  ctx.stroke();
-
-  ctx.fillStyle =
-    control.held
-      ? "#eaf7ff"
-      : "rgba(234,247,255,.72)";
-  ctx.beginPath();
-  ctx.arc(
-    playerPoint.x,
-    playerPoint.y,
-    9,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-
-  ctx.shadowBlur = 0;
-  ctx.fillStyle =
-    "rgba(255,255,255,.58)";
-  ctx.font =
-    "900 9px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(
-    "AIM",
-    center.x,
-    center.y + 2
-  );
-
-  ctx.restore();
-}
 function drawSlide(event, songTime) {
   ctx.save();
 
-  // Always show the angular target around the actual flipper.
-  drawSlideGuideArc(event, songTime);
+  const sideColor =
+    event.side === "left"
+      ? "#6ed7ff"
+      : "#d88bff";
 
   if (!event.started) {
     const distance =
       event.path.length -
-      NOTE_SPEED *
-      (event.targetTime - songTime);
-
+      NOTE_SPEED * (event.targetTime - songTime);
     const head =
       pointAtDistance(event.path, distance);
-
     const behind =
       pointAtDistance(
         event.path,
-        Math.max(0, distance - 92)
+        Math.max(0, distance - 72)
       );
 
+    ctx.strokeStyle =
+      event.side === "left"
+        ? "rgba(110,215,255,.36)"
+        : "rgba(216,139,255,.36)";
+    ctx.lineWidth = 18;
     ctx.lineCap = "round";
-
-    // Wider incoming ribbon so it does not look like a normal Tap.
-    ctx.strokeStyle =
-      event.side === "left"
-        ? "rgba(110,215,255,.18)"
-        : "rgba(216,139,255,.18)";
-    ctx.lineWidth = 28;
-    ctx.beginPath();
-    ctx.moveTo(head.x, head.y);
-    ctx.lineTo(behind.x, behind.y);
-    ctx.stroke();
-
-    ctx.strokeStyle =
-      event.side === "left"
-        ? "rgba(160,232,255,.72)"
-        : "rgba(230,187,255,.72)";
-    ctx.lineWidth = 7;
     ctx.beginPath();
     ctx.moveTo(head.x, head.y);
     ctx.lineTo(behind.x, behind.y);
@@ -2063,467 +2044,186 @@ function drawSlide(event, songTime) {
       false
     );
 
-    // Preview the future angular path around the pivot.
-    const previewPoints = [];
+    const preview = [];
     for (
       let beat = 0;
       beat <= event.durationBeats + 0.001;
-      beat += SLIDE.nodeBeats
+      beat += 0.12
     ) {
-      const vector =
-        slideVectorAtBeat(event, beat);
-      const tip =
-        slideTipPoint(event.side, vector);
-      previewPoints.push(tip);
+      preview.push(
+        slideTipPoint(
+          event.side,
+          slideVectorAtBeat(event, beat)
+        )
+      );
     }
 
-    ctx.strokeStyle =
-      "rgba(255,241,169,.15)";
-    ctx.lineWidth = 10;
-    ctx.beginPath();
-    previewPoints.forEach((point, index) => {
-      if (index === 0) {
-        ctx.moveTo(point.x, point.y);
-      } else {
-        ctx.lineTo(point.x, point.y);
-      }
-    });
-    ctx.stroke();
+    if (preview.length > 1) {
+      ctx.strokeStyle =
+        event.side === "left"
+          ? "rgba(110,215,255,.18)"
+          : "rgba(216,139,255,.18)";
+      ctx.lineWidth = slideTolerance() * 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      preview.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+      });
+      ctx.stroke();
 
-
-    ctx.fillStyle =
-      "rgba(240,248,255,.82)";
-    ctx.font =
-      "900 14px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(
-      "SLIDE · TOCA LA CABEZA Y MANTÉN",
-      DESIGN.width / 2,
-      640
-    );
-
-    ctx.font =
-      "800 11px system-ui, sans-serif";
-    ctx.fillStyle =
-      "rgba(240,248,255,.55)";
-    ctx.fillText(
-      "mueve el joystick libremente dentro del círculo",
-      DESIGN.width / 2,
-      661
-    );
+      ctx.strokeStyle = "rgba(255,255,255,.30)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      preview.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+      });
+      ctx.stroke();
+    }
 
     ctx.restore();
     return;
   }
 
-  const nodes = [];
-
-  for (
-    let beat = 0;
-    beat <= event.durationBeats + 0.001;
-    beat += SLIDE.nodeBeats
-  ) {
-    const point =
-      slideNodePoint(
-        event,
-        beat,
-        songTime
-      );
-
-    if (
-      point.radius >= FLIPPER.length - 18 &&
-      point.radius <= 390
-    ) {
-      nodes.push({
-        beat,
-        ...point
-      });
-    }
-  }
-
+  const beatLength = beatToSeconds(1);
+  const currentBeat = clamp(
+    (songTime - event.targetTime) / beatLength,
+    0,
+    event.durationBeats
+  );
+  const futureBeat =
+    Math.min(
+      event.durationBeats,
+      currentBeat + 3.0
+    );
   const connected =
     slideVisualConnected(event, songTime);
 
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  if (nodes.length > 1) {
-    // Thick ribbon first, bright core second.
-    ctx.strokeStyle =
-      connected
-        ? "rgba(255,241,169,.20)"
-        : "rgba(255,113,132,.14)";
-    ctx.lineWidth = 28;
-    ctx.beginPath();
-
-    nodes.forEach((node, index) => {
-      if (index === 0) {
-        ctx.moveTo(node.x, node.y);
-      } else {
-        ctx.lineTo(node.x, node.y);
-      }
+  const rail = [];
+  for (
+    let beat = currentBeat;
+    beat <= futureBeat + 0.001;
+    beat += 0.08
+  ) {
+    const vector =
+      slideVectorAtBeat(event, beat);
+    rail.push({
+      beat,
+      vector,
+      ...slideSegmentFromVector(
+        event.side,
+        vector
+      ).tip
     });
-
-    ctx.stroke();
-
-    ctx.strokeStyle =
-      connected
-        ? "rgba(255,241,169,.78)"
-        : event.side === "left"
-          ? "rgba(110,215,255,.58)"
-          : "rgba(216,139,255,.58)";
-    ctx.lineWidth = 7;
-    ctx.shadowBlur =
-      connected ? 18 : 8;
-    ctx.shadowColor =
-      connected
-        ? "#fff1a9"
-        : event.side === "left"
-          ? "#6ed7ff"
-          : "#d88bff";
-
-    ctx.beginPath();
-
-    nodes.forEach((node, index) => {
-      if (index === 0) {
-        ctx.moveTo(node.x, node.y);
-      } else {
-        ctx.lineTo(node.x, node.y);
-      }
-    });
-
-    ctx.stroke();
   }
 
-  ctx.shadowBlur = 0;
+  if (rail.length === 1) {
+    const vector =
+      slideVectorAtBeat(
+        event,
+        Math.min(event.durationBeats, currentBeat + 0.01)
+      );
+    rail.push({
+      beat: currentBeat + 0.01,
+      vector,
+      ...slideSegmentFromVector(
+        event.side,
+        vector
+      ).tip
+    });
+  }
 
-  for (const node of nodes) {
-    drawSlideOrb(
-      node.x,
-      node.y,
-      event.side,
-      node.beat === 0 ? 15 : 8,
-      node.beat === 0 ? 1 : 0.68,
-      connected && node.beat === 0
-    );
+  if (rail.length > 1) {
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.strokeStyle =
+      connected
+        ? "rgba(255,241,169,.26)"
+        : "rgba(255,113,132,.20)";
+    ctx.lineWidth = slideTolerance() * 2;
+    ctx.beginPath();
+    rail.forEach((point, index) => {
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    });
+    ctx.stroke();
+
+    ctx.shadowBlur = connected ? 18 : 8;
+    ctx.shadowColor =
+      connected ? "#fff1a9" : sideColor;
+    ctx.strokeStyle =
+      connected
+        ? "#fff1a9"
+        : sideColor;
+    ctx.globalAlpha =
+      connected ? 0.92 : 0.72;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    rail.forEach((point, index) => {
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+
+  for (
+    let beat =
+      Math.ceil(currentBeat / SLIDE.nodeBeats) *
+      SLIDE.nodeBeats;
+    beat <= futureBeat + 0.001;
+    beat += SLIDE.nodeBeats
+  ) {
+    const vector =
+      slideVectorAtBeat(event, beat);
+    const point =
+      slideTipPoint(event.side, vector);
+
+    ctx.fillStyle =
+      connected
+        ? "rgba(255,241,169,.72)"
+        : event.side === "left"
+          ? "rgba(110,215,255,.60)"
+          : "rgba(216,139,255,.60)";
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   const targetVector =
     slideVectorAtTime(event, songTime);
-
-  const target =
-    slideTipPoint(
+  const targetSegment =
+    slideSegmentFromVector(
       event.side,
       targetVector
     );
 
-  const actual =
-    flipperSegment(
-      event.side,
-      songTime
-    ).tip;
-
-  // Show the error spatially instead of as a hidden number.
   ctx.strokeStyle =
     connected
-      ? "rgba(255,241,169,.60)"
-      : "rgba(255,113,132,.75)";
-  ctx.lineWidth = 4;
-  ctx.setLineDash(
-    connected ? [] : [5, 5]
-  );
+      ? "rgba(255,241,169,.46)"
+      : "rgba(255,113,132,.42)";
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(actual.x, actual.y);
-  ctx.lineTo(target.x, target.y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-
-  ctx.fillStyle =
-    connected
-      ? "#fff1a9"
-      : "#ff9aa7";
-  ctx.font =
-    "900 15px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(
-    connected
-      ? "CONECTADO · SIGUE APUNTANDO"
-      : "APUNTA LA PINZA A LA MARCA",
-    DESIGN.width / 2,
-    640
+  ctx.arc(
+    targetSegment.tip.x,
+    targetSegment.tip.y,
+    slideTolerance(),
+    0,
+    Math.PI * 2
   );
+  ctx.stroke();
 
-  ctx.font =
-    "800 11px system-ui, sans-serif";
-  ctx.fillStyle =
-    "rgba(240,248,255,.55)";
-  ctx.fillText(
-    "punto blanco = tú · aro amarillo = objetivo",
-    DESIGN.width / 2,
-    661
+  drawSlideGate(
+    targetSegment.tip,
+    targetSegment.angle,
+    connected
   );
 
   ctx.restore();
-}
-
-function drawTemplate(symbol) {
-  if (symbol === "u") {
-    return [
-      { x: 0.12, y: 0.08 },
-      { x: 0.12, y: 0.62 },
-      { x: 0.20, y: 0.83 },
-      { x: 0.38, y: 0.94 },
-      { x: 0.60, y: 0.94 },
-      { x: 0.80, y: 0.83 },
-      { x: 0.88, y: 0.62 },
-      { x: 0.88, y: 0.08 }
-    ];
-  }
-
-  if (symbol === "l") {
-    return [
-      { x: 0.20, y: 0.06 },
-      { x: 0.20, y: 0.35 },
-      { x: 0.20, y: 0.65 },
-      { x: 0.20, y: 0.92 },
-      { x: 0.48, y: 0.92 },
-      { x: 0.76, y: 0.92 },
-      { x: 0.90, y: 0.92 }
-    ];
-  }
-
-  return [
-    { x: 0.10, y: 0.10 },
-    { x: 0.42, y: 0.10 },
-    { x: 0.88, y: 0.10 },
-    { x: 0.66, y: 0.38 },
-    { x: 0.42, y: 0.66 },
-    { x: 0.12, y: 0.92 },
-    { x: 0.50, y: 0.92 },
-    { x: 0.90, y: 0.92 }
-  ];
-}
-
-function resamplePolyline(points, count) {
-  if (points.length < 2) return points.slice();
-
-  const distances = [0];
-
-  for (let i = 1; i < points.length; i += 1) {
-    distances.push(
-      distances[i - 1] +
-      Math.hypot(
-        points[i].x - points[i - 1].x,
-        points[i].y - points[i - 1].y
-      )
-    );
-  }
-
-  const total = distances.at(-1);
-
-  if (total <= 0.001) {
-    return Array.from({ length: count }, () => ({ ...points[0] }));
-  }
-
-  const result = [];
-
-  for (let i = 0; i < count; i += 1) {
-    const target = (total * i) / (count - 1);
-    let index = 1;
-
-    while (index < distances.length && distances[index] < target) {
-      index += 1;
-    }
-
-    const a = points[index - 1];
-    const b = points[Math.min(index, points.length - 1)];
-    const start = distances[index - 1];
-    const end = distances[Math.min(index, distances.length - 1)];
-    const span = Math.max(0.0001, end - start);
-    const t = (target - start) / span;
-
-    result.push({
-      x: lerp(a.x, b.x, t),
-      y: lerp(a.y, b.y, t)
-    });
-  }
-
-  return result;
-}
-
-function normalizeGesture(points) {
-  const sampled = resamplePolyline(points, 48);
-
-  const centroid = sampled.reduce(
-    (acc, point) => ({
-      x: acc.x + point.x / sampled.length,
-      y: acc.y + point.y / sampled.length
-    }),
-    { x: 0, y: 0 }
-  );
-
-  const centered = sampled.map((point) => ({
-    x: point.x - centroid.x,
-    y: point.y - centroid.y
-  }));
-
-  const xs = centered.map((point) => point.x);
-  const ys = centered.map((point) => point.y);
-
-  const width =
-    Math.max(...xs) - Math.min(...xs);
-  const height =
-    Math.max(...ys) - Math.min(...ys);
-
-  const scale =
-    Math.max(1, width, height);
-
-  return centered.map((point) => ({
-    x: point.x / scale,
-    y: point.y / scale
-  }));
-}
-
-function gestureScore(points, template) {
-  if (points.length < DRAW.minPoints) return 0;
-
-  const gesture = normalizeGesture(points);
-  const target = normalizeGesture(template);
-
-  const compare = (candidate) => {
-    let distance = 0;
-
-    for (let i = 0; i < candidate.length; i += 1) {
-      distance += Math.hypot(
-        candidate[i].x - target[i].x,
-        candidate[i].y - target[i].y
-      );
-    }
-
-    const mean =
-      distance / candidate.length;
-
-    return clamp(
-      1 - mean / 0.70,
-      0,
-      1
-    );
-  };
-
-  return Math.max(
-    compare(gesture),
-    compare([...gesture].reverse())
-  );
-}
-
-function activeDrawCandidate(songTime) {
-  return [...active.values()]
-    .filter((event) => event.type === "draw")
-    .filter(
-      (event) =>
-        songTime >= event.targetTime &&
-        songTime <= event.endTime
-    )
-    .sort(
-      (a, b) =>
-        a.endTime - b.endTime
-    )[0] ?? null;
-}
-
-function beginDraw(event, pointerId, point) {
-  drawGesture = {
-    key: event.key,
-    pointerId,
-    points: [point]
-  };
-
-  canvas.setPointerCapture?.(pointerId);
-}
-
-function finishDraw(event, songTime) {
-  const points = drawGesture?.points ?? [];
-  const scoreValue =
-    gestureScore(
-      points,
-      drawTemplate(event.symbol)
-    );
-
-  drawGesture = null;
-
-  if (songTime > event.endTime) {
-    failEvent(event, "MAGIC MISS");
-    return;
-  }
-
-  if (
-    scoreValue <
-    DRAW.recognitionThreshold
-  ) {
-    showMessage(
-      "TRAZO NO RECONOCIDO · INTENTA OTRA VEZ",
-      "#ff9da9",
-      480
-    );
-    return;
-  }
-
-  combo += 1;
-
-  const remainingRatio =
-    clamp(
-      (event.endTime - songTime) /
-      Math.max(
-        0.001,
-        event.endTime - event.targetTime
-      ),
-      0,
-      1
-    );
-
-  const timeBonus =
-    Math.round(120 * remainingRatio);
-
-  score +=
-    (JUDGEMENTS.perfect.points + 150 + timeBonus) *
-    comboMultiplier(combo);
-
-  lastJudgement =
-    `MAGIC ${event.symbol.toUpperCase()} PERFECT`;
-  lastDeltaMs = null;
-
-  active.delete(event.key);
-  resolved.add(event.key);
-
-  const constellation =
-    constellationPoints(event.symbol);
-
-  for (const point of constellation) {
-    createExplosion(point.x, point.y);
-  }
-
-  showMessage(
-    `MAGIC ${event.symbol.toUpperCase()} · PERFECT`,
-    JUDGEMENTS.perfect.color,
-    600
-  );
-
-  successTone(860);
-
-  if (navigator.vibrate) {
-    navigator.vibrate([5, 25, 5]);
-  }
-
-  updateHud();
-}
-
-function constellationPoints(symbol) {
-  const template = resamplePolyline(drawTemplate(symbol), 8);
-
-  return template.map((point) => ({
-    x: 88 + point.x * 364,
-    y: 205 + point.y * 360
-  }));
 }
 
 function updateEvents(dt, songTime) {
@@ -2535,20 +2235,11 @@ function updateEvents(dt, songTime) {
 
     if (event.type === "slide") {
       updateSlide(event, dt, songTime);
-      continue;
-    }
-
-    if (
-      event.type === "draw" &&
-      songTime > event.endTime
-    ) {
-      if (drawGesture?.key === event.key) drawGesture = null;
-      failEvent(event, "MAGIC MISS");
     }
   }
 }
 
-function updateEffects(dt) {
+function updateEffects(dt) {function updateEffects(dt) {
   for (const explosion of explosions) {
     explosion.life += dt;
   }
@@ -2660,11 +2351,17 @@ function drawTap(note) {
     ctx.shadowBlur = 28;
     ctx.shadowColor = "#fff1a9";
     ctx.fillStyle = "#fff1a9";
+  } else if (note.fragment) {
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "#ffffff";
+    ctx.fillStyle = "#ffffff";
   } else {
     ctx.fillStyle =
       note.side === "left"
         ? "#6ed7ff"
-        : "#d88bff";
+        : note.side === "right"
+          ? "#d88bff"
+          : "#dfeaff";
   }
 
   ctx.beginPath();
@@ -2707,70 +2404,67 @@ function drawControlButton(side, songTime) {
   const slide = activeSlideAt(songTime, side);
   const control = slideControl[side];
   const left = side === "left";
+  const slideActive = Boolean(slide?.started);
+  const connected =
+    slideActive &&
+    slideVisualConnected(slide, songTime);
 
-  const slideActive =
-    Boolean(slide?.started);
+  const displacement =
+    slideActive || control.held
+      ? {
+          x: control.x * 30,
+          y: control.y * 30
+        }
+      : { x: 0, y: 0 };
+
+  const pressDepth =
+    !slideActive && phase.active ? 5 : 0;
+
+  const cap = {
+    x: center.x + displacement.x,
+    y: center.y + displacement.y + pressDepth
+  };
 
   ctx.save();
 
   ctx.strokeStyle = left
-    ? "rgba(122,211,255,.25)"
-    : "rgba(211,166,255,.25)";
-
-  ctx.lineWidth =
-    slideActive ? 13 : 9;
+    ? "rgba(122,211,255,.20)"
+    : "rgba(211,166,255,.20)";
+  ctx.lineWidth = 9;
   ctx.lineCap = "round";
-
   ctx.beginPath();
   ctx.moveTo(
     center.x + (left ? 24 : -24),
-    center.y - 20
+    center.y - 18
   );
-
   ctx.quadraticCurveTo(
     left ? 106 : 434,
     846,
     pivot.x,
     pivot.y + 5
   );
-
   ctx.stroke();
 
-  const highlighted =
-    phase.active ||
-    slideActive ||
-    Boolean(slide && !slide.started);
-
-  ctx.shadowBlur =
-    highlighted ? 24 : 9;
-
+  ctx.shadowBlur = 18;
   ctx.shadowColor =
     left
-      ? "rgba(92,204,255,.58)"
-      : "rgba(204,139,255,.56)";
-
-  ctx.fillStyle =
-    highlighted
-      ? "#24303d"
-      : left
-        ? "#153e5d"
-        : "#34264f";
-
+      ? "rgba(92,204,255,.34)"
+      : "rgba(204,139,255,.32)";
+  ctx.fillStyle = "#0c1420";
   ctx.strokeStyle =
     slideActive
-      ? "#fff1a9"
+      ? connected
+        ? "#fff1a9"
+        : "rgba(255,113,132,.76)"
       : left
-        ? "rgba(142,222,255,.76)"
-        : "rgba(224,188,255,.74)";
-
-  ctx.lineWidth =
-    highlighted ? 4 : 2.5;
-
+        ? "rgba(142,222,255,.64)"
+        : "rgba(224,188,255,.62)";
+  ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.arc(
     center.x,
     center.y,
-    36,
+    38,
     0,
     Math.PI * 2
   );
@@ -2778,48 +2472,93 @@ function drawControlButton(side, songTime) {
   ctx.stroke();
 
   ctx.shadowBlur = 0;
-
-  if (slide) {
-    drawSlidePadLegend(
-      slide,
-      songTime
-    );
-  } else {
-    ctx.strokeStyle = left
-      ? "rgba(170,232,255,.58)"
-      : "rgba(235,210,255,.56)";
-
-    ctx.lineWidth = 2;
-
-    for (const radius of [24, 17, 10]) {
-      ctx.beginPath();
-      ctx.arc(
-        center.x,
-        center.y + 3,
-        radius,
-        Math.PI * 1.15,
-        Math.PI * 1.85
-      );
-      ctx.stroke();
-    }
-  }
-
-  ctx.fillStyle =
-    "rgba(244,250,255,.84)";
-  ctx.font =
-    "900 12px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(
-    left ? "A" : "D",
+  ctx.strokeStyle = "rgba(255,255,255,.10)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(
     center.x,
-    center.y + 18
+    center.y,
+    29,
+    0,
+    Math.PI * 2
   );
+  ctx.stroke();
+
+  ctx.strokeStyle = "#435264";
+  ctx.lineWidth = 16;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(center.x, center.y + 2);
+  ctx.lineTo(cap.x, cap.y + 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255,255,255,.18)";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(center.x - 2, center.y - 1);
+  ctx.lineTo(cap.x - 2, cap.y - 1);
+  ctx.stroke();
+
+  ctx.shadowBlur =
+    slideActive || phase.active ? 24 : 12;
+  ctx.shadowColor =
+    connected
+      ? "#fff1a9"
+      : left
+        ? "rgba(92,204,255,.52)"
+        : "rgba(204,139,255,.50)";
+
+  const capGradient =
+    ctx.createRadialGradient(
+      cap.x - 8,
+      cap.y - 10,
+      3,
+      cap.x,
+      cap.y,
+      31
+    );
+  capGradient.addColorStop(0, "#526174");
+  capGradient.addColorStop(0.45, "#2d3948");
+  capGradient.addColorStop(1, "#111924");
+
+  ctx.fillStyle = capGradient;
+  ctx.strokeStyle =
+    slideActive
+      ? connected
+        ? "#fff1a9"
+        : "#ff8c9b"
+      : left
+        ? "#7fdcff"
+        : "#d9a9ff";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(
+    cap.x,
+    cap.y,
+    29,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "rgba(255,255,255,.42)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(
+    cap.x - 5,
+    cap.y - 6,
+    16,
+    Math.PI * 1.12,
+    Math.PI * 1.72
+  );
+  ctx.stroke();
 
   ctx.restore();
 }
 
-function drawFlipper(side, songTime) {
+function drawFlipper(side, songTime) {function drawFlipper(side, songTime) {
   const segment =
     flipperSegment(side, songTime);
 
@@ -2913,93 +2652,7 @@ function drawFlipper(side, songTime) {
 
   ctx.restore();
 }
-function drawConstellation(event, songTime) {
-  const points = constellationPoints(event.symbol);
-  const pulse = 0.55 +
-    0.45 * Math.sin(performance.now() / 140);
-
-  ctx.save();
-
-  ctx.strokeStyle = "rgba(255,255,255,.16)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-
-  points.forEach((point, index) => {
-    if (index === 0) ctx.moveTo(point.x, point.y);
-    else ctx.lineTo(point.x, point.y);
-  });
-
-  ctx.stroke();
-
-  const proximity =
-    songTime < event.targetTime
-      ? clamp(
-          1 -
-          (event.targetTime - songTime) /
-          DRAW.previewSeconds,
-          0,
-          1
-        )
-      : clamp(
-          1 -
-          (event.endTime - songTime) /
-          Math.max(
-            0.001,
-            event.endTime - event.targetTime
-          ),
-          0,
-          1
-        );
-
-  for (const point of points) {
-    ctx.shadowBlur = 12 + 10 * proximity;
-    ctx.shadowColor = "#fff1a9";
-    ctx.fillStyle =
-      `rgba(255,241,169,${0.48 + pulse * 0.36})`;
-
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, 8 + proximity * 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(255,255,255,.54)";
-  ctx.font = "900 15px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(
-    songTime < event.targetTime
-      ? "PREPÁRATE PARA DIBUJAR"
-      : `DIBUJA · ${Math.max(0, (event.endTime - songTime)).toFixed(1)}s`,
-    270,
-    620
-  );
-
-  ctx.restore();
-}
-
-function drawCurrentGesture() {
-  if (!drawGesture || drawGesture.points.length < 2) return;
-
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,244,188,.92)";
-  ctx.lineWidth = 7;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.shadowBlur = 12;
-  ctx.shadowColor = "#fff1a9";
-
-  ctx.beginPath();
-
-  drawGesture.points.forEach((point, index) => {
-    if (index === 0) ctx.moveTo(point.x, point.y);
-    else ctx.lineTo(point.x, point.y);
-  });
-
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawImpactFlashes() {
+function drawImpactFlashes() {function drawImpactFlashes() {
   for (const flash of impactFlashes) {
     const t = clamp(flash.life / flash.duration, 0, 1);
     const alpha = 1 - t;
@@ -3090,9 +2743,9 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `LAB v0.20 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `LAB v0.21 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
-    `tap PERFECT · slide joystick 2D libre · wave ${wave} · power orb · 3 cartas`,
+    `tap contacto · slide riel físico · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `stick L:${slideControl.left.x.toFixed(2)},${slideControl.left.y.toFixed(2)} R:${slideControl.right.x.toFixed(2)},${slideControl.right.y.toFixed(2)}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
@@ -3116,6 +2769,7 @@ function drawDebug(songTime) {
 function render(songTime) {
   clearCanvas();
   drawBackground();
+  drawBumpers();
 
   for (const event of active.values()) {
     if (event.type === "slide") {
@@ -3124,18 +2778,10 @@ function render(songTime) {
   }
 
   for (const event of active.values()) {
-    if (event.type === "draw") {
-      drawConstellation(event, songTime);
-    }
-  }
-
-  for (const event of active.values()) {
     if (event.type === "tap") {
       drawTap(event);
     }
   }
-
-  drawCurrentGesture();
 
   drawFlipper("left", songTime);
   drawFlipper("right", songTime);
@@ -3149,31 +2795,25 @@ function render(songTime) {
 }
 
 function resetRunMods() {
-  runMods.slideToleranceBonus = 0;
-  runMods.slideGraceBonus = 0;
-  runMods.flipperHitBonus = 0;
-  runMods.powerOrbScale = 1;
-  runMods.powerOrbSpeed = 1;
-  runMods.powerExplosionScale = 1;
-  runMods.scoreMultiplier = 1;
+  runMods.twinShots = 0;
+  runMods.ricochetBounces = 0;
+  runMods.pierceHits = 0;
+  runMods.fragmentCount = 0;
+  runMods.bumperCount = 0;
+  runMods.slideNova = 0;
   runMods.comboShieldCharges = 0;
-  runMods.tapPowerEvery = 0;
 }
 
-function resetWaveState() {
+function resetWaveState() {function resetWaveState() {
   active.clear();
   resolved.clear();
   explosions = [];
   impactFlashes = [];
-  drawGesture = null;
-
   for (const side of ["left", "right"]) {
     slideControl[side].held = false;
     slideControl[side].pointerId = null;
-    const neutral =
-      defaultSlideVector(side);
-    slideControl[side].x = neutral.x;
-    slideControl[side].y = neutral.y;
+    slideControl[side].x = 0;
+    slideControl[side].y = 0;
     slideControl[side].releasedAt = -Infinity;
   }
 
@@ -3184,7 +2824,7 @@ function resetWaveState() {
 }
 
 function pickUpgradeChoices() {
-  const pool = [...UPGRADES];
+  const pool = UPGRADES.filter((upgrade) => !upgrade.available || upgrade.available());
 
   for (let i = pool.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -3272,6 +2912,7 @@ function frame(now) {
   spawnReady(songTime);
   updateEvents(dt, songTime);
   resolveFlipperCollisions(songTime);
+  resolveBumperCollisions();
   resolveProjectileCollisions();
   updateEffects(dt);
   render(songTime);
@@ -3391,6 +3032,8 @@ function handleSideRelease(
 
   control.held = false;
   control.pointerId = null;
+  control.x = 0;
+  control.y = 0;
   control.releasedAt = songTime;
 }
 
@@ -3435,70 +3078,7 @@ function bindButton(button, side) {
 bindButton(leftButton, "left");
 bindButton(rightButton, "right");
 
-canvas.addEventListener("pointerdown", (event) => {
-  if (!running) return;
-
-  event.preventDefault();
-
-  const point = eventToDesign(event);
-  const songTime = eventSongTime(event.timeStamp);
-  const draw = activeDrawCandidate(songTime);
-
-  if (draw) {
-    beginDraw(draw, event.pointerId, point);
-  }
-});
-
-canvas.addEventListener("pointermove", (event) => {
-  if (
-    !drawGesture ||
-    drawGesture.pointerId !== event.pointerId
-  ) {
-    return;
-  }
-
-  const point = eventToDesign(event);
-  const last = drawGesture.points.at(-1);
-
-  if (
-    !last ||
-    Math.hypot(
-      point.x - last.x,
-      point.y - last.y
-    ) >= 4
-  ) {
-    drawGesture.points.push(point);
-  }
-});
-
-canvas.addEventListener("pointerup", (event) => {
-  if (
-    !drawGesture ||
-    drawGesture.pointerId !== event.pointerId
-  ) {
-    return;
-  }
-
-  const songTime = eventSongTime(event.timeStamp);
-  const activeDraw = active.get(drawGesture.key);
-
-  if (activeDraw) {
-    finishDraw(activeDraw, songTime);
-  } else {
-    drawGesture = null;
-  }
-});
-
-canvas.addEventListener("pointercancel", (event) => {
-  if (
-    drawGesture &&
-    drawGesture.pointerId === event.pointerId
-  ) {
-    drawGesture = null;
-  }
-});
-
-window.addEventListener("keydown", (event) => {
+window.addEventListener("keydown"window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
 
   const key = event.key.toLowerCase();
@@ -3589,7 +3169,6 @@ startButton.addEventListener("click", async () => {
   chainCount = 0;
   collisionCount = 0;
   wallExplosionCount = 0;
-  perfectTapCount = 0;
   wave = 1;
   awaitingUpgrade = false;
 
