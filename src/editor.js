@@ -2372,6 +2372,13 @@ bindSongField(
       Number(
         input.value
       );
+
+    if (
+      target.audio?.mode ===
+        "file"
+    ) {
+      delete target.audio.analysis;
+    }
   }
 );
 
@@ -2390,6 +2397,295 @@ bindSongField(
   (target, input) => {
     target.description =
       input.value.trim();
+  }
+);
+
+offsetInput.addEventListener(
+  "change",
+  () => {
+    if (!song) return;
+
+    commitChange(
+      () => {
+        song.timing.offsetMs =
+          Number(
+            offsetInput.value
+          );
+
+        if (
+          song.audio?.mode ===
+            "file"
+        ) {
+          delete song.audio.analysis;
+        }
+      },
+      {
+        keepSelection: false
+      }
+    );
+
+    resizeTimeline();
+  }
+);
+
+audioGainInput.addEventListener(
+  "change",
+  () => {
+    if (
+      song?.audio?.mode !==
+        "file"
+    ) {
+      return;
+    }
+
+    commitChange(
+      () => {
+        song.audio.gain =
+          Number(
+            audioGainInput.value
+          );
+      },
+      {
+        keepSelection: false
+      }
+    );
+  }
+);
+
+audioSrcInput.addEventListener(
+  "change",
+  async () => {
+    if (
+      song?.audio?.mode !==
+        "file"
+    ) {
+      return;
+    }
+
+    clearFileAudioState();
+
+    commitChange(
+      () => {
+        song.audio.src =
+          audioSrcInput.value
+            .trim();
+        delete song.audio.analysis;
+      },
+      {
+        keepSelection: false
+      }
+    );
+
+    try {
+      await prepareFileAudio();
+      refreshAudioFields();
+      renderTimeline();
+      showToast(
+        "Audio cargado · falta analizar para sync temporal fuerte."
+      );
+    } catch (error) {
+      showToast(
+        `Audio src: ${error.message}`
+      );
+    }
+  }
+);
+
+audioModeInput.addEventListener(
+  "change",
+  () => {
+    if (!song) return;
+
+    const next =
+      audioModeInput.value;
+
+    if (
+      next === "procedural" &&
+      !song.composition
+    ) {
+      audioModeInput.value =
+        "file";
+      showToast(
+        "Este package no tiene composition procedural."
+      );
+      return;
+    }
+
+    clearFileAudioState();
+
+    commitChange(
+      () => {
+        if (next === "file") {
+          song.audio = {
+            mode: "file",
+            src:
+              "../assets/audio/replace-me.ogg",
+            gain: 0.9,
+            stems: ["mix"]
+          };
+
+          for (
+            const item of
+            song.charts.flatMap(
+              (entry) =>
+                entry.events
+            )
+          ) {
+            item.music ??= {};
+            item.music.stem =
+              "mix";
+            delete item.music.contour;
+          }
+        } else {
+          song.audio = {
+            mode: "procedural",
+            engine:
+              "aura-procedural-v1",
+            stems: [
+              "drums",
+              "bass",
+              "harmony",
+              "lead",
+              "aura",
+              "boss"
+            ]
+          };
+          song.timing.offsetMs = 0;
+        }
+      },
+      {
+        keepSelection: false
+      }
+    );
+  }
+);
+
+analyzeAudioButton.addEventListener(
+  "click",
+  async () => {
+    if (
+      song?.audio?.mode !==
+        "file"
+    ) {
+      return;
+    }
+
+    analyzeAudioButton.disabled =
+      true;
+    analyzeAudioButton.textContent =
+      "ANALIZANDO…";
+
+    try {
+      const buffer =
+        fileAudioBuffer ??
+        await prepareFileAudio();
+
+      const analysis =
+        analyzeAudioSteps(
+          buffer,
+          song.timing
+        );
+
+      commitChange(
+        () => {
+          song.audio.analysis =
+            analysis;
+        },
+        {
+          keepSelection: false
+        }
+      );
+
+      refreshAudioFields();
+      showToast(
+        "Waveform + energía por paso actualizadas."
+      );
+    } catch (error) {
+      showToast(
+        `Análisis falló: ${error.message}`
+      );
+    } finally {
+      analyzeAudioButton.disabled =
+        false;
+      analyzeAudioButton.textContent =
+        "ANALIZAR SRC";
+    }
+  }
+);
+
+localAudioButton.addEventListener(
+  "click",
+  () =>
+    localAudioInput.click()
+);
+
+localAudioInput.addEventListener(
+  "change",
+  async () => {
+    const file =
+      localAudioInput.files?.[0];
+
+    if (!file) return;
+
+    try {
+      if (
+        song?.audio?.mode !==
+          "file"
+      ) {
+        showToast(
+          "Cambia AUDIO MODE a FILE primero."
+        );
+        return;
+      }
+
+      const buffer =
+        await decodeLocalAudioFile(
+          file
+        );
+
+      validateDecodedAudioDuration(
+        song,
+        buffer
+      );
+
+      fileAudioBuffer =
+        buffer;
+      waveformPeaks =
+        buildWaveformPeaks(
+          buffer,
+          2400
+        );
+      localAudioFileName =
+        file.name;
+
+      const analysis =
+        analyzeAudioSteps(
+          buffer,
+          song.timing
+        );
+
+      commitChange(
+        () => {
+          song.audio.analysis =
+            analysis;
+        },
+        {
+          keepSelection: false
+        }
+      );
+
+      refreshAudioFields();
+      resizeTimeline();
+      showToast(
+        `Local analizado: ${file.name}. Recuerda colocar el asset real en audio.src antes de publicar.`
+      );
+    } catch (error) {
+      showToast(
+        `Audio local: ${error.message}`
+      );
+    } finally {
+      localAudioInput.value = "";
+    }
   }
 );
 
@@ -2687,11 +2983,34 @@ importInput.addEventListener(
         imported
       );
 
+      clearFileAudioState();
       song = imported;
       chart =
         importedChart;
+      songSourceUrl =
+        new URL(
+          `../songs/${song.id}.json`,
+          import.meta.url
+        ).href;
       selectedEvent = null;
-      setPlayhead(0);
+      playheadBeat = 0;
+      snapStep =
+        1 /
+        song.timing.stepsPerBeat;
+
+      if (
+        song.audio?.mode ===
+          "file"
+      ) {
+        try {
+          await prepareFileAudio();
+        } catch (audioError) {
+          showToast(
+            `Package importado; waveform pendiente: ${audioError.message}`
+          );
+        }
+      }
+
       resetHistory();
       populateAllUi();
       showToast(
@@ -2716,11 +3035,21 @@ exportButton.addEventListener(
 
     if (
       validationBadge.dataset
-        .state !== "ok"
+        .state === "error"
     ) {
       const proceed =
         window.confirm(
           "El package tiene errores de validación. ¿Exportar igualmente para seguir trabajando?"
+        );
+
+      if (!proceed) return;
+    } else if (
+      validationBadge.dataset
+        .state === "warning"
+    ) {
+      const proceed =
+        window.confirm(
+          "El chart es estructuralmente válido, pero el audio externo aún está en GRID ONLY. ¿Exportar sin análisis temporal fuerte?"
         );
 
       if (!proceed) return;
@@ -2757,8 +3086,8 @@ exportButton.addEventListener(
 );
 
 function ensureAudio() {
-  audioContext ??=
-    new AudioContext();
+  audioContext =
+    ensureAudioContext();
 
   if (
     audioContext.state ===
@@ -2990,7 +3319,9 @@ function scheduleFrame(
 function schedulePlayback() {
   if (
     !playing ||
-    !audioContext
+    !audioContext ||
+    song?.audio?.mode ===
+      "file"
   ) {
     return;
   }
@@ -3050,6 +3381,98 @@ function schedulePlayback() {
       break;
     }
   }
+}
+
+function startFilePlayback() {
+  if (
+    !fileAudioBuffer ||
+    !audioContext ||
+    song?.audio?.mode !==
+      "file"
+  ) {
+    return;
+  }
+
+  if (filePlaybackSource) {
+    try {
+      filePlaybackSource.stop();
+    } catch {
+      // Already ended.
+    }
+    filePlaybackSource = null;
+  }
+
+  const source =
+    audioContext
+      .createBufferSource();
+  const gain =
+    audioContext
+      .createGain();
+  const timing =
+    activeTiming();
+  const offsetSeconds =
+    Number(
+      timing.offsetMs ??
+      0
+    ) /
+    1000;
+  const audioTime =
+    offsetSeconds +
+    playbackStartBeat *
+      60 /
+      timing.bpm;
+
+  source.buffer =
+    fileAudioBuffer;
+  gain.gain.value =
+    Math.max(
+      0,
+      Math.min(
+        2,
+        Number(
+          song.audio.gain ??
+          1
+        )
+      )
+    );
+  source.connect(gain);
+  gain.connect(
+    audioContext.destination
+  );
+
+  if (audioTime >= 0) {
+    source.start(
+      playbackStartTime,
+      Math.min(
+        audioTime,
+        Math.max(
+          0,
+          fileAudioBuffer.duration -
+            0.001
+        )
+      )
+    );
+  } else {
+    source.start(
+      playbackStartTime -
+        audioTime,
+      0
+    );
+  }
+
+  source.onended =
+    () => {
+      if (
+        filePlaybackSource ===
+          source
+      ) {
+        filePlaybackSource =
+          null;
+      }
+    };
+
+  filePlaybackSource =
+    source;
 }
 
 function animatePlayback() {
@@ -3120,6 +3543,21 @@ async function startPlayback() {
   ensureAudio();
   await audioContext.resume();
 
+  if (
+    song.audio?.mode ===
+      "file" &&
+    !fileAudioBuffer
+  ) {
+    try {
+      await prepareFileAudio();
+    } catch (error) {
+      showToast(
+        `No puedo reproducir audio: ${error.message}`
+      );
+      return;
+    }
+  }
+
   playing = true;
   playButton.textContent =
     "Ⅱ PAUSE";
@@ -3141,12 +3579,20 @@ async function startPlayback() {
         .stepsPerBeat
     );
 
-  schedulePlayback();
-  playbackTimer =
-    window.setInterval(
-      schedulePlayback,
-      25
-    );
+  if (
+    song.audio?.mode ===
+      "file"
+  ) {
+    startFilePlayback();
+  } else {
+    schedulePlayback();
+    playbackTimer =
+      window.setInterval(
+        schedulePlayback,
+        25
+      );
+  }
+
   animatePlayback();
 }
 
@@ -3160,6 +3606,16 @@ function stopPlayback(
     playbackTimer
   );
   playbackTimer = null;
+
+  if (filePlaybackSource) {
+    try {
+      filePlaybackSource.stop();
+    } catch {
+      // Already ended.
+    }
+    filePlaybackSource =
+      null;
+  }
 
   if (animationFrame) {
     cancelAnimationFrame(
@@ -3323,6 +3779,9 @@ async function loadSongById(
         }
       );
 
+    clearFileAudioState();
+    songSourceUrl =
+      loaded.sourceUrl;
     song =
       clone(
         loaded.song
@@ -3340,10 +3799,33 @@ async function loadSongById(
       1 /
       song.timing
         .stepsPerBeat;
+    if (
+      song.audio?.mode ===
+        "file"
+    ) {
+      try {
+        await prepareFileAudio();
+      } catch (audioError) {
+        showToast(
+          `Song cargada; audio pendiente: ${audioError.message}`
+        );
+      }
+    }
+
     resetHistory();
     populateAllUi();
+
+    const label =
+      loaded.alignment.mode ===
+        "semantic-stem"
+        ? `${loaded.alignment.checked}/${loaded.alignment.checked} sync verified`
+        : loaded.alignment.mode ===
+            "mix-energy"
+          ? `${loaded.alignment.verified}/${loaded.alignment.checked} audio analyzed`
+          : "grid only";
+
     showToast(
-      `${song.title} · ${loaded.alignment.checked}/${loaded.alignment.checked} sync`
+      `${song.title} · ${label}`
     );
   } catch (error) {
     validationBadge.dataset.state =
