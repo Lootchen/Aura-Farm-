@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
-  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.30" type="image/svg+xml">
+  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.31" type="image/svg+xml">
   <title>Aura Farm — Build the Beat</title>
-  <link rel="stylesheet" href="./styles.css?v=0.30">
+  <link rel="stylesheet" href="./styles.css?v=0.31">
 </head>
 <body>
   <main class="app" data-machine="forge">
@@ -52,7 +52,7 @@
     </div>
 
     <section id="startPanel" class="start-panel">
-      <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.30" alt=""></div>
+      <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.31" alt=""></div>
       <span class="eyebrow">AURA FARM · VERTICAL SLICE</span>
       <h1>BUILD THE BEAT</h1>
       <p>Golpea notas, conviértelas en proyectiles y construye una máquina musical distinta en cada run.</p>
@@ -101,12 +101,11 @@
         <span class="upgrade-kicker">AURA MODULE BAY</span>
         <h2 id="upgradeTitle">ELIGE 1 MÓDULO</h2>
         <div class="module-bay-status">
-          <span id="moduleSlotStatus">ACTIVOS 0/4</span>
-          <strong id="currentSynergy" class="current-synergy"></strong>
-          <button id="upgradeManageButton" type="button">GESTIONAR BUILD</button>
+          <span id="moduleSlotStatus">BUILD 0/4</span>
+          <button id="upgradeManageButton" type="button">VER BUILD</button>
         </div>
+        <strong id="currentSynergy" class="current-synergy" hidden></strong>
         <div id="upgradeCards" class="upgrade-cards"></div>
-        <small>Preview real de la mecánica · duplicados mejoran el módulo hasta nivel 3.</small>
       </div>
     </section>
 
@@ -196,6 +195,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.30"></script>
+  <script type="module" src="./src/main.js?v=0.31"></script>
 </body>
 </html>
