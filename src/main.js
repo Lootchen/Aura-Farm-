@@ -4966,7 +4966,7 @@ function drawOperatorSocket(songTime) {
     currentActMeta();
   const pulse =
     1 +
-    operatorPulse * 0.08;
+    operatorPulse * 0.075;
   const x =
     DESIGN.width / 2;
   const y = 858;
@@ -4977,81 +4977,211 @@ function drawOperatorSocket(songTime) {
     operatorMood === "idle"
       ? "flow"
       : operatorMood;
+  const beat =
+    0.5 +
+    0.5 *
+      Math.sin(
+        songTime *
+        BPM /
+        60 *
+        Math.PI *
+        2
+      );
 
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(pulse, pulse);
 
-  // Cockpit / future character slot.
+  // Central cockpit: AURI lives between the two thumbs, outside the playfield.
   ctx.shadowBlur =
     operatorPulse > 0
-      ? 18
-      : 7;
+      ? 20
+      : 8;
   ctx.shadowColor =
     `rgb(${palette.secondary.join(",")})`;
   ctx.fillStyle =
-    "rgba(8,14,22,.88)";
+    "rgba(7,12,20,.94)";
   ctx.strokeStyle =
-    `rgba(${palette.secondary.join(",")},.48)`;
+    `rgba(${palette.secondary.join(",")},.50)`;
   ctx.lineWidth = 2.5;
-
   ctx.beginPath();
   ctx.roundRect(
+    -34,
     -29,
-    -25,
-    58,
-    45,
-    15
+    68,
+    50,
+    16
   );
   ctx.fill();
   ctx.stroke();
 
-  // Abstract operator head. This is intentionally a placeholder silhouette.
+  // Side headset pods give AURI a stable readable silhouette.
   ctx.shadowBlur = 0;
-  ctx.fillStyle =
-    `rgba(${palette.accent.join(",")},.18)`;
+  for (const sign of [-1, 1]) {
+    ctx.fillStyle = "#172332";
+    ctx.strokeStyle =
+      `rgba(${palette.accent.join(",")},.70)`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(
+      sign * 22,
+      -5,
+      8,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle =
+      `rgba(${palette.accent.join(",")},.72)`;
+    ctx.beginPath();
+    ctx.arc(
+      sign * 22,
+      -5,
+      2.7,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  // Hood / helmet.
+  const hood =
+    ctx.createLinearGradient(
+      0,
+      -29,
+      0,
+      15
+    );
+  hood.addColorStop(
+    0,
+    "#334557"
+  );
+  hood.addColorStop(
+    0.55,
+    "#1b2938"
+  );
+  hood.addColorStop(
+    1,
+    "#0f1824"
+  );
+
+  ctx.fillStyle = hood;
   ctx.strokeStyle =
     `rgb(${palette.accent.join(",")})`;
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.arc(
+  ctx.moveTo(-18, 8);
+  ctx.quadraticCurveTo(
+    -22,
+    -10,
+    -13,
+    -22
+  );
+  ctx.quadraticCurveTo(
     0,
-    -5,
-    16,
+    -31,
+    13,
+    -22
+  );
+  ctx.quadraticCurveTo(
+    22,
+    -10,
+    18,
+    8
+  );
+  ctx.quadraticCurveTo(
     0,
-    Math.PI * 2
+    18,
+    -18,
+    8
+  );
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Visor.
+  ctx.fillStyle =
+    mood === "miss"
+      ? "rgba(70,20,30,.92)"
+      : "rgba(8,18,29,.94)";
+  ctx.strokeStyle =
+    mood === "boss"
+      ? "#ff9dc5"
+      : `rgba(${palette.secondary.join(",")},.88)`;
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.roundRect(
+    -13,
+    -16,
+    26,
+    17,
+    7
   );
   ctx.fill();
   ctx.stroke();
 
-  const eyeY = -8;
-  const eyeSpread = 7;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(
+    -13,
+    -16,
+    26,
+    17,
+    7
+  );
+  ctx.clip();
 
-  ctx.strokeStyle =
-    `rgb(${palette.secondary.join(",")})`;
-  ctx.fillStyle =
-    `rgb(${palette.secondary.join(",")})`;
-  ctx.lineWidth = 3;
+  const visorGlow =
+    ctx.createLinearGradient(
+      -13,
+      -16,
+      13,
+      1
+    );
+  visorGlow.addColorStop(
+    0,
+    `rgba(${palette.secondary.join(",")},.03)`
+  );
+  visorGlow.addColorStop(
+    0.5,
+    `rgba(${palette.secondary.join(",")},${0.10 + beat * 0.08})`
+  );
+  visorGlow.addColorStop(
+    1,
+    `rgba(${palette.accent.join(",")},.05)`
+  );
+  ctx.fillStyle = visorGlow;
+  ctx.fillRect(
+    -13,
+    -16,
+    26,
+    17
+  );
+
+  const eyeColor =
+    mood === "miss"
+      ? "#ff7c91"
+      : mood === "victory"
+        ? "#fff1a9"
+        : `rgb(${palette.secondary.join(",")})`;
+
+  ctx.strokeStyle = eyeColor;
+  ctx.fillStyle = eyeColor;
+  ctx.lineWidth = 2.5;
   ctx.lineCap = "round";
 
   if (mood === "miss") {
     for (const sign of [-1, 1]) {
       ctx.beginPath();
       ctx.moveTo(
-        sign * eyeSpread - 3,
-        eyeY - 2
+        sign * 7 - 2,
+        -9
       );
       ctx.lineTo(
-        sign * eyeSpread + 3,
-        eyeY + 2
-      );
-      ctx.moveTo(
-        sign * eyeSpread + 3,
-        eyeY - 2
-      );
-      ctx.lineTo(
-        sign * eyeSpread - 3,
-        eyeY + 2
+        sign * 7 + 2,
+        -6
       );
       ctx.stroke();
     }
@@ -5059,126 +5189,146 @@ function drawOperatorSocket(songTime) {
     mood === "chain" ||
     mood === "victory"
   ) {
-    ctx.beginPath();
-    ctx.arc(
-      -eyeSpread,
-      eyeY,
-      4,
-      Math.PI,
-      Math.PI * 2
-    );
-    ctx.arc(
-      eyeSpread,
-      eyeY,
-      4,
-      Math.PI,
-      Math.PI * 2
-    );
-    ctx.stroke();
+    for (const sign of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(
+        sign * 6,
+        -8,
+        3.5,
+        Math.PI,
+        Math.PI * 2
+      );
+      ctx.stroke();
+    }
+  } else if (mood === "flow") {
+    for (const sign of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(
+        sign * 8,
+        -8
+      );
+      ctx.lineTo(
+        sign * 4,
+        -8
+      );
+      ctx.stroke();
+    }
   } else {
-    const eyeRadius =
-      mood === "boss"
-        ? 3.5
-        : mood === "flow" ||
-            mood === "slide"
-          ? 3
-          : 2.4;
+    const radius =
+      mood === "boss" ||
+      mood === "slide"
+        ? 2.8
+        : 2.1;
 
-    ctx.beginPath();
-    ctx.arc(
-      -eyeSpread,
-      eyeY,
-      eyeRadius,
-      0,
-      Math.PI * 2
-    );
-    ctx.arc(
-      eyeSpread,
-      eyeY,
-      eyeRadius,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
+    for (const sign of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(
+        sign * 6,
+        -8,
+        radius,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
   }
 
-  // Mouth/status line.
+  ctx.restore();
+
+  // Collar / field-tech suit.
+  ctx.fillStyle = "#111c29";
   ctx.strokeStyle =
-    "rgba(255,255,255,.46)";
-  ctx.lineWidth = 2;
-
+    "rgba(255,255,255,.18)";
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
-
-  if (
-    mood === "chain" ||
-    mood === "victory"
-  ) {
-    ctx.arc(
-      0,
-      -1,
-      6,
-      0,
-      Math.PI
-    );
-  } else if (mood === "miss") {
-    ctx.arc(
-      0,
-      5,
-      5,
-      Math.PI,
-      Math.PI * 2
-    );
-  } else {
-    ctx.moveTo(-5, 1);
-    ctx.lineTo(5, 1);
-  }
-
-  ctx.stroke();
-
-  // Antenna reacts to beat.
-  const antenna =
-    Math.sin(
-      songTime *
-      BPM /
-      60 *
-      Math.PI *
-      2
-    ) * 2;
-
-  ctx.strokeStyle =
-    `rgba(${palette.accent.join(",")},.76)`;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, -25);
-  ctx.lineTo(
-    antenna,
-    -34
-  );
+  ctx.moveTo(-15, 7);
+  ctx.lineTo(-22, 18);
+  ctx.lineTo(22, 18);
+  ctx.lineTo(15, 7);
+  ctx.closePath();
+  ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle =
     `rgb(${palette.accent.join(",")})`;
+  ctx.globalAlpha = 0.66;
   ctx.beginPath();
   ctx.arc(
-    antenna,
-    -36,
-    2.5,
+    0,
+    11,
+    3.5,
     0,
     Math.PI * 2
   );
   ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // AURI's sprout antenna: the brand motif that links machine + "Farm".
+  const sway =
+    Math.sin(
+      songTime *
+      BPM /
+      60 *
+      Math.PI
+    ) * 2.2;
+
+  ctx.strokeStyle =
+    `rgb(${palette.accent.join(",")})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(
+    0,
+    -26
+  );
+  ctx.quadraticCurveTo(
+    sway * 0.3,
+    -34,
+    sway,
+    -39
+  );
+  ctx.stroke();
+
+  for (const sign of [-1, 1]) {
+    ctx.save();
+    ctx.translate(
+      sway +
+        sign * 3.5,
+      -40
+    );
+    ctx.rotate(
+      sign * -0.45
+    );
+    ctx.scale(
+      1 + beat * 0.08,
+      1
+    );
+    ctx.fillStyle =
+      `rgb(${palette.accent.join(",")})`;
+    ctx.beginPath();
+    ctx.ellipse(
+      0,
+      0,
+      5,
+      2.5,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.restore();
+  }
 
   ctx.restore();
 
   ctx.fillStyle =
-    "rgba(255,255,255,.34)";
+    "rgba(255,255,255,.40)";
   ctx.font =
-    "800 8px ui-monospace, SFMono-Regular, Menlo, monospace";
+    "900 8px ui-monospace, SFMono-Regular, Menlo, monospace";
   ctx.textAlign = "center";
   ctx.fillText(
-    `OPERATOR SLOT · ${act.name}`,
+    `AURI · ${act.name}`,
     x,
-    y + 28
+    y + 29
   );
 }
 
@@ -6234,6 +6384,62 @@ function pickUpgradeChoices() {
   return choices;
 }
 
+const MODULE_FAMILY_LABELS = {
+  shot: "SHOT",
+  collision: "KINETIC",
+  explosion: "BURST",
+  arena: "ARENA",
+  slide: "SLIDE",
+  chain: "CHAIN",
+  wall: "WALL",
+  defense: "GUARD"
+};
+
+function upgradePreviewMarkup(upgrade) {
+  const templates = {
+    "twin-shot":
+      '<span class="demo-orb"></span><span class="demo-orb"></span>',
+    ricochet:
+      '<span class="demo-wall"></span><span class="demo-wall"></span><span class="demo-orb"></span>',
+    pierce:
+      '<span class="demo-node"></span><span class="demo-node"></span><span class="demo-orb"></span>',
+    fragments:
+      '<span class="demo-orb"></span><span class="demo-node"></span><span class="demo-node"></span><span class="demo-node"></span><span class="demo-node"></span>',
+    bumper:
+      '<span class="demo-ring"></span><span class="demo-orb"></span>',
+    nova:
+      '<span class="demo-ring"></span><span class="demo-orb"></span>',
+    "mirror-slide":
+      '<span class="demo-orb"></span><span class="demo-orb"></span>',
+    "chain-relay":
+      '<span class="demo-node"></span><span class="demo-node"></span><span class="demo-node"></span><span class="demo-beam"></span><span class="demo-beam"></span>',
+    shockwave:
+      '<span class="demo-ring"></span><span class="demo-orb"></span>',
+    fusion:
+      '<span class="demo-orb"></span><span class="demo-orb"></span><span class="demo-ring"></span>',
+    "wall-charge":
+      '<span class="demo-wall"></span><span class="demo-orb"></span><span class="demo-ring"></span>',
+    "bumper-split":
+      '<span class="demo-ring"></span><span class="demo-orb"></span><span class="demo-orb"></span><span class="demo-orb"></span>',
+    "combo-shield":
+      '<span class="demo-ring"></span><span class="demo-orb"></span>'
+  };
+
+  return templates[upgrade.id] ??
+    '<span class="demo-orb"></span>';
+}
+
+function moduleSerial(upgrade) {
+  const index =
+    UPGRADES.findIndex(
+      (item) => item.id === upgrade.id
+    );
+
+  return `AF-${String(
+    index + 1
+  ).padStart(2, "0")}`;
+}
+
 function renderUpgradeChoices() {
   const choices =
     pickUpgradeChoices();
@@ -6256,8 +6462,10 @@ function renderUpgradeChoices() {
         ? `→ ${hints.map((item) => item.title).join(" / ")}`
         : "";
 
+    button.dataset.module =
+      upgrade.id;
     button.innerHTML =
-      `<span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span><strong>${upgrade.title}${owned > 0 ? ` ×${owned + 1}` : ""}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span><span class="upgrade-synergy"${hintText ? "" : " hidden"}>${hintText}</span>`;
+      `<span class="module-head"><span>${moduleSerial(upgrade)}</span><em>${MODULE_FAMILY_LABELS[upgrade.family] ?? upgrade.family.toUpperCase()}</em></span><span class="module-preview" data-module="${upgrade.id}" aria-hidden="true">${upgradePreviewMarkup(upgrade)}</span><strong>${upgrade.title}${owned > 0 ? ` ×${owned + 1}` : ""}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span><span class="upgrade-synergy"${hintText ? "" : " hidden"}>${hintText}</span><span class="upgrade-icon" aria-hidden="true">${upgrade.icon}</span>`;
 
     button.addEventListener(
       "click",
