@@ -545,7 +545,7 @@
       "chainGroup": "boss-fan",
       "minAct": 5,
       "music": {
-        "stem": "boss",
+        "stem": "drums",
         "intent": "accent",
         "energy": 0.86,
         "phrase": "bloom-fan"
