@@ -208,7 +208,9 @@ export async function loadGameSong(
   return {
     song,
     chart,
-    alignment
+    alignment,
+    sourceUrl:
+      String(url)
   };
 }
 
@@ -307,21 +309,15 @@ export function validateGameSong(
 
   if (
     !audio ||
-    audio.mode !==
-      "procedural" ||
-    audio.engine !==
-      "aura-procedural-v1"
+    ![
+      "procedural",
+      "file"
+    ].includes(
+      audio.mode
+    )
   ) {
     throw new Error(
-      "v1 requiere audio.mode procedural + aura-procedural-v1."
-    );
-  }
-
-  if (
-    timing.offsetMs !== 0
-  ) {
-    throw new Error(
-      "Las canciones procedurales v1 deben usar offsetMs 0."
+      "audio.mode debe ser procedural o file."
     );
   }
 
@@ -332,7 +328,7 @@ export function validateGameSong(
     audio.stems.length === 0
   ) {
     throw new Error(
-      "audio.stems necesita al menos un stem."
+      "audio.stems necesita al menos un stem semántico."
     );
   }
 
@@ -345,7 +341,53 @@ export function validateGameSong(
     );
   }
 
-  validateComposition(song);
+  if (
+    audio.mode ===
+      "procedural"
+  ) {
+    if (
+      audio.engine !==
+        "aura-procedural-v1"
+    ) {
+      throw new Error(
+        "Las canciones procedurales v1 requieren aura-procedural-v1."
+      );
+    }
+
+    if (
+      timing.offsetMs !== 0
+    ) {
+      throw new Error(
+        "Las canciones procedurales v1 deben usar offsetMs 0."
+      );
+    }
+
+    validateComposition(song);
+  } else {
+    requireString(
+      audio.src,
+      "audio.src"
+    );
+
+    if (
+      audio.gain !== undefined &&
+      (
+        !Number.isFinite(
+          audio.gain
+        ) ||
+        audio.gain < 0 ||
+        audio.gain > 2
+      )
+    ) {
+      throw new Error(
+        "audio.gain debe estar entre 0 y 2."
+      );
+    }
+
+    validateFileAnalysis(
+      song
+    );
+  }
 
   if (
     !Array.isArray(
@@ -392,6 +434,86 @@ export function validateGameSong(
   ) {
     throw new Error(
       "defaultChart no existe en charts[]."
+    );
+  }
+}
+
+function validateFileAnalysis(
+  song
+) {
+  const analysis =
+    song.audio?.analysis;
+
+  if (!analysis) {
+    return;
+  }
+
+  if (
+    analysis.version !== 1 ||
+    analysis.type !==
+      "mix-energy"
+  ) {
+    throw new Error(
+      "audio.analysis debe usar version 1 / mix-energy."
+    );
+  }
+
+  requirePositive(
+    analysis.durationSeconds,
+    "audio.analysis.durationSeconds"
+  );
+
+  if (
+    !Array.isArray(
+      analysis.stepEnergy
+    )
+  ) {
+    throw new Error(
+      "audio.analysis.stepEnergy debe ser array."
+    );
+  }
+
+  const expectedSteps =
+    Math.ceil(
+      song.timing.beats *
+      song.timing.stepsPerBeat
+    );
+
+  if (
+    analysis.stepEnergy.length <
+    expectedSteps
+  ) {
+    throw new Error(
+      `audio.analysis.stepEnergy necesita al menos ${expectedSteps} pasos.`
+    );
+  }
+
+  if (
+    analysis.stepEnergy.some(
+      (value) =>
+        !Number.isFinite(value) ||
+        value < 0 ||
+        value > 1
+    )
+  ) {
+    throw new Error(
+      "audio.analysis.stepEnergy sólo admite valores 0..1."
+    );
+  }
+
+  if (
+    analysis.minEventEnergy !==
+      undefined &&
+    (
+      !Number.isFinite(
+        analysis.minEventEnergy
+      ) ||
+      analysis.minEventEnergy < 0 ||
+      analysis.minEventEnergy > 1
+    )
+  ) {
+    throw new Error(
+      "audio.analysis.minEventEnergy debe estar entre 0 y 1."
     );
   }
 }
@@ -895,6 +1017,16 @@ export function songFrameFromData(
   song,
   beat
 ) {
+  if (
+    song?.audio?.mode !==
+      "procedural" ||
+    !song?.composition
+  ) {
+    throw new Error(
+      "songFrameFromData sólo está disponible para canciones procedurales."
+    );
+  }
+
   const timing =
     song.timing;
   const composition =
@@ -1051,43 +1183,137 @@ export function auditChartAlignment(
   chart
 ) {
   const errors = [];
+  const warnings = [];
+
+  if (
+    song.audio.mode ===
+      "procedural"
+  ) {
+    for (
+      const [index, event] of
+      chart.events.entries()
+    ) {
+      const frame =
+        songFrameFromData(
+          song,
+          event.beat
+        );
+      const stem =
+        event.music?.stem;
+
+      if (
+        !stemAudible(
+          frame,
+          stem
+        )
+      ) {
+        errors.push({
+          index,
+          beat: event.beat,
+          type: event.type,
+          stem,
+          phrase:
+            event.music?.phrase ??
+            null,
+          reason:
+            `stem ${stem} no suena en ese paso`
+        });
+      }
+    }
+
+    return {
+      ok:
+        errors.length === 0,
+      mode:
+        "semantic-stem",
+      checked:
+        chart.events.length,
+      verified:
+        chart.events.length,
+      warnings,
+      errors
+    };
+  }
+
+  const analysis =
+    song.audio.analysis;
+
+  if (
+    !analysis?.stepEnergy
+  ) {
+    warnings.push(
+      "Audio externo sin análisis: sólo se verifican timing/grid y estructura del chart."
+    );
+
+    return {
+      ok: true,
+      mode: "grid-only",
+      checked:
+        chart.events.length,
+      verified: 0,
+      warnings,
+      errors
+    };
+  }
+
+  const threshold =
+    Number(
+      analysis.minEventEnergy ??
+      0.018
+    );
 
   for (
     const [index, event] of
     chart.events.entries()
   ) {
-    const frame =
-      songFrameFromData(
-        song,
-        event.beat
+    const step =
+      Math.round(
+        event.beat *
+        song.timing
+          .stepsPerBeat
       );
-    const stem =
-      event.music?.stem;
+    const energy =
+      Number(
+        analysis.stepEnergy[
+          step
+        ] ?? 0
+      );
 
     if (
-      !stemAudible(
-        frame,
-        stem
-      )
+      energy <
+      threshold
     ) {
       errors.push({
         index,
         beat: event.beat,
         type: event.type,
-        stem,
+        stem:
+          event.music?.stem,
         phrase:
           event.music?.phrase ??
           null,
+        energy,
         reason:
-          `stem ${stem} no suena en ese paso`
+          `mix casi silencioso en ese paso (energy ${energy.toFixed(3)})`
       });
     }
   }
 
+  warnings.push(
+    "El análisis de un mix estéreo verifica energía temporal, no identifica instrumentos/stems individuales."
+  );
+
   return {
-    ok: errors.length === 0,
+    ok:
+      errors.length === 0,
+    mode:
+      "mix-energy",
     checked:
       chart.events.length,
+    verified:
+      chart.events.length -
+      errors.length,
+    warnings,
     errors
   };
 }
