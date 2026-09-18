@@ -1,5 +1,5 @@
 {
-  "name": "Vertical Slice 01 · Direct Trace v0.32",
+  "name": "Vertical Slice 01 · Shield Relay v0.33",
   "bpm": 110,
   "loopBeats": 68,
   "countInBeats": 4,
@@ -184,7 +184,8 @@
         "intent": "phrase",
         "energy": 0.66,
         "phrase": "spark-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -241,7 +242,8 @@
         "intent": "response",
         "energy": 0.72,
         "phrase": "current-answer"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -337,7 +339,8 @@
         "intent": "accent",
         "energy": 0.76,
         "phrase": "relay-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -365,7 +368,8 @@
         "intent": "accent",
         "energy": 0.76,
         "phrase": "relay-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -500,7 +504,8 @@
         "intent": "accent",
         "energy": 0.76,
         "phrase": "overdrive-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -528,7 +533,8 @@
         "intent": "accent",
         "energy": 0.78,
         "phrase": "overdrive-a"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -644,7 +650,8 @@
         "intent": "accent",
         "energy": 0.86,
         "phrase": "bloom-fan"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -701,7 +708,8 @@
         "intent": "accent",
         "energy": 0.88,
         "phrase": "finale"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -729,7 +737,8 @@
         "intent": "resolve",
         "energy": 0.88,
         "phrase": "finale"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -788,7 +797,8 @@
         "intent": "climax",
         "energy": 0.98,
         "phrase": "core-fan"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
@@ -818,7 +828,8 @@
         "intent": "climax",
         "energy": 0.98,
         "phrase": "core-fan"
-      }
+      },
+      "shield": true
     },
     {
       "type": "tap",
