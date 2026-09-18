@@ -2216,6 +2216,15 @@ function renderBuildVisibility({
   }
 }
 
+function buildManagerEditable() {
+  return [
+    "upgrade",
+    "post-upgrade"
+  ].includes(
+    buildPanelContext
+  );
+}
+
 function moduleSlotElement(
   id,
   source,
@@ -2252,6 +2261,7 @@ function moduleSlotElement(
     "click",
     () => {
       if (
+        buildManagerEditable() &&
         source === "active" &&
         selectedBuildModule &&
         reserveModuleIds.includes(
@@ -2353,7 +2363,17 @@ function renderBuildManager() {
   buildManagerDetail.innerHTML =
     `<strong>${upgrade.icon} ${upgrade.title} · LV${level}${atMax ? " MAX" : ""}</strong><span>${upgrade.desc}</span><small>${active ? "ACTIVO · modifica física, sinergias y música." : "RESERVA · no modifica la run hasta equiparlo."}</small>`;
 
-  if (
+  if (!buildManagerEditable()) {
+    const hint =
+      document.createElement(
+        "small"
+      );
+    hint.textContent =
+      "CAMBIOS DISPONIBLES ENTRE ACTOS.";
+    buildManagerDetail.append(
+      hint
+    );
+  } else if (
     active &&
     reserveModuleIds.length <
       RESERVE_MODULE_LIMIT
@@ -2433,7 +2453,10 @@ async function openBuildManager(
     pausePanel.hidden = true;
   }
 
-  if (context === "upgrade") {
+  if (
+    context === "upgrade" ||
+    context === "post-upgrade"
+  ) {
     upgradePanel.hidden = true;
   }
 
@@ -2454,6 +2477,14 @@ async function closeBuildManager() {
   ) {
     upgradePanel.hidden = false;
     startModulePreviewLoop();
+    return;
+  }
+
+  if (
+    buildPanelContext ===
+    "post-upgrade"
+  ) {
+    await beginAct();
     return;
   }
 
@@ -9560,6 +9591,18 @@ function renderUpgradeChoices() {
           "installing"
         );
 
+        if (
+          result.placement ===
+            "reserve"
+        ) {
+          selectedBuildModule =
+            upgrade.id;
+          await openBuildManager(
+            "post-upgrade"
+          );
+          return;
+        }
+
         await beginAct();
       }
     );
@@ -9927,7 +9970,7 @@ function completeRun() {
       const chip =
         document.createElement("span");
       chip.textContent =
-        `${upgrade.icon} ${upgrade.title}${count > 1 ? ` ×${count}` : ""}`;
+        `${upgrade.icon} ${upgrade.title} · LV${count}`;
       chip.className =
         `family-${upgrade.family}`;
       summaryBuild.append(chip);
