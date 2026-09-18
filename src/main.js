@@ -4160,9 +4160,15 @@ function drawControlButton(side, songTime) {
 
   ctx.save();
 
-  ctx.strokeStyle = left
-    ? "rgba(122,211,255,.20)"
-    : "rgba(211,166,255,.20)";
+  const palette =
+    machinePalette();
+  const cableRgb =
+    left
+      ? palette.secondary
+      : palette.accent;
+
+  ctx.strokeStyle =
+    `rgba(${cableRgb.join(",")},.22)`;
   ctx.lineWidth = 9;
   ctx.lineCap = "round";
   ctx.beginPath();
@@ -4294,41 +4300,75 @@ function drawControlButton(side, songTime) {
 function drawFlipper(side, songTime) {
   const segment =
     flipperSegment(side, songTime);
-
   const phase = segment.phase;
   const slide =
     activeSlideAt(songTime, side);
+  const slideActive =
+    Boolean(slide?.started);
+  const palette =
+    machinePalette();
+  const sideRgb =
+    side === "left"
+      ? palette.secondary
+      : palette.accent;
+  const sideColor =
+    `rgb(${sideRgb.join(",")})`;
+  const hot =
+    phase.attack || slideActive;
+  const angle =
+    Math.atan2(
+      segment.tip.y - segment.pivot.y,
+      segment.tip.x - segment.pivot.x
+    );
+  const mid = {
+    x:
+      lerp(
+        segment.pivot.x,
+        segment.tip.x,
+        0.55
+      ),
+    y:
+      lerp(
+        segment.pivot.y,
+        segment.tip.y,
+        0.55
+      )
+  };
 
   drawControlButton(side, songTime);
 
   ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
 
-  const slideActive =
-    Boolean(slide?.started);
-
+  // Heavy chassis: the claw should read as a machine, not a neon line.
   ctx.shadowBlur =
-    phase.attack || slideActive
-      ? 22
-      : 6;
-
+    hot ? 22 : 8;
   ctx.shadowColor =
-    phase.attack || slideActive
-      ? "#fff0a3"
-      : "#79cfff";
+    hot
+      ? "#fff1a9"
+      : sideColor;
+
+  ctx.strokeStyle = "#101824";
+  ctx.lineWidth =
+    FLIPPER.width + 13;
+  ctx.beginPath();
+  ctx.moveTo(
+    segment.pivot.x,
+    segment.pivot.y
+  );
+  ctx.lineTo(
+    segment.tip.x,
+    segment.tip.y
+  );
+  ctx.stroke();
 
   ctx.strokeStyle =
-    phase.attack || slideActive
-      ? "#fff0a3"
-      : phase.active
-        ? "#f2fbff"
-        : "#cfe9ff";
-
+    hot
+      ? "#f3e5a4"
+      : "#344252";
   ctx.lineWidth =
-    phase.attack || slideActive
-      ? FLIPPER.width + 5
-      : FLIPPER.width;
-
-  ctx.lineCap = "round";
+    FLIPPER.width + 3;
   ctx.beginPath();
   ctx.moveTo(
     segment.pivot.x,
@@ -4341,48 +4381,160 @@ function drawFlipper(side, songTime) {
   ctx.stroke();
 
   ctx.shadowBlur = 0;
-  ctx.fillStyle =
-    slideActive || phase.active
-      ? "#243a51"
-      : "#132238";
+  ctx.strokeStyle = sideColor;
+  ctx.globalAlpha =
+    hot ? 0.94 : 0.58;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(
+    segment.pivot.x,
+    segment.pivot.y
+  );
+  ctx.lineTo(
+    segment.tip.x,
+    segment.tip.y
+  );
+  ctx.stroke();
+  ctx.globalAlpha = 1;
 
+  // Hydraulic collar midway along the arm.
+  ctx.save();
+  ctx.translate(mid.x, mid.y);
+  ctx.rotate(angle);
+  ctx.fillStyle = "#0c121c";
+  ctx.strokeStyle =
+    "rgba(255,255,255,.24)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(
+    -10,
+    -12,
+    20,
+    24,
+    5
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = sideColor;
+  ctx.globalAlpha = 0.62;
+  ctx.fillRect(
+    -4,
+    -9,
+    8,
+    18
+  );
+  ctx.restore();
+
+  // Pivot joint.
+  ctx.fillStyle = "#101824";
+  ctx.strokeStyle = sideColor;
+  ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.arc(
     segment.pivot.x,
     segment.pivot.y,
-    11,
+    14,
     0,
     Math.PI * 2
   );
   ctx.fill();
-
-  ctx.shadowBlur =
-    phase.attack || slideActive
-      ? 20
-      : 8;
-
-  ctx.shadowColor =
-    phase.attack || slideActive
-      ? "#ffe985"
-      : "#9edcff";
+  ctx.stroke();
 
   ctx.fillStyle =
-    phase.attack || slideActive
-      ? "#ffe985"
-      : "#9edcff";
-
+    hot ? "#fff1a9" : "#516273";
   ctx.beginPath();
   ctx.arc(
-    segment.tip.x,
-    segment.tip.y,
-    phase.attack || slideActive
-      ? 10
-      : 7,
+    segment.pivot.x,
+    segment.pivot.y,
+    5,
     0,
     Math.PI * 2
   );
   ctx.fill();
 
+  // Pincer assembly at the tip.
+  ctx.save();
+  ctx.translate(
+    segment.tip.x,
+    segment.tip.y
+  );
+  ctx.rotate(angle);
+
+  ctx.shadowBlur =
+    hot ? 22 : 10;
+  ctx.shadowColor =
+    hot ? "#fff1a9" : sideColor;
+
+  ctx.fillStyle = "#121b28";
+  ctx.strokeStyle =
+    hot ? "#fff1a9" : sideColor;
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.arc(
+    0,
+    0,
+    10,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  const jawSpread =
+    phase.attack
+      ? 0.18
+      : slideActive
+        ? 0.30
+        : 0.48;
+  const jawLength =
+    hot ? 22 : 19;
+
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+
+  for (const sign of [-1, 1]) {
+    const a =
+      sign * jawSpread;
+    const elbowX =
+      Math.cos(a) * 11;
+    const elbowY =
+      Math.sin(a) * 11;
+    const tipX =
+      Math.cos(a * 1.45) *
+      jawLength;
+    const tipY =
+      Math.sin(a * 1.45) *
+      jawLength;
+
+    ctx.strokeStyle = "#121b28";
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(3, sign * 4);
+    ctx.quadraticCurveTo(
+      elbowX,
+      elbowY,
+      tipX,
+      tipY
+    );
+    ctx.stroke();
+
+    ctx.strokeStyle =
+      hot ? "#fff1a9" : sideColor;
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(3, sign * 4);
+    ctx.quadraticCurveTo(
+      elbowX,
+      elbowY,
+      tipX,
+      tipY
+    );
+    ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.restore();
   ctx.restore();
 }
 function drawImpactFlashes() {
