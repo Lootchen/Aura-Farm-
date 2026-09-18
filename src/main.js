@@ -7361,24 +7361,161 @@ function drawMessage() {
 function drawCountIn(songTime) {
   if (songTime >= 0) return;
 
+  const palette =
+    machinePalette();
   const remaining =
-    Math.max(1, Math.ceil(-clock.beat));
+    Math.max(
+      1,
+      Math.ceil(
+        -clock.beat
+      )
+    );
+  const fraction =
+    (
+      (
+        clock.beat %
+        1
+      ) +
+      1
+    ) %
+    1;
+  const ringRadius =
+    lerp(
+      58,
+      34,
+      fraction
+    );
+  const x =
+    DESIGN.width / 2;
+  const y = 350;
 
-  ctx.fillStyle = "rgba(255,255,255,.86)";
-  ctx.font = "900 42px system-ui, sans-serif";
+  ctx.save();
+
+  // Boot capsule.
+  ctx.fillStyle =
+    "rgba(5,10,17,.82)";
+  ctx.strokeStyle =
+    `rgba(${palette.secondary.join(",")},.22)`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(
+    x - 94,
+    y - 84,
+    188,
+    168,
+    28
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  // Four sync ticks.
+  for (
+    let tick = 0;
+    tick < 4;
+    tick += 1
+  ) {
+    const angle =
+      -Math.PI / 2 +
+      tick *
+        Math.PI / 2;
+    const active =
+      tick >= 4 - remaining;
+
+    ctx.strokeStyle =
+      active
+        ? `rgb(${palette.accent.join(",")})`
+        : "rgba(255,255,255,.12)";
+    ctx.lineWidth =
+      active ? 5 : 3;
+    ctx.beginPath();
+    ctx.moveTo(
+      x +
+        Math.cos(angle) *
+          68,
+      y +
+        Math.sin(angle) *
+          68
+    );
+    ctx.lineTo(
+      x +
+        Math.cos(angle) *
+          78,
+      y +
+        Math.sin(angle) *
+          78
+    );
+    ctx.stroke();
+  }
+
+  // Contracting beat ring.
+  ctx.shadowBlur = 18;
+  ctx.shadowColor =
+    `rgb(${palette.secondary.join(",")})`;
+  ctx.strokeStyle =
+    `rgba(${palette.secondary.join(",")},${0.42 + fraction * 0.45})`;
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.arc(
+    x,
+    y,
+    ringRadius,
+    0,
+    Math.PI * 2
+  );
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle =
+    "#0c1520";
+  ctx.strokeStyle =
+    `rgb(${palette.accent.join(",")})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(
+    x,
+    y,
+    29,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle =
+    "#f7fbff";
+  ctx.font =
+    "950 34px ui-monospace, SFMono-Regular, Menlo, monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
   ctx.fillText(
     String(remaining),
-    DESIGN.width / 2,
-    365
+    x,
+    y + 1
   );
 
-  ctx.font = "700 12px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,.48)";
-  ctx.fillText("PREPÁRATE", DESIGN.width / 2, 405);
+  ctx.fillStyle =
+    `rgb(${palette.secondary.join(",")})`;
+  ctx.font =
+    "900 8px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.fillText(
+    "AURI // SYNC",
+    x,
+    y - 57
+  );
+
+  ctx.fillStyle =
+    "rgba(255,255,255,.48)";
+  ctx.font =
+    "800 9px system-ui, sans-serif";
+  ctx.fillText(
+    AURA_SONG.title,
+    x,
+    y + 57
+  );
+
+  ctx.restore();
 }
+
 
 function drawDebug(songTime) {
   const loopBeat =
