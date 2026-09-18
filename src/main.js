@@ -1551,13 +1551,6 @@ function slideVectorAtTime(event, songTime) {
   );
 }
 
-function slideVectorError(a, b) {
-  return Math.hypot(
-    a.x - b.x,
-    a.y - b.y
-  );
-}
-
 function slideAngleFromVector(side, vector) {
   const length =
     Math.hypot(vector.x, vector.y);
@@ -1949,20 +1942,11 @@ function drawSlideOrb(
   ctx.restore();
 }
 
-function slideRawError(event, songTime) {
-  if (!event.started) return Infinity;
-
-  return slideVectorError(
-    slideControl[event.side],
-    slideVectorAtTime(event, songTime)
-  );
-}
-
 function slideVisualConnected(event, songTime) {
   return (
     event.started &&
     slideControl[event.side].held &&
-    slideRawError(event, songTime) <=
+    slideTipErrorPx(event, songTime) <=
       slideTolerance()
   );
 }
