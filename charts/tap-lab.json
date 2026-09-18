@@ -1,5 +1,5 @@
 {
-  "name": "Mechanics Lab 08 · Aim + Upgrades",
+  "name": "Mechanics Lab 09 · Free Aim",
   "bpm": 110,
   "loopBeats": 44,
   "countInBeats": 4,
@@ -41,23 +41,23 @@
       "anchors": [
         {
           "beat": 0,
-          "position": -0.1
+          "position": -0.45
         },
         {
           "beat": 2,
-          "position": 0.58
-        },
-        {
-          "beat": 4,
-          "position": -0.52
-        },
-        {
-          "beat": 6,
           "position": 0.72
         },
         {
+          "beat": 4,
+          "position": -0.82
+        },
+        {
+          "beat": 6,
+          "position": 0.88
+        },
+        {
           "beat": 8,
-          "position": 0.08
+          "position": 0.15
         }
       ]
     },
@@ -98,23 +98,23 @@
       "anchors": [
         {
           "beat": 0,
-          "position": 0.08
+          "position": 0.42
         },
         {
           "beat": 2,
-          "position": -0.62
+          "position": -0.74
         },
         {
           "beat": 4,
-          "position": 0.46
+          "position": 0.84
         },
         {
           "beat": 6,
-          "position": -0.72
+          "position": -0.88
         },
         {
           "beat": 8,
-          "position": 0
+          "position": -0.12
         }
       ]
     },
