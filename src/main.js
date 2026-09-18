@@ -1,4 +1,4 @@
-import { loadGameChart } from "./chart.js?v=0.25";
+import { loadGameChart } from "./chart.js?v=0.26";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -18,6 +18,11 @@ const lastHitEl = document.querySelector("#lastHit");
 const upgradePanel = document.querySelector("#upgradePanel");
 const upgradeTitle = document.querySelector("#upgradeTitle");
 const upgradeCards = document.querySelector("#upgradeCards");
+const buildDock = document.querySelector("#buildDock");
+const buildDockItems = document.querySelector("#buildDockItems");
+const synergyBadge = document.querySelector("#synergyBadge");
+const currentBuildList = document.querySelector("#currentBuildList");
+const currentSynergy = document.querySelector("#currentSynergy");
 const summaryPanel = document.querySelector("#summaryPanel");
 const summaryTitle = document.querySelector("#summaryTitle");
 const summaryScore = document.querySelector("#summaryScore");
@@ -534,6 +539,24 @@ class RhythmClock {
         );
       }
 
+      if (
+        hasActiveSynergy(
+          "pinball-engine"
+        ) ||
+        hasActiveSynergy(
+          "chain-reactor"
+        ) ||
+        hasActiveSynergy(
+          "twin-nova"
+        )
+      ) {
+        this.scheduleLead(
+          time + 0.12,
+          beat + 2,
+          0.010
+        );
+      }
+
       if (wave === FINAL_ACT) {
         this.scheduleBossDrone(
           time,
@@ -982,6 +1005,193 @@ const UPGRADES = [
   }
 ]
 
+const BUILD_SYNERGIES = [
+  {
+    id: "pinball-engine",
+    title: "PINBALL",
+    requires: ["bumper", "bumper-split", "ricochet"],
+    desc: "Bumper + duplicación + rebotes."
+  },
+  {
+    id: "wallstorm",
+    title: "WALLSTORM",
+    requires: ["ricochet", "wall-charge", "shockwave"],
+    desc: "Las paredes alimentan detonaciones AOE."
+  },
+  {
+    id: "chain-reactor",
+    title: "CHAIN REACTOR",
+    requires: ["chain-relay", "fragments", "fusion"],
+    desc: "Las cadenas generan materia para nuevas colisiones."
+  },
+  {
+    id: "twin-nova",
+    title: "TWIN NOVA",
+    requires: ["nova", "mirror-slide"],
+    desc: "Los Slides cierran con salvas simétricas."
+  },
+  {
+    id: "needle-storm",
+    title: "NEEDLE STORM",
+    requires: ["twin-shot", "pierce", "fragments"],
+    desc: "Más proyectiles que atraviesan y se multiplican."
+  },
+  {
+    id: "core-breaker",
+    title: "CORE BREAKER",
+    requires: ["pierce", "fusion", "shockwave"],
+    desc: "Build orientada a abrir y castigar objetivos duros."
+  }
+];
+
+let announcedSynergies = new Set();
+
+function upgradeById(id) {
+  return UPGRADES.find(
+    (upgrade) => upgrade.id === id
+  ) ?? null;
+}
+
+function buildCounts() {
+  const counts = new Map();
+
+  for (const item of buildHistory) {
+    counts.set(
+      item.id,
+      (counts.get(item.id) || 0) + 1
+    );
+  }
+
+  return counts;
+}
+
+function activeBuildSynergies() {
+  const counts = buildCounts();
+
+  return BUILD_SYNERGIES.filter(
+    (synergy) =>
+      synergy.requires.every(
+        (id) => counts.has(id)
+      )
+  );
+}
+
+function hasActiveSynergy(id) {
+  return activeBuildSynergies().some(
+    (synergy) => synergy.id === id
+  );
+}
+
+function renderBuildVisibility({
+  announce = false
+} = {}) {
+  const counts = buildCounts();
+  const synergies =
+    activeBuildSynergies();
+
+  buildDockItems.innerHTML = "";
+
+  if (counts.size === 0) {
+    const empty =
+      document.createElement("span");
+    empty.className = "build-empty";
+    empty.textContent = "SIN MODS";
+    buildDockItems.append(empty);
+  } else {
+    for (const [id, count] of counts) {
+      const upgrade =
+        upgradeById(id);
+
+      if (!upgrade) continue;
+
+      const chip =
+        document.createElement("span");
+      chip.className =
+        `build-chip family-${upgrade.family}`;
+      chip.innerHTML =
+        `<span>${upgrade.icon}</span>${count > 1 ? `<b>×${count}</b>` : ""}`;
+      chip.title =
+        `${upgrade.title}: ${upgrade.desc}`;
+      buildDockItems.append(chip);
+    }
+  }
+
+  const primary =
+    synergies[0] ?? null;
+
+  synergyBadge.hidden =
+    !primary;
+
+  if (primary) {
+    synergyBadge.textContent =
+      primary.title;
+  }
+
+  currentBuildList.innerHTML = "";
+
+  if (counts.size === 0) {
+    const empty =
+      document.createElement("span");
+    empty.className = "build-empty";
+    empty.textContent =
+      "Todavía no has instalado ningún módulo.";
+    currentBuildList.append(empty);
+  } else {
+    for (const [id, count] of counts) {
+      const upgrade =
+        upgradeById(id);
+
+      if (!upgrade) continue;
+
+      const item =
+        document.createElement("div");
+      item.className =
+        `current-build-item family-${upgrade.family}`;
+      item.innerHTML =
+        `<i>${upgrade.icon}</i><strong>${upgrade.title}${count > 1 ? ` ×${count}` : ""}</strong><small>${upgrade.desc}</small>`;
+      currentBuildList.append(item);
+    }
+  }
+
+  currentSynergy.textContent =
+    synergies.length
+      ? synergies
+          .map(
+            (synergy) =>
+              synergy.title
+          )
+          .join(" · ")
+      : "SIN SINERGIA COMPLETA";
+
+  if (!announce) return;
+
+  for (const synergy of synergies) {
+    if (
+      announcedSynergies.has(
+        synergy.id
+      )
+    ) {
+      continue;
+    }
+
+    announcedSynergies.add(
+      synergy.id
+    );
+
+    showMessage(
+      `SYNERGY · ${synergy.title}`,
+      "#ffe56d",
+      900
+    );
+    successTone(880);
+    bumpFeedback(3.8, 0.10);
+    setOperatorMood(
+      "chain",
+      1
+    );
+  }
+}
+
 const slideControl = {
   left: {
     held: false,
@@ -1043,7 +1253,7 @@ function loopDuration() {
 async function ensureChartLoaded() {
   if (chartLoaded) return;
 
-  const chartUrl = new URL("../charts/tap-lab.json?v=0.25", import.meta.url);
+  const chartUrl = new URL("../charts/tap-lab.json?v=0.26", import.meta.url);
   const chart = await loadGameChart(chartUrl);
 
   BPM = chart.bpm;
@@ -4547,7 +4757,7 @@ function drawOperatorSocket(songTime) {
     operatorPulse * 0.08;
   const x =
     DESIGN.width / 2;
-  const y = 822;
+  const y = 858;
   const comboFlow =
     combo >= 8;
   const mood =
@@ -4575,11 +4785,11 @@ function drawOperatorSocket(songTime) {
 
   ctx.beginPath();
   ctx.roundRect(
-    -34,
-    -31,
-    68,
-    55,
-    18
+    -29,
+    -25,
+    58,
+    45,
+    15
   );
   ctx.fill();
   ctx.stroke();
@@ -4594,8 +4804,8 @@ function drawOperatorSocket(songTime) {
   ctx.beginPath();
   ctx.arc(
     0,
-    -6,
-    19,
+    -5,
+    16,
     0,
     Math.PI * 2
   );
@@ -4756,7 +4966,7 @@ function drawOperatorSocket(songTime) {
   ctx.fillText(
     `OPERATOR SLOT · ${act.name}`,
     x,
-    y + 36
+    y + 28
   );
 }
 
@@ -5670,7 +5880,7 @@ function drawDebug(songTime) {
     LOOP_BEATS;
 
   const lines = [
-    `SLICE v0.25 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
+    `SLICE v0.26 · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
     `tap ${NOTE_SPEED}px/s CONSTANTE · projectile ${POST_HIT_SPEED}px/s`,
     `tap contacto · slide TRACE/FOLLOW · wave ${wave} · upgrades físicos`,
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
@@ -5816,6 +6026,7 @@ function renderUpgradeChoices() {
   const choices =
     pickUpgradeChoices();
 
+  renderBuildVisibility();
   upgradeCards.innerHTML = "";
 
   for (const upgrade of choices) {
@@ -5838,7 +6049,14 @@ function renderUpgradeChoices() {
         buildHistory.push({
           id: upgrade.id,
           title: upgrade.title,
-          family: upgrade.family
+          family: upgrade.family,
+          icon: upgrade.icon,
+          effect: upgrade.effect,
+          desc: upgrade.desc
+        });
+
+        renderBuildVisibility({
+          announce: true
         });
 
         if (runStats) {
@@ -6057,18 +6275,40 @@ function completeRun() {
 
   summaryBuild.innerHTML = "";
 
-  if (buildHistory.length === 0) {
+  const finalCounts =
+    buildCounts();
+
+  if (finalCounts.size === 0) {
     const empty =
       document.createElement("span");
     empty.textContent = "SIN MODS";
     summaryBuild.append(empty);
   } else {
-    for (const upgrade of buildHistory) {
+    for (const [id, count] of finalCounts) {
+      const upgrade =
+        upgradeById(id);
+
+      if (!upgrade) continue;
+
       const chip =
         document.createElement("span");
-      chip.textContent = upgrade.title;
+      chip.textContent =
+        `${upgrade.icon} ${upgrade.title}${count > 1 ? ` ×${count}` : ""}`;
       chip.className =
         `family-${upgrade.family}`;
+      summaryBuild.append(chip);
+    }
+
+    for (
+      const synergy of
+      activeBuildSynergies()
+    ) {
+      const chip =
+        document.createElement("span");
+      chip.textContent =
+        `✦ ${synergy.title}`;
+      chip.className =
+        "family-chain";
       summaryBuild.append(chip);
     }
   }
@@ -6557,6 +6797,9 @@ async function startRun(mode = "standard") {
   wave = 1;
   awaitingUpgrade = false;
   buildHistory = [];
+  announcedSynergies =
+    new Set();
+  renderBuildVisibility();
   runStats = newRunStats();
   runStartedAt = performance.now();
 
@@ -6603,6 +6846,7 @@ async function startRun(mode = "standard") {
   );
 
   startPanel.hidden = true;
+  buildDock.hidden = false;
 
   await beginAct();
 
@@ -6700,11 +6944,14 @@ document.addEventListener("visibilitychange", () => {
   clock.stopScheduler();
 
   startPanel.hidden = false;
+  buildDock.hidden = true;
   startButton.disabled = false;
   startButton.textContent = "REINICIAR PRUEBA";
 });
 
 refreshMachineOptions();
+buildDock.hidden = true;
+renderBuildVisibility();
 setCalibration(
   calibrationOffsetMs
 );
