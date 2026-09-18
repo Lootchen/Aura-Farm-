@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.41
+# Aura Farm — Vertical Slice v0.42
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,46 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.42 — TRACE input hotfix / Reward Cards / Ambient polish
+
+v0.42 fixes the remaining real-device TRACE capture failure and raises presentation without adding gameplay clutter.
+
+### TRACE input hotfix
+
+The invisible claw buttons sit above the canvas on mobile. Previous TRACE input listened only on the canvas, so a visually correct touch near the claw could be intercepted by the control overlay and never reach TRACE.
+
+TRACE now listens at the app level in capture phase.
+
+- direct touches on the moving TRACE head work even when the control overlay is under the finger;
+- pressing the matching claw during the receive window also catches TRACE;
+- claw catch is available from 0.40 s early through 0.52 s late;
+- the captured pointer is reused for drag, with no second tap;
+- the rail still begins on the authored beat when caught early;
+- pickup radius increases to 112 px;
+- rail tolerance increases to 40 px;
+- disconnect grace increases to 0.28 s;
+- required coverage decreases to 54%;
+- capture and actual TRACE start now have separate feedback: `TRACE CAPTURADO · MANTÉN` then `TRACE ACTIVO · ARRASTRA`.
+
+### Upgrade cards v2
+
+The card layout keeps the large module emblem but gives gameplay proof substantially more room.
+
+- cards are taller instead of leaving unused screen below them;
+- the animated preview grows to 128–136 px;
+- preview render resolution grows to 420×150;
+- preview brightness/saturation are raised slightly;
+- effect pills, titles and descriptions are larger;
+- choosing a card dims competing choices and gives the installed module a short claim animation.
+
+### Ambient presentation
+
+- a broad stage arch and low cockpit reflection add depth behind gameplay without placing decoration in the central note lane;
+- the main-menu reactor gains six slow ambient motes;
+- the primary RUN card receives a slow restrained sheen;
+- selected chassis gets a subtle premium glow;
+- a light edge vignette focuses attention toward the playfield center.
 
 ## v0.41 — Presentation / Module Cards / Flowing TRACE
 
