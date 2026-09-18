@@ -64,6 +64,78 @@ function validateGameChart(chart) {
       throw new Error(`Evento ${index}: chainGroup inválido.`);
     }
 
+    if (
+      !event.music ||
+      typeof event.music !== "object"
+    ) {
+      throw new Error(`Evento ${index}: music es obligatorio.`);
+    }
+
+    const musicStems =
+      new Set([
+        "drums",
+        "bass",
+        "harmony",
+        "lead",
+        "aura",
+        "boss"
+      ]);
+    const musicIntents =
+      new Set([
+        "pulse",
+        "backbeat",
+        "accent",
+        "syncopation",
+        "phrase",
+        "fill",
+        "response",
+        "pickup",
+        "resolve",
+        "climax"
+      ]);
+
+    if (
+      !musicStems.has(
+        event.music.stem
+      )
+    ) {
+      throw new Error(`Evento ${index}: music.stem inválido.`);
+    }
+
+    if (
+      !musicIntents.has(
+        event.music.intent
+      )
+    ) {
+      throw new Error(`Evento ${index}: music.intent inválido.`);
+    }
+
+    if (
+      !Number.isFinite(
+        event.music.energy
+      ) ||
+      event.music.energy < 0 ||
+      event.music.energy > 1
+    ) {
+      throw new Error(`Evento ${index}: music.energy debe estar entre 0 y 1.`);
+    }
+
+    if (
+      typeof event.music.phrase !==
+        "string" ||
+      event.music.phrase.length < 1
+    ) {
+      throw new Error(`Evento ${index}: music.phrase inválido.`);
+    }
+
+    if (
+      event.music.contour !== undefined &&
+      typeof event.music.contour !==
+        "boolean"
+    ) {
+      throw new Error(`Evento ${index}: music.contour debe ser boolean.`);
+    }
+
     if (event.type === "tap") {
       if (!["left", "right"].includes(event.side)) {
         throw new Error(`Evento ${index}: side inválido.`);
@@ -93,6 +165,15 @@ function validateGameChart(chart) {
 
       if (event.beat + event.durationBeats > chart.loopBeats) {
         throw new Error(`Evento ${index}: slide excede el loop.`);
+      }
+
+      if (
+        event.music.contour &&
+        !["lead", "aura"].includes(
+          event.music.stem
+        )
+      ) {
+        throw new Error(`Evento ${index}: un Slide con contour debe seguir lead o aura.`);
       }
 
       if (!Array.isArray(event.anchors) || event.anchors.length < 2) {
