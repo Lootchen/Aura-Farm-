@@ -5,6 +5,10 @@
     {
       "id": "glasshouse-circuit",
       "file": "glasshouse-circuit.json"
+    },
+    {
+      "id": "neon-germination",
+      "file": "neon-germination.json"
     }
   ]
 }
