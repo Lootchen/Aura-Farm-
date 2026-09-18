@@ -258,6 +258,7 @@ let screenShake = 0;
 let impactVeil = 0;
 let operatorPulse = 0;
 let operatorMood = "idle";
+let operatorLean = 0;
 let calibrationSession = null;
 
 function bumpFeedback(
@@ -277,6 +278,18 @@ function setOperatorMood(
   operatorMood = mood;
   operatorPulse =
     Math.max(operatorPulse, pulse);
+}
+
+function setOperatorLean(
+  side,
+  amount = 1
+) {
+  operatorLean =
+    side === "left"
+      ? -Math.abs(amount)
+      : side === "right"
+        ? Math.abs(amount)
+        : 0;
 }
 
 function machinePalette() {
@@ -2664,6 +2677,12 @@ function resolveTapHit(note, side, songTime) {
       : "hit",
     0.42
   );
+  setOperatorLean(
+    side,
+    combo >= 12
+      ? 1
+      : 0.72
+  );
 
   showMessage(
     shotCount > 1 ? `PERFECT · ×${shotCount}` : "PERFECT",
@@ -4286,6 +4305,10 @@ function finishSlide(event) {
     "slide",
     0.9
   );
+  setOperatorLean(
+    event.side,
+    1.12
+  );
 
   showMessage(
     "SLIDE PERFECT · POWER RETURN",
@@ -5201,6 +5224,11 @@ function updateEffects(dt) {
       0,
       operatorPulse - dt * 1.9
     );
+  operatorLean *=
+    Math.max(
+      0,
+      1 - dt * 7.5
+    );
 
   if (
     operatorPulse <= 0 &&
@@ -5861,7 +5889,18 @@ function drawOperatorSocket(songTime) {
       );
 
   ctx.save();
-  ctx.translate(x, y);
+  ctx.translate(
+    x + operatorLean * 3.2,
+    y
+  );
+  ctx.rotate(
+    operatorLean *
+    0.035 *
+    (
+      0.35 +
+      operatorPulse
+    )
+  );
   ctx.scale(pulse, pulse);
 
   // Central cockpit: AURI lives between the two thumbs, outside the playfield.
@@ -6145,7 +6184,8 @@ function drawOperatorSocket(songTime) {
     for (const sign of [-1, 1]) {
       ctx.beginPath();
       ctx.arc(
-        sign * 6,
+        sign * 6 +
+          operatorLean * 1.4,
         -8,
         radius,
         0,
@@ -8214,6 +8254,7 @@ async function beginAct() {
 
   runPaused = false;
   pausePanel.hidden = true;
+  pauseButton.disabled = false;
   running = true;
   lastFrame = performance.now();
   requestAnimationFrame(frame);
@@ -8224,6 +8265,7 @@ function openUpgradePanel() {
 
   awaitingUpgrade = true;
   running = false;
+  pauseButton.disabled = true;
   clock.stopScheduler();
 
   active.clear();
