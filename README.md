@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.36
+# Aura Farm — Vertical Slice v0.36.1
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,12 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.36.1 — Visible build version
+
+The lobby now exposes the current build number beside Settings.
+
+The displayed value and the in-run debug label share the same `GAME_VERSION` constant so future releases do not silently lose the visible version identifier.
 
 ## v0.36 — Visual Identity / Living Machine
 
