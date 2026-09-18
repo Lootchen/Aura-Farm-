@@ -645,7 +645,6 @@ function spawnReady(songTime) {
           goodTime: 0,
           trackingTime: 0,
           startDelta: null,
-          releaseDelta: null,
           handoffDone: event.segments.map((segment, index) => index === 0),
           handoffDelta: event.segments.map(() => null),
           handoffFlashed: event.segments.map((segment, index) => index === 0),
@@ -1373,20 +1372,22 @@ function updateLink(event, dt, songTime) {
     }
   }
 
-  if (
-    songTime >= event.targetTime &&
-    songTime <= event.endTime
-  ) {
-    const expectedSide =
-      expectedLinkSide(event, songTime);
+  if (songTime >= event.targetTime) {
+    const sampleTime =
+      Math.min(songTime, event.endTime);
 
-    event.trackingTime += dt;
+    if (songTime <= event.endTime) {
+      const expectedSide =
+        expectedLinkSide(event, songTime);
 
-    if (linkSideConnected(expectedSide, songTime)) {
-      event.goodTime += dt;
+      event.trackingTime += dt;
+
+      if (linkSideConnected(expectedSide, songTime)) {
+        event.goodTime += dt;
+      }
     }
 
-    scoreLinkTicks(event, songTime);
+    scoreLinkTicks(event, sampleTime);
   }
 
   if (songTime >= event.endTime) {
@@ -1434,10 +1435,14 @@ function finishLink(event) {
 
   const coverage = event.goodTime / duration;
   const handoffsOk = event.handoffDone.every(Boolean);
+  const finalSide = event.segments.at(-1).side;
+  const endConnected =
+    linkSideConnected(finalSide, event.endTime);
 
   if (
     coverage < LINK.minCoverage ||
-    !handoffsOk
+    !handoffsOk ||
+    !endConnected
   ) {
     failEvent(event, "SLIDE FALLÓ");
     return;
@@ -1484,7 +1489,6 @@ function finishLink(event) {
   active.delete(event.key);
   resolved.add(event.key);
 
-  const finalSide = event.segments.at(-1).side;
   const receiver = linkReceiver(finalSide);
 
   createImpactFlash(
