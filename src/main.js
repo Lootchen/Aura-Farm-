@@ -4727,19 +4727,104 @@ function explosionSound() {
   playTone(260, 0.04, 0.025, "triangle");
 }
 
-function chainSound(value = 1) {
-  const scale =
-    [523.25, 587.33, 659.25, 783.99, 880];
-  const frequency =
-    scale[
+function songCueRootMidi() {
+  if (
+    SONG?.audio?.mode ===
+      "procedural"
+  ) {
+    const safeBeat =
+      clamp(
+        clock.beat,
+        0,
+        Math.max(
+          0,
+          LOOP_BEATS -
+          1 /
+            Math.max(
+              1,
+              STEPS_PER_BEAT
+            )
+        )
+      );
+    const frame =
+      songFrameAtBeat(
+        safeBeat
+      );
+
+    if (
+      Number.isFinite(
+        frame.rootMidi
+      )
+    ) {
+      return (
+        frame.rootMidi +
+        12
+      );
+    }
+  }
+
+  const firstRoot =
+    SONG?.composition
+      ?.bars?.[0]?.root;
+
+  return Number.isFinite(
+    firstRoot
+  )
+    ? firstRoot + 12
+    : 60;
+}
+
+function motifInterval(
+  index
+) {
+  const motif =
+    SONG?.musicFeel
+      ?.motif;
+
+  if (
+    !Array.isArray(motif) ||
+    motif.length === 0
+  ) {
+    return [
+      0,
+      3,
+      7,
+      10,
+      12
+    ][
       Math.min(
-        scale.length - 1,
-        Math.max(0, value - 1)
+        4,
+        Math.max(
+          0,
+          index
+        )
       )
     ];
+  }
+
+  return motif[
+    Math.min(
+      motif.length - 1,
+      Math.max(
+        0,
+        index
+      )
+    )
+  ];
+}
+
+function chainSound(value = 1) {
+  const root =
+    songCueRootMidi();
+  const interval =
+    motifInterval(
+      value - 1
+    );
 
   playTone(
-    frequency,
+    midiToHz(
+      root + interval
+    ),
     0.075,
     0.045,
     "triangle"
@@ -4747,31 +4832,45 @@ function chainSound(value = 1) {
 }
 
 function moduleInstallSound() {
-  playTone(
-    330,
-    0.055,
-    0.035,
-    "triangle"
-  );
+  const root =
+    Number.isFinite(
+      SONG?.composition
+        ?.bars?.[0]?.root
+    )
+      ? SONG.composition
+          .bars[0].root +
+        12
+      : 60;
+  const notes = [
+    motifInterval(0),
+    motifInterval(2),
+    motifInterval(3)
+  ];
 
-  window.setTimeout(
-    () => playTone(
-      495,
-      0.065,
-      0.04,
-      "triangle"
-    ),
-    55
-  );
-
-  window.setTimeout(
-    () => playTone(
-      660,
-      0.09,
-      0.045,
-      "sine"
-    ),
-    110
+  notes.forEach(
+    (
+      interval,
+      index
+    ) => {
+      window.setTimeout(
+        () =>
+          playTone(
+            midiToHz(
+              root +
+              interval
+            ),
+            0.055 +
+              index * 0.018,
+            0.034 +
+              index * 0.005,
+            index ===
+              notes.length - 1
+              ? "sine"
+              : "triangle"
+          ),
+        index * 58
+      );
+    }
   );
 }
 
@@ -6267,6 +6366,12 @@ function resolveBossCollisions(songTime) {
         0.055,
         "sawtooth"
       );
+      clock.triggerInteractiveCue(
+        "bossPhase",
+        {
+          strength: 1.18
+        }
+      );
       bumpFeedback(
         6.2,
         0.18
@@ -6297,6 +6402,12 @@ function resolveBossCollisions(songTime) {
         1000
       );
       successTone(1046.5);
+      clock.triggerInteractiveCue(
+        "bossBreak",
+        {
+          strength: 1.30
+        }
+      );
       setOperatorMood(
         "victory",
         1.3
@@ -14740,6 +14851,12 @@ function openUpgradePanel() {
   awaitingUpgrade = true;
   running = false;
   pauseButton.disabled = true;
+  clock.triggerInteractiveCue(
+    "actEnd",
+    {
+      strength: 1
+    }
+  );
   clock.stopMusic();
 
   active.clear();
