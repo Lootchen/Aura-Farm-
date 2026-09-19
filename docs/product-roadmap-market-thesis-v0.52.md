@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.51  
+Current baseline: v0.52  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -28,8 +28,8 @@ These tasks are the highest priority. Do not expand content volume until these a
 - [x] BLOOM is grouped into longer musical chapters so Module Bay no longer interrupts every phase.
 - [x] Tap input has micro-direction without joystick or projectile speed changes.
 - [x] Timing mastery records calibrated input error instead of treating every valid hit as information-equivalent.
-- [ ] **Resonance soft stake:** mastery changes the state of the machine without stopping the song.
-- [ ] **Causality instrumentation:** record whether important CHAIN / boss outcomes came from deliberate aim, module behavior or passive cascade.
+- [x] **Resonance soft stake:** mastery changes the state of the machine without stopping the song.
+- [x] **Causality instrumentation (initial):** CHAIN source, aimed-CHAIN count and Core damage source are recorded from projectile metadata.
 - [ ] **Readability budget:** reduce non-critical trails / flashes / impact voices as physical density rises.
 - [ ] Playtest gate: majority of testers can explain the cause of their best CHAIN.
 - [ ] Playtest gate: players notice and intentionally use micro-direction.
@@ -77,9 +77,9 @@ Do not add a large song/content batch until:
 - [ ] AURA CORE should test routing and build rules rather than only projectile throughput.
 - [ ] At least three build families must have visibly different effective approaches.
 - [ ] Boss geometry exposes windows that reward deliberate micro-direction.
-- [ ] Precision / Resonance can improve boss efficiency without making misses end the song.
-- [ ] Track damage source: direct, Power, wall, fusion, chain, TRACE.
-- [ ] End screen explains the dominant damage path so players understand what their build actually did.
+- [x] Precision / Resonance can improve boss efficiency without making misses end the song.
+- [x] Track Core damage source from projectile provenance (direct/twin/TRACE/chain/wall/fusion/fragment/bumper).
+- [x] End screen explains the dominant Core damage path so players understand what their build actually did.
 
 ## P4 — Mastery, calibration and accessibility
 
@@ -138,12 +138,20 @@ Only after P0–P5 are validated:
 - [x] Preserve seven-phase musical progression underneath four gameplay chapters.
 
 ### v0.52 — current
-- [ ] Resonance state + HUD.
-- [ ] Precision Tap, TRACE, CHAIN and MISS feed Resonance.
-- [ ] Resonance changes a concrete physical outcome at AURA CORE.
-- [ ] End-of-run reports Resonance alongside Sync.
-- [ ] Add source metadata to spawned projectiles so future boss / causality telemetry can attribute outcomes.
-- [ ] First boss damage-source counters.
+- [x] Resonance state + HUD.
+- [x] Precision Tap, TRACE, CHAIN and MISS feed Resonance.
+- [x] Resonance changes a concrete physical outcome at AURA CORE.
+- [x] End-of-run reports Resonance alongside Sync.
+- [x] Add source metadata to spawned projectiles so future boss / causality telemetry can attribute outcomes.
+- [x] First boss damage-source counters.
+
+### v0.52 — current validation notes
+- Resonance starts at 50 and never ends the song.
+- centered Tap (±45 ms) gives the strongest Tap gain; valid off-center hits still gain less.
+- TRACE and CHAIN recover Resonance; MISS drains it and Shield softens the loss.
+- at Resonance 75+, centered/resonant matter deals +1 Core damage.
+- the runtime records projectile provenance and exposes the dominant Core path in the run summary.
+- next tuning question: does Resonance create useful tension without encouraging players to stare at the meter?
 
 ### v0.53 — next
 - [ ] Readability budget / projectile and audio voice pressure.
