@@ -237,3 +237,99 @@ Immediate gameplay feedback is still played immediately. These cues are the seco
 The active entry is chosen from the current act. Values scale stem mix/brightness rather than rewriting chart timing.
 
 This provides vertical reorchestration while retaining one validated chart contract.
+
+
+## levelPhases — v0.48
+
+A song may define contiguous phase ranges so one composition can act as a complete run/level rather than restarting from beat zero every act.
+
+```json
+"levelPhases": [
+  {
+    "id": "ignition",
+    "name": "IGNITION",
+    "cue": "ENCUENTRA EL PULSO",
+    "intensity": 0.24,
+    "startBeat": 0,
+    "endBeat": 32
+  }
+]
+```
+
+v1 rules:
+
+- first phase starts at beat 0;
+- phases are contiguous;
+- phases cannot overlap;
+- boundaries sit on the legal song grid;
+- phases cover the whole song;
+- runtime Act N plays phase N;
+- songs without `levelPhases` keep legacy whole-song-per-act behavior.
+
+## chartFeel — v0.48
+
+`chartFeel` controls authoring/playability heuristics without changing judgement timing.
+
+```json
+"chartFeel": {
+  "tracePreRecoveryBeats": 0.75,
+  "tracePostRecoveryBeats": 1,
+  "minRecoveryBeats": 1,
+  "maxEventsPerBar": 6
+}
+```
+
+For a standard flagship chart this means:
+
+- setup time before a continuous TRACE gesture;
+- no accidental required input while TRACE is held;
+- explicit escape/reposition time after TRACE;
+- bar-density warnings;
+- phrase-level recovery gaps.
+
+These are authoring warnings, not automatic chart rewrites.
+
+## songEvents — v0.48
+
+Song events are structural musical/visual markers stored separately from gameplay notes.
+
+```json
+"songEvents": [
+  {
+    "beat": 184,
+    "type": "reactor-bloom",
+    "strength": 1.08,
+    "label": "SURGE BLOOM"
+  }
+]
+```
+
+Current runtime event types:
+
+- `world-pulse`;
+- `reactor-bloom`;
+- `core-warning`;
+- `auri`.
+
+Unknown event types validate structurally and are ignored by the current runtime, leaving room for future event handlers.
+
+Rules:
+
+- events must be ordered by beat;
+- beats must sit on the legal song grid;
+- strength is 0..2;
+- event timing is absolute within the song.
+
+## Visual pre-roll vs count-in
+
+Gameplay lead time is independent from the audible count-in.
+
+Runtime calculates how much pre-roll the current phase needs from:
+
+- actual Tap route length / `NOTE_SPEED`;
+- TRACE lead seconds;
+- each event's offset from the phase start.
+
+Only the final `countInBeats` receive audible countdown clicks.
+
+This allows high-BPM tracks to remain visually readable without slowing the musical countdown.
