@@ -1,5 +1,6 @@
 import {
   auditChartAlignment,
+  auditChartFlow,
   loadGameSong,
   loadSongRegistry,
   songFrameFromData,
@@ -126,7 +127,9 @@ let tool = "select";
 let pxPerBeat = 72;
 let snapStep = 0.5;
 let invalidEventIndexes = new Set();
+let flowWarningIndexes = new Set();
 let validationErrors = [];
+let flowWarnings = [];
 let playheadBeat = 0;
 let audioContext = null;
 let playbackTimer = null;
@@ -1104,7 +1107,10 @@ function defaultTrace(
 function validateNow() {
   invalidEventIndexes =
     new Set();
+  flowWarningIndexes =
+    new Set();
   validationErrors = [];
+  flowWarnings = [];
 
   try {
     validateGameSong(song);
@@ -1118,6 +1124,29 @@ function validateNow() {
         song,
         chart
       );
+    const flow =
+      auditChartFlow(
+        song,
+        chart
+      );
+
+    flowWarnings =
+      flow.warnings;
+
+    for (
+      const warning of
+      flowWarnings
+    ) {
+      if (
+        Number.isInteger(
+          warning.index
+        )
+      ) {
+        flowWarningIndexes.add(
+          warning.index
+        );
+      }
+    }
 
     for (
       const error of
@@ -1151,12 +1180,16 @@ function validateNow() {
       validationTitle.textContent =
         `${report.checked} eventos válidos · audio aún no analizado`;
       validationList.innerHTML =
-        report.warnings
-          .map(
+        [
+          ...report.warnings.map(
             (item) =>
               `<div class="validation-item">${escapeHtml(item)}</div>`
+          ),
+          ...flowWarnings.map(
+            (item) =>
+              `<div class="validation-item flow-warning">FLOW · ${escapeHtml(item.reason)}</div>`
           )
-          .join("");
+        ].join("");
     } else if (
       report.mode ===
         "mix-energy"
@@ -1173,6 +1206,10 @@ function validateNow() {
           ...report.warnings.map(
             (item) =>
               `<div class="validation-item">${escapeHtml(item)}</div>`
+          ),
+          ...flowWarnings.map(
+            (item) =>
+              `<div class="validation-item flow-warning">FLOW · ${escapeHtml(item.reason)}</div>`
           )
         ].join("");
     } else {
@@ -1183,7 +1220,20 @@ function validateNow() {
       validationTitle.textContent =
         `${report.checked}/${report.checked} eventos alineados por stem`;
       validationList.innerHTML =
-        '<div class="validation-item ok">Paquete válido · timing, grid, eventos y stems coinciden.</div>';
+        [
+          '<div class="validation-item ok">Paquete válido · timing, grid, eventos y stems coinciden.</div>',
+          ...flowWarnings.map(
+            (item) =>
+              `<div class="validation-item flow-warning">FLOW · ${escapeHtml(item.reason)}</div>`
+          )
+        ].join("");
+
+      if (
+        flowWarnings.length > 0
+      ) {
+        validationTitle.textContent =
+          `${report.checked}/${report.checked} sync · ${flowWarnings.length} flow warning${flowWarnings.length === 1 ? "" : "s"}`;
+      }
     }
   } catch (error) {
     validationBadge.dataset.state =
@@ -1613,6 +1663,10 @@ function drawTapEvent(
     invalidEventIndexes.has(
       index
     );
+  const flowWarning =
+    flowWarningIndexes.has(
+      index
+    );
   const selected =
     event ===
     selectedEvent;
@@ -1623,7 +1677,9 @@ function drawTapEvent(
     ctx.strokeStyle =
       invalid
         ? COLORS.danger
-        : "rgba(220,249,255,.72)";
+        : flowWarning
+          ? "#ffc45c"
+          : "rgba(220,249,255,.72)";
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.arc(
@@ -1643,12 +1699,16 @@ function drawTapEvent(
   ctx.shadowColor =
     invalid
       ? COLORS.danger
-      : color;
+      : flowWarning
+        ? "#ffc45c"
+        : color;
   ctx.fillStyle = "#08111a";
   ctx.strokeStyle =
     invalid
       ? COLORS.danger
-      : color;
+      : flowWarning
+        ? "#ffc45c"
+        : color;
   ctx.lineWidth =
     selected
       ? 3.5
@@ -1670,7 +1730,9 @@ function drawTapEvent(
   ctx.fillStyle =
     invalid
       ? COLORS.danger
-      : color;
+      : flowWarning
+        ? "#ffc45c"
+        : color;
   ctx.font =
     "900 9px ui-monospace, monospace";
   ctx.textAlign = "center";
