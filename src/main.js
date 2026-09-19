@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.53";
+} from "./song.js?v=0.54";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.53";
+} from "./music.js?v=0.54";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.53";
+} from "./audio-file.js?v=0.54";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -103,7 +103,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.53";
+const GAME_VERSION = "0.54";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -117,9 +117,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.53";
+  "./assets/world/glasshouse-far.svg?v=0.54";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.53";
+  "./assets/world/growth-bays.svg?v=0.54";
 
 function drawWorldAsset(
   image,
@@ -452,6 +452,54 @@ function currentLevelPhase() {
   };
 }
 
+function authoredPhaseAtBeat(
+  beat = clock?.beat ?? 0
+) {
+  const phases =
+    SONG?.levelPhases;
+
+  if (
+    !Array.isArray(phases) ||
+    phases.length === 0
+  ) {
+    return null;
+  }
+
+  const value =
+    Number(beat);
+
+  if (!Number.isFinite(value)) {
+    return phases[0];
+  }
+
+  return (
+    phases.find(
+      (phase) =>
+        value >=
+          Number(
+            phase.startBeat ?? 0
+          ) &&
+        value <
+          Number(
+            phase.endBeat ??
+            LOOP_BEATS
+          )
+    ) ??
+    phases.at(-1)
+  );
+}
+
+function phaseWorldSpec(
+  beat = clock?.beat ?? 0
+) {
+  return (
+    authoredPhaseAtBeat(
+      beat
+    )?.world ??
+    null
+  );
+}
+
 function currentSongProgressAct() {
   const phase =
     currentLevelPhase();
@@ -700,6 +748,9 @@ let operatorLean = 0;
 let calibrationSession = null;
 let shieldGuideActive = false;
 let shieldGuideUntil = -Infinity;
+let phaseWorldState = {
+  traceRewriteUntilBeat: -Infinity
+};
 
 function bumpFeedback(
   shake = 0,
@@ -917,6 +968,14 @@ function newRunStats() {
     peakDensityPressure: 0,
     peakImpactVoices: 0,
     impactVoicesDropped: 0,
+    phaseWorld: {
+      membraneHits: 0,
+      conduitCrossings: 0,
+      overchargedCrossings: 0,
+      traceRewrites: 0
+    },
+    bossRoutedHits: 0,
+    bossRouteDamage: 0,
     upgradeOffers: [],
     chosenUpgrades: [],
     firstChainMs: null
@@ -4637,7 +4696,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.53",
+      "../songs/index.json?v=0.54",
       import.meta.url
     );
 
@@ -4912,7 +4971,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.53`,
+      `../songs/${entry.file}?v=0.54`,
       import.meta.url
     );
 
@@ -5540,6 +5599,248 @@ function distancePointToSegment(point, a, b) {
   const closestY = a.y + aby * t;
 
   return Math.hypot(point.x - closestX, point.y - closestY);
+}
+
+function phaseWorldRewriteActive(
+  beat = clock?.beat ?? 0
+) {
+  return (
+    Number(beat) <=
+    phaseWorldState
+      .traceRewriteUntilBeat
+  );
+}
+
+function activateTraceWorldRewrite() {
+  const phase =
+    authoredPhaseAtBeat(
+      clock?.beat ?? 0
+    );
+  const world =
+    phase?.world;
+
+  if (!world?.mode) {
+    return null;
+  }
+
+  const durationBeats =
+    Math.max(
+      1,
+      Number(
+        world.traceRewriteBeats ??
+        8
+      ) || 8
+    );
+  const endBeat =
+    Number(
+      phase.endBeat ??
+      LOOP_BEATS
+    );
+
+  phaseWorldState
+    .traceRewriteUntilBeat =
+      Math.min(
+        endBeat,
+        (clock?.beat ?? 0) +
+          durationBeats
+      );
+
+  if (runStats?.phaseWorld) {
+    runStats.phaseWorld.traceRewrites += 1;
+  }
+
+  return world.mode;
+}
+
+function phaseWorldCrossed(note, x) {
+  const before = Number(note.prevX) - x;
+  const after = Number(note.x) - x;
+
+  return (
+    Number.isFinite(before) &&
+    Number.isFinite(after) &&
+    (
+      before === 0 ||
+      after === 0 ||
+      before * after < 0
+    )
+  );
+}
+
+function resolvePhaseWorldProjectile(note) {
+  const beat = clock?.beat ?? 0;
+  const world = phaseWorldSpec(beat);
+
+  if (
+    !world?.mode ||
+    note.type !== "tap" ||
+    !note.launched
+  ) {
+    return false;
+  }
+
+  const gateX = Number(world.x ?? 270);
+  const yMin = Number(world.yMin ?? 260);
+  const yMax = Number(world.yMax ?? 620);
+
+  if (
+    note.y < yMin ||
+    note.y > yMax ||
+    !phaseWorldCrossed(note, gateX)
+  ) {
+    return false;
+  }
+
+  if (world.mode === "split") {
+    if (phaseWorldRewriteActive(beat)) {
+      return false;
+    }
+
+    const now = performance.now();
+
+    if (
+      now - Number(note.phaseWorldHitAt ?? -Infinity) < 80
+    ) {
+      return false;
+    }
+
+    const fromLeft = note.prevX < gateX;
+    const radius = noteRadius(note);
+
+    note.vx *= -1;
+    note.x =
+      gateX +
+      (fromLeft ? -(radius + 6) : radius + 6);
+    note.prevX = note.x;
+    note.phaseWorldHitAt = now;
+    note.ricochetAt = now;
+
+    if (runStats?.phaseWorld) {
+      runStats.phaseWorld.membraneHits += 1;
+    }
+
+    createImpactFlash(
+      note.x,
+      note.y,
+      JUDGEMENTS.perfect
+    );
+    impactSound("bumper", 0.66);
+    bumpFeedback(0.55, 0.010);
+    return true;
+  }
+
+  if (
+    world.mode === "conduit" &&
+    !note.phaseConduitUsed
+  ) {
+    const overcharged =
+      phaseWorldRewriteActive(beat);
+
+    note.phaseConduitUsed = true;
+    note.ricochetsLeft =
+      Number(note.ricochetsLeft || 0) +
+      (overcharged ? 2 : 1);
+
+    if (overcharged) {
+      note.resonant = true;
+    }
+
+    note.surgeCharged = true;
+
+    if (runStats?.phaseWorld) {
+      runStats.phaseWorld.conduitCrossings += 1;
+      if (overcharged) {
+        runStats.phaseWorld.overchargedCrossings += 1;
+      }
+    }
+
+    createImpactFlash(
+      gateX,
+      note.y,
+      { color: overcharged ? "#fff1a9" : "#5ee2d7" }
+    );
+    impactSound(
+      overcharged ? "power" : "bumper",
+      overcharged ? 0.86 : 0.62
+    );
+    return true;
+  }
+
+  return false;
+}
+
+function drawPhaseWorld() {
+  const beat = clock?.beat ?? 0;
+  const world = phaseWorldSpec(beat);
+
+  if (!world?.mode) return;
+
+  const gateX = Number(world.x ?? 270);
+  const yMin = Number(world.yMin ?? 260);
+  const yMax = Number(world.yMax ?? 620);
+  const rewrite = phaseWorldRewriteActive(beat);
+  const palette = machinePalette();
+  const pulse = 0.5 + 0.5 * Math.sin(beat * Math.PI * 0.5);
+
+  ctx.save();
+  ctx.lineCap = "round";
+
+  if (world.mode === "split") {
+    ctx.globalAlpha = rewrite ? 0.16 : 0.48;
+    ctx.strokeStyle = rewrite
+      ? "rgba(" + palette.secondary.join(",") + ",.42)"
+      : "rgba(255,125,153,.78)";
+    ctx.lineWidth = rewrite ? 2 : 5;
+    ctx.setLineDash(rewrite ? [5, 18] : [12, 7]);
+    ctx.beginPath();
+    ctx.moveTo(gateX, yMin);
+    ctx.lineTo(gateX, yMax);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (!rewrite) {
+      for (let y = yMin + 18; y < yMax; y += 54) {
+        ctx.fillStyle =
+          "rgba(255,125,153," + (0.20 + pulse * 0.12) + ")";
+        ctx.beginPath();
+        ctx.moveTo(gateX, y - 7);
+        ctx.lineTo(gateX - 9, y + 6);
+        ctx.lineTo(gateX + 8, y + 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  } else if (world.mode === "conduit") {
+    ctx.globalAlpha = rewrite ? 0.72 : 0.34;
+    ctx.strokeStyle = rewrite
+      ? "#fff1a9"
+      : "rgba(" + palette.secondary.join(",") + ",.68)";
+    ctx.lineWidth = rewrite ? 5 : 3;
+
+    for (const offset of [-6, 6]) {
+      ctx.beginPath();
+      ctx.moveTo(gateX + offset, yMin);
+      ctx.lineTo(gateX + offset, yMax);
+      ctx.stroke();
+    }
+
+    const span = yMax - yMin;
+    const travel = (((beat * 0.25) % 1) + 1) % 1;
+
+    for (let index = 0; index < 4; index += 1) {
+      const y =
+        yMin +
+        (((travel + index / 4) % 1) * span);
+      ctx.fillStyle = rewrite
+        ? "#fff1a9"
+        : "rgb(" + palette.secondary.join(",") + ")";
+      ctx.beginPath();
+      ctx.arc(gateX, y, rewrite ? 4.2 : 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
 }
 
 function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
@@ -8322,6 +8623,10 @@ function updateTap(note, dt, songTime) {
     note.x += note.vx * dt;
     note.y += note.vy * dt;
 
+    resolvePhaseWorldProjectile(
+      note
+    );
+
     const radius = noteRadius(note);
 
     const hitX =
@@ -8961,6 +9266,9 @@ function finishSlide(event) {
 
   spawnSlideProjectile(event);
 
+  const worldRewrite =
+    activateTraceWorldRewrite();
+
   bumpFeedback(3.5, 0.10);
   setOperatorMood(
     "slide",
@@ -8972,9 +9280,15 @@ function finishSlide(event) {
   );
 
   showMessage(
-    "SLIDE PERFECT · POWER RETURN",
+    worldRewrite === "split"
+      ? "TRACE PERFECT · MEMBRANE OPEN"
+      : worldRewrite === "conduit"
+        ? "TRACE PERFECT · CONDUIT OVERDRIVE"
+        : "SLIDE PERFECT · POWER RETURN",
     JUDGEMENTS.perfect.color,
-    620
+    worldRewrite
+      ? 820
+      : 620
   );
 
   successTone(820);
@@ -10112,6 +10426,39 @@ function processSongEvents() {
               "flow",
             0.46 +
               0.20 * strength
+          );
+          break;
+
+        case "phase-world":
+          musicSectionPulse =
+            Math.max(
+              musicSectionPulse,
+              0.74 * strength
+            );
+          songEventBloom =
+            Math.max(
+              songEventBloom,
+              0.34 * strength
+            );
+          bumpFeedback(
+            0.65 * strength,
+            0.014 * strength
+          );
+          setOperatorMood(
+            "focus",
+            0.56 +
+              0.12 * strength
+          );
+          showMessage(
+            event.mode === "split"
+              ? "FRACTURE · ARENA SPLIT"
+              : event.mode === "conduit"
+                ? "SURGE · CONDUIT ONLINE"
+                : "WORLD SHIFT",
+            event.mode === "split"
+              ? "#ff8ba1"
+              : "#82f6df",
+            760
           );
           break;
 
@@ -14415,6 +14762,7 @@ function render(songTime) {
   }
 
   drawBackground();
+  drawPhaseWorld();
   drawBuildConduits(songTime);
   drawBossCore(songTime);
   drawBumpers();
@@ -14473,6 +14821,10 @@ function resetWaveState() {
   impactFlashes = [];
   shieldGuideActive = false;
   shieldGuideUntil = -Infinity;
+  phaseWorldState = {
+    traceRewriteUntilBeat:
+      -Infinity
+  };
   for (const side of ["left", "right"]) {
     slideControl[side].held = false;
     slideControl[side].x = 0;
