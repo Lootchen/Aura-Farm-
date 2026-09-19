@@ -7,17 +7,17 @@ import {
   songFrameFromData,
   validateGameChart,
   validateGameSong
-} from "./song.js?v=0.56";
+} from "./song.js?v=0.57";
 import {
   midiToHz
-} from "./music.js?v=0.56";
+} from "./music.js?v=0.57";
 import {
   analyzeAudioSteps,
   buildWaveformPeaks,
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.56";
+} from "./audio-file.js?v=0.57";
 
 const $ = (selector) =>
   document.querySelector(selector);
@@ -4064,7 +4064,7 @@ async function loadSongById(
   try {
     const url =
       new URL(
-        `../songs/${entry.file}?v=0.56`,
+        `../songs/${entry.file}?v=0.57`,
         import.meta.url
       );
     const loaded =
@@ -4141,7 +4141,7 @@ async function boot() {
   try {
     const registryUrl =
       new URL(
-        "../songs/index.json?v=0.56",
+        "../songs/index.json?v=0.57",
         import.meta.url
       );
     registry =
