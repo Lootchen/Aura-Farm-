@@ -5439,3 +5439,6 @@ button { font: inherit; }
 #summaryBossPath {
   color: rgba(255,241,169,.58);
 }
+
+
+/* v0.53 — readability budget is runtime-driven; incoming notes/TRACE keep full priority. */
