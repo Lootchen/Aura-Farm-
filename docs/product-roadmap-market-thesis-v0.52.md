@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.52  
+Current baseline: v0.53  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -30,7 +30,7 @@ These tasks are the highest priority. Do not expand content volume until these a
 - [x] Timing mastery records calibrated input error instead of treating every valid hit as information-equivalent.
 - [x] **Resonance soft stake:** mastery changes the state of the machine without stopping the song.
 - [x] **Causality instrumentation (initial):** CHAIN source, aimed-CHAIN count and Core damage source are recorded from projectile metadata.
-- [ ] **Readability budget:** reduce non-critical trails / flashes / impact voices as physical density rises.
+- [x] **Readability budget:** adaptive pressure reduces non-critical trails, explosion particles and non-semantic impact voices while note/TRACE rendering keeps priority.
 - [ ] Playtest gate: majority of testers can explain the cause of their best CHAIN.
 - [ ] Playtest gate: players notice and intentionally use micro-direction.
 
@@ -47,7 +47,7 @@ Do not add a large song/content batch until:
 ### Module audit
 - [x] Classify every module as **rule mutation**, **topology**, **conversion**, **multiplication**, **defense**, or **pure quantity**.
 - [x] Preserve simple level-1 mutations; current v0.52 audit keeps existing rule-changing level-1 modules intact.
-- [ ] Redesign weak higher levels so level 2/3 add a new interaction where practical instead of only `+1`.
+- [x] First higher-level mutation pass: Astillas LV2 gains ricochet / LV3 turns resonant fragments into Power; Relevo LV2 gains ricochet / LV3 turns Bloom relays into Power. Continue auditing the remaining modules.
 - [x] Make card text describe the next actual outcome through `moduleLevelEffect`; future mutation pass must keep this contract.
 
 ### Draft quality
@@ -57,9 +57,9 @@ Do not add a large song/content batch until:
 - [ ] Synergy names should recognize emergent systems after they work, not be the only way to discover them.
 
 ### Chassis / machines
-- [ ] FORGE / PRISM / PULSE become mechanical chassis with explicit tradeoffs.
-- [ ] Chassis must alter how a player approaches the same song, not only colors/numbers.
-- [ ] Menu descriptions communicate the tradeoff before selection.
+- [x] FORGE / PRISM / PULSE now have first-pass mechanical chassis tradeoffs.
+- [x] Chassis alter play approach: FORGE rewards resonant wall termination with reduced aim range; PRISM rewards deliberate strong aim with wider steering + ricochet; PULSE shifts Resonance generation toward CHAIN/TRACE and reaches Bloom earlier.
+- [x] Menu descriptions communicate the current chassis mechanic before selection.
 - [ ] If chassis differentiation is not fun, demote the selector instead of adding more cosmetic machines.
 
 ## P2 — Make the song alter the physical problem
@@ -85,7 +85,7 @@ Do not add a large song/content batch until:
 
 - [x] Raw calibrated Tap timing error is recorded.
 - [x] Run summary exposes center-rate / average timing bias.
-- [ ] Detect persistent early/late bias and suggest calibration changes after enough samples.
+- [x] Detect persistent early/late bias after 20+ taps and suggest a compensating calibration offset when |mean bias| >= 25 ms.
 - [ ] Separate “valid hit” accessibility window from advanced Sync mastery.
 - [ ] Add optional advanced timing breakdown, not permanent judgement clutter.
 - [ ] Validate Bluetooth / speaker / wired audio paths on representative mobile devices.
@@ -94,11 +94,11 @@ Do not add a large song/content batch until:
 
 ## P5 — Readability / audio density budget
 
-- [ ] Count active projectiles, fragments, explosions and simultaneous impact voices.
-- [ ] Define density thresholds.
-- [ ] At high density, fade secondary trails before notes / TRACE lose contrast.
-- [ ] Limit physical impact voice rate while preserving semantic cues.
-- [ ] Keep note silhouettes, receivers and TRACE rails highest-priority.
+- [x] Count active projectiles, fragments, explosions and recent simultaneous impact voices; persist per-run peaks.
+- [x] Define initial weighted density thresholds: visual pressure starts above weighted load 9 and reaches full pressure across +24 load; physical impact voice cap steps 5 -> 3 -> 2.
+- [x] At high density, fade secondary trails and explosion particles before touching incoming notes / TRACE.
+- [x] Limit non-semantic physical impact voice rate while Tap / Shield / CHAIN / Power cues bypass the drop budget.
+- [x] Keep note silhouettes, receivers and TRACE rails outside the adaptive visual degradation path.
 - [ ] Profile FPS and input latency during worst-case build combinations.
 - [ ] Add Chart Lab perceptual-load lane: event density + TRACE occupancy + Shield load + VFX load.
 
@@ -153,12 +153,15 @@ Only after P0–P5 are validated:
 - the runtime records projectile provenance and exposes the dominant Core path in the run summary.
 - next tuning question: does Resonance create useful tension without encouraging players to stare at the meter?
 
-### v0.53 — next
+### v0.53 — current
 - [x] Module role classification + draft-role telemetry landed early in v0.52.
-- [ ] Readability budget / projectile and audio voice pressure.
-- [ ] First level-2/3 module mutation pass.
-- [ ] Offer-role telemetry.
-- [ ] First chassis mechanics.
+- [x] Readability budget / projectile and audio voice pressure.
+- [x] First level-2/3 module mutation pass (Astillas + Relevo).
+- [x] Offer-role telemetry.
+- [x] First chassis mechanics.
+- [x] Persistent timing bias can suggest calibration offset.
+- [ ] Playtest / tune density thresholds on worst-case builds.
+- [ ] Continue mutation pass only where an added rule remains legible.
 
 ### v0.54 — next
 - [ ] BLOOM phase-specific arena mutation.
