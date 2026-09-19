@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.49";
+} from "./song.js?v=0.50";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.49";
+} from "./music.js?v=0.50";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.49";
+} from "./audio-file.js?v=0.50";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -21,6 +21,7 @@ const startButton = document.querySelector("#startButton");
 const dailyButton = document.querySelector("#dailyButton");
 const practiceButton = document.querySelector("#practiceButton");
 const startButtonLabel = document.querySelector("#startButtonLabel");
+const startRunMeta = document.querySelector("#startRunMeta");
 const menuSettingsButton = document.querySelector("#menuSettingsButton");
 const menuSettingsClose = document.querySelector("#menuSettingsClose");
 const menuSettings = document.querySelector("#menuSettings");
@@ -96,7 +97,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.49";
+const GAME_VERSION = "0.50";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -110,9 +111,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.49";
+  "./assets/world/glasshouse-far.svg?v=0.50";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.49";
+  "./assets/world/growth-bays.svg?v=0.50";
 
 function drawWorldAsset(
   image,
@@ -4167,7 +4168,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.49",
+      "../songs/index.json?v=0.50",
       import.meta.url
     );
 
@@ -4378,6 +4379,33 @@ function applySongMetadataToUi(
     }
   }
 
+  if (startRunMeta) {
+    const seconds =
+      song.timing.beats *
+      60 /
+      song.timing.bpm;
+    const roundedSeconds =
+      Math.max(
+        1,
+        Math.round(seconds)
+      );
+    const minutes =
+      Math.floor(
+        roundedSeconds / 60
+      );
+    const remainder =
+      String(
+        roundedSeconds % 60
+      ).padStart(2, "0");
+    const phaseCount =
+      phases.length > 0
+        ? phases.length
+        : RUN_ACTS;
+
+    startRunMeta.textContent =
+      `${phaseCount} FASES · ${minutes}:${remainder} · BUILD ${ACTIVE_MODULE_LIMIT} SLOTS`;
+  }
+
   if (summaryTrack) {
     summaryTrack.textContent =
       `TRACK ${trackNumber} · ${song.title}`;
@@ -4404,7 +4432,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.49`,
+      `../songs/${entry.file}?v=0.50`,
       import.meta.url
     );
 
@@ -15467,8 +15495,13 @@ function renderUpgradeChoices() {
           : "NUEVO";
     const synergyLabel =
       hints.length > 0
-        ? `COMBINA · ${hints[0].title}`
+        ? `SINERGIA · ${hints[0].title}`
         : "";
+    const outcome =
+      moduleLevelEffect(
+        upgrade,
+        nextLevel
+      );
     const levelStars =
       Array.from(
         {
@@ -15489,8 +15522,16 @@ function renderUpgradeChoices() {
     );
     button.dataset.module =
       upgrade.id;
+    button.setAttribute(
+      "aria-label",
+      [
+        upgrade.title,
+        outcome,
+        synergyLabel
+      ].filter(Boolean).join(". ")
+    );
     button.innerHTML =
-      `<span class="module-head"><span>${fitLabel}</span>${synergyLabel ? `<em>${synergyLabel}</em>` : ""}</span><div class="upgrade-card-art" aria-hidden="true"><i class="upgrade-card-orbit"></i><span class="upgrade-card-icon">${upgrade.icon}</span><small class="upgrade-card-stars">${levelStars}</small></div><div class="upgrade-card-copy"><span class="upgrade-family">${moduleFamilyLabel(upgrade.family)}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span></div><div class="upgrade-preview-strip"><span>ASÍ CAMBIA TU RUN</span><canvas class="module-preview-canvas" width="420" height="150" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas></div>`;
+      `<span class="module-head"><span>${fitLabel}</span>${synergyLabel ? `<em>${synergyLabel}</em>` : ""}</span><div class="upgrade-choice-body"><div class="upgrade-card-art" aria-hidden="true"><i class="upgrade-card-orbit"></i><span class="upgrade-card-icon">${upgrade.icon}</span><small class="upgrade-card-stars">${levelStars}</small></div><div class="upgrade-card-copy"><span class="upgrade-family">${moduleFamilyLabel(upgrade.family)}</span><strong>${upgrade.title}</strong><span class="upgrade-outcome">${outcome}</span><span class="upgrade-desc">${upgrade.desc}</span></div><div class="upgrade-preview-strip" aria-hidden="true"><span>PREVIEW</span><canvas class="module-preview-canvas" width="420" height="150" data-module="${upgrade.id}" data-level="${nextLevel}"></canvas></div></div>`;
 
     button.addEventListener(
       "click",
