@@ -6,17 +6,17 @@ import {
   songFrameFromData,
   validateGameChart,
   validateGameSong
-} from "./song.js?v=0.47";
+} from "./song.js?v=0.48";
 import {
   midiToHz
-} from "./music.js?v=0.47";
+} from "./music.js?v=0.48";
 import {
   analyzeAudioSteps,
   buildWaveformPeaks,
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.47";
+} from "./audio-file.js?v=0.48";
 
 const $ = (selector) =>
   document.querySelector(selector);
@@ -719,8 +719,15 @@ function populateMetadata() {
   const timing =
     activeTiming();
 
+  const phaseCount =
+    Array.isArray(
+      song.levelPhases
+    )
+      ? song.levelPhases.length
+      : 0;
+
   songMeta.textContent =
-    `${song.artist ?? "AURA FARM"} · ${timing.bpm} BPM · ${timing.beats} BEATS`;
+    `${song.artist ?? "AURA FARM"} · ${timing.bpm} BPM · ${timing.beats} BEATS${phaseCount > 0 ? ` · ${phaseCount} PHASES` : ""}`;
   songTitle.textContent =
     song.title;
   eventCount.textContent =
@@ -1355,6 +1362,67 @@ function drawGrid() {
     width,
     Y.end
   );
+
+  if (
+    Array.isArray(
+      song.levelPhases
+    )
+  ) {
+    song.levelPhases.forEach(
+      (
+        phase,
+        index
+      ) => {
+        const x =
+          phase.startBeat *
+          pxPerBeat;
+        const w =
+          (
+            phase.endBeat -
+            phase.startBeat
+          ) *
+          pxPerBeat;
+
+        ctx.fillStyle =
+          index % 2 === 0
+            ? "rgba(110,215,255,.018)"
+            : "rgba(216,139,255,.018)";
+        ctx.fillRect(
+          x,
+          Y.ruler,
+          w,
+          Y.end -
+          Y.ruler
+        );
+
+        ctx.strokeStyle =
+          "rgba(255,229,109,.34)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(
+          x,
+          Y.ruler
+        );
+        ctx.lineTo(
+          x,
+          Y.end
+        );
+        ctx.stroke();
+
+        ctx.fillStyle =
+          "rgba(255,229,109,.78)";
+        ctx.font =
+          "900 9px ui-monospace, monospace";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(
+          `${index + 1} · ${phase.name ?? phase.id ?? "PHASE"}`,
+          x + 5,
+          Y.music - 5
+        );
+      }
+    );
+  }
 
   const bands = [
     [Y.ruler, LAYOUT.ruler, "rgba(255,255,255,.018)"],
@@ -3828,7 +3896,7 @@ async function loadSongById(
   try {
     const url =
       new URL(
-        `../songs/${entry.file}?v=0.47`,
+        `../songs/${entry.file}?v=0.48`,
         import.meta.url
       );
     const loaded =
@@ -3905,7 +3973,7 @@ async function boot() {
   try {
     const registryUrl =
       new URL(
-        "../songs/index.json?v=0.47",
+        "../songs/index.json?v=0.48",
         import.meta.url
       );
     registry =
