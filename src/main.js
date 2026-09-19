@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.46";
+} from "./song.js?v=0.47";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.46";
+} from "./music.js?v=0.47";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.46";
+} from "./audio-file.js?v=0.47";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -94,7 +94,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.46";
+const GAME_VERSION = "0.47";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -108,9 +108,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.46";
+  "./assets/world/glasshouse-far.svg?v=0.47";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.46";
+  "./assets/world/growth-bays.svg?v=0.47";
 
 function drawWorldAsset(
   image,
@@ -542,6 +542,7 @@ class RhythmClock {
     this.timer = null;
     this.noiseBuffer = null;
     this.masterBus = null;
+    this.musicBusNode = null;
     this.saturator = null;
     this.compressor = null;
     this.stemBuses = null;
@@ -553,6 +554,7 @@ class RhythmClock {
     this.fileBufferUrl = null;
     this.fileSource = null;
     this.fileGain = null;
+    this.lastScheduledSection = null;
   }
 
   async prepareSongAudio(
@@ -667,7 +669,7 @@ class RhythmClock {
 
     source.connect(gain);
     gain.connect(
-      this.masterBus ??
+      this.musicBus() ??
       this.context.destination
     );
 
@@ -743,6 +745,11 @@ class RhythmClock {
     this.masterBus.gain.value =
       0.82;
 
+    this.musicBusNode =
+      context.createGain();
+    this.musicBusNode.gain.value =
+      1;
+
     this.saturator =
       context.createWaveShaper();
     this.saturator.oversample =
@@ -791,6 +798,10 @@ class RhythmClock {
     this.compressor.release.value =
       0.22;
 
+    this.musicBusNode.connect(
+      this.masterBus
+    );
+
     this.masterBus.connect(
       this.saturator
     );
@@ -836,7 +847,7 @@ class RhythmClock {
       this.delayWet
     );
     this.delayWet.connect(
-      this.masterBus
+      this.musicBusNode
     );
 
     this.stemBuses = {};
@@ -865,7 +876,7 @@ class RhythmClock {
 
       gain.connect(pan);
       pan.connect(
-        this.masterBus
+        this.musicBusNode
       );
 
       if (spec.send > 0) {
@@ -884,6 +895,387 @@ class RhythmClock {
       0.92;
     this.sfxBusNode.connect(
       this.masterBus
+    );
+  }
+
+  musicBus() {
+    this.ensureMixGraph();
+
+    return (
+      this.musicBusNode ??
+      this.masterBus ??
+      this.context?.destination
+    );
+  }
+
+  actArrangement() {
+    const list =
+      SONG?.musicFeel
+        ?.actArrangements;
+
+    if (
+      !Array.isArray(list) ||
+      list.length === 0
+    ) {
+      return {
+        drums: 1,
+        bass: 1,
+        harmony: 1,
+        lead: 1,
+        aura: 1,
+        brightness: 1,
+        drive: 1
+      };
+    }
+
+    return (
+      list[
+        Math.min(
+          list.length - 1,
+          Math.max(
+            0,
+            wave - 1
+          )
+        )
+      ] ??
+      list.at(-1)
+    );
+  }
+
+  duckMusic(
+    db = -1.5,
+    holdSeconds = 0.08
+  ) {
+    if (
+      !this.context ||
+      !this.musicBusNode
+    ) {
+      return;
+    }
+
+    const now =
+      this.context.currentTime;
+    const depth =
+      clamp(
+        Math.pow(
+          10,
+          db / 20
+        ),
+        0.45,
+        1
+      );
+    const param =
+      this.musicBusNode.gain;
+
+    param.cancelScheduledValues(
+      now
+    );
+    param.setValueAtTime(
+      Math.max(
+        0.0001,
+        param.value
+      ),
+      now
+    );
+    param.linearRampToValueAtTime(
+      depth,
+      now + 0.006
+    );
+    param.setValueAtTime(
+      depth,
+      now +
+        Math.max(
+          0.012,
+          holdSeconds
+        )
+    );
+    param.setTargetAtTime(
+      1,
+      now +
+        Math.max(
+          0.016,
+          holdSeconds
+        ),
+      0.028
+    );
+  }
+
+  quantizedCueTime(
+    quantize = "step"
+  ) {
+    if (!this.context) {
+      return null;
+    }
+
+    const beat =
+      Math.max(
+        0,
+        this.beat
+      );
+    const grid =
+      quantize === "bar"
+        ? Math.max(
+            1,
+            SONG?.timing
+              ?.beatsPerBar ??
+            4
+          )
+        : quantize === "beat"
+          ? 1
+          : 1 /
+            Math.max(
+              1,
+              STEPS_PER_BEAT
+            );
+    const targetBeat =
+      Math.ceil(
+        (
+          beat +
+          0.012
+        ) /
+        grid
+      ) *
+      grid;
+    const time =
+      this.startAt +
+      targetBeat *
+        (60 / BPM);
+
+    return {
+      beat:
+        targetBeat,
+      time:
+        Math.max(
+          time,
+          this.context.currentTime +
+            0.008
+        )
+    };
+  }
+
+  scheduleCueChord(
+    time,
+    {
+      rootMidi = 57,
+      intervals = [0, 7],
+      gain = 0.005,
+      stem = "harmony",
+      durationBeats = 0.32,
+      brightness = 1
+    } = {}
+  ) {
+    if (!this.context) {
+      return;
+    }
+
+    const safeIntervals =
+      Array.isArray(intervals) &&
+      intervals.length > 0
+        ? intervals.slice(0, 6)
+        : [0, 7];
+    const duration =
+      Math.max(
+        0.08,
+        durationBeats *
+          (60 / BPM)
+      );
+
+    safeIntervals.forEach(
+      (
+        interval,
+        index
+      ) => {
+        const oscillator =
+          this.context
+            .createOscillator();
+        const overtone =
+          this.context
+            .createOscillator();
+        const filter =
+          this.context
+            .createBiquadFilter();
+        const amp =
+          this.context
+            .createGain();
+        const frequency =
+          midiToHz(
+            rootMidi +
+            interval
+          );
+
+        oscillator.type =
+          index === 0
+            ? "triangle"
+            : "sine";
+        overtone.type = "sine";
+        oscillator.frequency
+          .setValueAtTime(
+            frequency,
+            time
+          );
+        overtone.frequency
+          .setValueAtTime(
+            frequency * 2,
+            time
+          );
+
+        filter.type =
+          "lowpass";
+        filter.frequency
+          .setValueAtTime(
+            1800 +
+            1500 *
+              clamp(
+                brightness,
+                0.4,
+                1.5
+              ),
+            time
+          );
+        filter.Q.value = 0.7;
+
+        amp.gain
+          .setValueAtTime(
+            0.0001,
+            time
+          );
+        amp.gain
+          .exponentialRampToValueAtTime(
+            gain /
+              (
+                1 +
+                index * 0.30
+              ),
+            time + 0.008
+          );
+        amp.gain
+          .exponentialRampToValueAtTime(
+            0.0001,
+            time + duration
+          );
+
+        oscillator.connect(
+          filter
+        );
+        overtone.connect(
+          filter
+        );
+        filter.connect(amp);
+        amp.connect(
+          this.stemBus(stem)
+        );
+
+        oscillator.start(time);
+        overtone.start(time);
+        oscillator.stop(
+          time + duration + 0.02
+        );
+        overtone.stop(
+          time + duration + 0.02
+        );
+      }
+    );
+  }
+
+  triggerInteractiveCue(
+    name,
+    {
+      strength = 1
+    } = {}
+  ) {
+    const cue =
+      SONG?.musicFeel
+        ?.interactiveCues?.[
+          name
+        ];
+
+    if (
+      !cue ||
+      !this.context
+    ) {
+      return;
+    }
+
+    if (
+      Number.isFinite(
+        cue.duckDb
+      ) &&
+      cue.duckDb < 0
+    ) {
+      this.duckMusic(
+        cue.duckDb,
+        0.055 +
+          0.025 *
+            clamp(
+              strength,
+              0,
+              1.5
+            )
+      );
+    }
+
+    const slot =
+      this.quantizedCueTime(
+        cue.quantize ??
+        "step"
+      );
+
+    if (!slot) return;
+
+    let rootMidi = 57;
+
+    if (
+      SONG?.audio?.mode ===
+        "procedural"
+    ) {
+      const frame =
+        songFrameAtBeat(
+          slot.beat
+        );
+
+      if (
+        Number.isFinite(
+          frame.rootMidi
+        )
+      ) {
+        rootMidi =
+          frame.rootMidi +
+          12;
+      }
+    }
+
+    const arrangement =
+      this.actArrangement();
+
+    this.scheduleCueChord(
+      slot.time,
+      {
+        rootMidi,
+        intervals:
+          cue.intervals,
+        gain:
+          Number(
+            cue.gain ??
+            0.005
+          ) *
+          clamp(
+            strength,
+            0.45,
+            1.35
+          ),
+        stem:
+          cue.stem ??
+          "harmony",
+        durationBeats:
+          Number(
+            cue.durationBeats ??
+            0.32
+          ),
+        brightness:
+          arrangement
+            .brightness ??
+          1
+      }
     );
   }
 
@@ -976,41 +1368,73 @@ class RhythmClock {
         0,
         1
       );
+    const arrangement =
+      this.actArrangement();
 
     this.setStemGain(
       "drums",
-      0.84 +
+      (
+        0.84 +
         actEnergy * 0.10 +
-        rhythmEnergy * 0.08,
+        rhythmEnergy * 0.08
+      ) *
+        (
+          arrangement.drums ??
+          1
+        ),
       ramp
     );
     this.setStemGain(
       "bass",
-      0.82 +
-        actEnergy * 0.10,
+      (
+        0.82 +
+        actEnergy * 0.10
+      ) *
+        (
+          arrangement.bass ??
+          1
+        ),
       ramp
     );
     this.setStemGain(
       "harmony",
-      0.66 +
+      (
+        0.66 +
         actEnergy * 0.10 +
-        synergyEnergy * 0.05,
+        synergyEnergy * 0.05
+      ) *
+        (
+          arrangement.harmony ??
+          1
+        ),
       ramp
     );
     this.setStemGain(
       "lead",
-      0.34 +
+      (
+        0.34 +
         actEnergy * 0.18 +
         slideEnergy * 0.30 +
-        synergyEnergy * 0.08,
+        synergyEnergy * 0.08
+      ) *
+        (
+          arrangement.lead ??
+          1
+        ),
       ramp
     );
     this.setStemGain(
       "aura",
-      0.24 +
+      (
+        0.24 +
         actEnergy * 0.12 +
         auraEnergy * 0.42 +
-        synergyEnergy * 0.08,
+        synergyEnergy * 0.08
+      ) *
+        (
+          arrangement.aura ??
+          1
+        ),
       ramp
     );
     this.setStemGain(
@@ -1095,6 +1519,8 @@ class RhythmClock {
     this.nextStep =
       -COUNT_IN_BEATS *
       STEPS_PER_BEAT;
+    this.lastScheduledSection =
+      null;
 
     this.stopScheduler();
     this.stopSongSource();
@@ -1379,29 +1805,18 @@ class RhythmClock {
       );
     }
 
-    const majorSectionBars =
-      new Set([
-        2,
-        4,
-        6,
-        8,
-        10,
-        12,
-        14,
-        16
-      ]);
-
     if (
       frame.step === 0 &&
-      majorSectionBars.has(
-        frame.barIndex
-      )
+      frame.section !==
+        this.lastScheduledSection
     ) {
-      this.scheduleSectionStinger(
+      this.lastScheduledSection =
+        frame.section;
+      this.scheduleSectionCue(
         time,
-        frame.section,
-        0.006 +
-          actEnergy * 0.004
+        frame,
+        0.76 +
+          actEnergy * 0.24
       );
     }
 
@@ -1418,117 +1833,60 @@ class RhythmClock {
     }
   }
 
-  scheduleSectionStinger(
+  scheduleSectionCue(
     time,
-    section,
-    volume = 0.008
+    frame,
+    strength = 1
   ) {
-    const sectionRoot = {
-      SPROUT: 72,
-      CURRENT: 69,
-      RELAY: 74,
-      FRACTURE: 77,
-      OVERDRIVE: 76,
-      ASCENT: 79,
-      BLOOM: 81,
-      ROOT: 57
-    }[section] ?? 72;
+    const cue =
+      SONG?.musicFeel
+        ?.sectionCues?.[
+          frame.section
+        ];
 
-    const frequencies =
-      section === "ROOT"
-        ? [
-            midiToHz(
-              sectionRoot
-            ),
-            midiToHz(
-              sectionRoot + 7
-            )
-          ]
-        : [
-            midiToHz(
-              sectionRoot
-            ),
-            midiToHz(
-              sectionRoot + 12
-            )
-          ];
+    if (!cue) {
+      return;
+    }
 
-    frequencies.forEach(
-      (
-        frequency,
-        index
-      ) => {
-        const oscillator =
-          this.context.createOscillator();
-        const gain =
-          this.context.createGain();
-        const filter =
-          this.context.createBiquadFilter();
+    const arrangement =
+      this.actArrangement();
+    const root =
+      Number.isFinite(
+        frame.rootMidi
+      )
+        ? frame.rootMidi +
+          12
+        : 57;
 
-        oscillator.type =
-          section === "ROOT"
-            ? "sawtooth"
-            : index === 0
-              ? "triangle"
-              : "sine";
-        oscillator.frequency.setValueAtTime(
-          frequency,
-          time
-        );
-
-        filter.type =
-          "lowpass";
-        filter.frequency.setValueAtTime(
-          section === "ROOT"
-            ? 1250
-            : 2600,
-          time
-        );
-        filter.Q.value = .7;
-
-        gain.gain.setValueAtTime(
-          0.0001,
-          time
-        );
-        gain.gain.exponentialRampToValueAtTime(
-          volume *
-            (
-              index === 0
-                ? 1
-                : .58
-            ),
-          time + .012
-        );
-        gain.gain.exponentialRampToValueAtTime(
-          0.0001,
-          time +
-            (
-              section === "ROOT"
-                ? .34
-                : .24
-            )
-        );
-
-        oscillator.connect(
-          filter
-        );
-        filter.connect(
-          gain
-        );
-        gain.connect(
-          this.stemBus(
-            section === "ROOT"
+    this.scheduleCueChord(
+      time,
+      {
+        rootMidi: root,
+        intervals:
+          cue.intervals,
+        gain:
+          Number(
+            cue.gain ??
+            0.005
+          ) *
+          strength,
+        stem:
+          cue.stem ??
+          (
+            wave ===
+              FINAL_ACT
               ? "boss"
               : "harmony"
-          )
-        );
-
-        oscillator.start(
-          time
-        );
-        oscillator.stop(
-          time + .38
-        );
+          ),
+        durationBeats:
+          Number(
+            cue.durationBeats ??
+            0.48
+          ),
+        brightness:
+          arrangement
+            .brightness ??
+          1
       }
     );
   }
@@ -1729,6 +2087,10 @@ class RhythmClock {
       this.context.createOscillator();
     const sub =
       this.context.createOscillator();
+    const harmonic =
+      this.context.createOscillator();
+    const harmonicGain =
+      this.context.createGain();
     const gain =
       this.context.createGain();
     const filter =
@@ -1740,6 +2102,24 @@ class RhythmClock {
     sub.type = "sine";
     sub.frequency.value =
       frequency / 2;
+    harmonic.type =
+      "triangle";
+    harmonic.frequency.value =
+      frequency * 2;
+
+    const harmonicAmount =
+      clamp(
+        Number(
+          SONG?.musicFeel
+            ?.synthesis
+            ?.bassHarmonic ??
+          0.22
+        ),
+        0,
+        0.55
+      );
+    harmonicGain.gain.value =
+      harmonicAmount;
 
     filter.type = "lowpass";
     filter.frequency.value =
@@ -1761,6 +2141,12 @@ class RhythmClock {
 
     oscillator.connect(filter);
     sub.connect(filter);
+    harmonic.connect(
+      harmonicGain
+    );
+    harmonicGain.connect(
+      filter
+    );
     filter.connect(gain);
     gain.connect(
       this.stemBus("bass")
@@ -1768,10 +2154,14 @@ class RhythmClock {
 
     oscillator.start(time);
     sub.start(time);
+    harmonic.start(time);
     oscillator.stop(
       time + 0.24
     );
     sub.stop(
+      time + 0.24
+    );
+    harmonic.stop(
       time + 0.24
     );
   }
@@ -1836,21 +2226,84 @@ class RhythmClock {
     frequency,
     volume
   ) {
-    const oscillator =
-      this.context.createOscillator();
+    const primary =
+      this.context
+        .createOscillator();
+    const harmonic =
+      this.context
+        .createOscillator();
+    const primaryGain =
+      this.context
+        .createGain();
+    const harmonicGain =
+      this.context
+        .createGain();
     const gain =
-      this.context.createGain();
+      this.context
+        .createGain();
     const filter =
-      this.context.createBiquadFilter();
+      this.context
+        .createBiquadFilter();
+    const synth =
+      SONG?.musicFeel
+        ?.synthesis ??
+      {};
+    const arrangement =
+      this.actArrangement();
+    const allowed =
+      new Set([
+        "sine",
+        "triangle",
+        "sawtooth",
+        "square"
+      ]);
+    const waveType =
+      allowed.has(
+        synth.leadWave
+      )
+        ? synth.leadWave
+        : "triangle";
+    const harmonicAmount =
+      clamp(
+        Number(
+          synth.leadHarmonic ??
+          0.18
+        ),
+        0,
+        0.5
+      );
+    const brightness =
+      clamp(
+        Number(
+          arrangement
+            .brightness ??
+          synth.brightness ??
+          1
+        ),
+        0.5,
+        1.5
+      );
 
-    oscillator.type = "sawtooth";
-    oscillator.frequency.value =
+    primary.type = waveType;
+    harmonic.type = "sine";
+    primary.frequency.value =
       frequency;
+    harmonic.frequency.value =
+      frequency * 2;
+    primary.detune.value = -3;
+    harmonic.detune.value = 4;
+    primaryGain.gain.value = 1;
+    harmonicGain.gain.value =
+      harmonicAmount;
 
     filter.type = "lowpass";
     filter.frequency.value =
-      1450 +
-      wave * 95;
+      (
+        1800 +
+        wave * 90
+      ) *
+      brightness;
+    filter.Q.value = 1.1;
 
     gain.gain.setValueAtTime(
       0.0001,
@@ -1858,21 +2311,44 @@ class RhythmClock {
     );
     gain.gain.exponentialRampToValueAtTime(
       volume,
-      time + 0.009
+      time + 0.007
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      Math.max(
+        0.0001,
+        volume * 0.30
+      ),
+      time + 0.075
     );
     gain.gain.exponentialRampToValueAtTime(
       0.0001,
-      time + 0.17
+      time + 0.21
     );
 
-    oscillator.connect(filter);
+    primary.connect(
+      primaryGain
+    );
+    harmonic.connect(
+      harmonicGain
+    );
+    primaryGain.connect(
+      filter
+    );
+    harmonicGain.connect(
+      filter
+    );
     filter.connect(gain);
     gain.connect(
       this.stemBus("lead")
     );
-    oscillator.start(time);
-    oscillator.stop(
-      time + 0.18
+
+    primary.start(time);
+    harmonic.start(time);
+    primary.stop(
+      time + 0.22
+    );
+    harmonic.stop(
+      time + 0.22
     );
   }
 
@@ -1881,39 +2357,76 @@ class RhythmClock {
     frequency,
     volume
   ) {
-    for (const ratio of [1, 1.5]) {
-      const oscillator =
-        this.context.createOscillator();
-      const gain =
-        this.context.createGain();
-
-      oscillator.type = "sine";
-      oscillator.frequency.value =
-        frequency * ratio;
-
-      gain.gain.setValueAtTime(
-        0.0001,
-        time
-      );
-      gain.gain.exponentialRampToValueAtTime(
-        volume /
-          ratio,
-        time + 0.018
-      );
-      gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        time + 0.34
+    const detune =
+      clamp(
+        Number(
+          SONG?.musicFeel
+            ?.synthesis
+            ?.auraDetune ??
+          5
+        ),
+        0,
+        18
       );
 
-      oscillator.connect(gain);
-      gain.connect(
-        this.stemBus("aura")
-      );
-      oscillator.start(time);
-      oscillator.stop(
-        time + 0.36
-      );
-    }
+    [
+      {
+        ratio: 1,
+        cents: -detune
+      },
+      {
+        ratio: 1.5,
+        cents: detune
+      }
+    ].forEach(
+      ({
+        ratio,
+        cents
+      }) => {
+        const oscillator =
+          this.context
+            .createOscillator();
+        const gain =
+          this.context
+            .createGain();
+        const pan =
+          this.context
+            .createStereoPanner();
+
+        oscillator.type = "sine";
+        oscillator.frequency.value =
+          frequency * ratio;
+        oscillator.detune.value =
+          cents;
+        pan.pan.value =
+          cents < 0
+            ? -0.18
+            : 0.18;
+
+        gain.gain.setValueAtTime(
+          0.0001,
+          time
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          volume / ratio,
+          time + 0.018
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          time + 0.42
+        );
+
+        oscillator.connect(gain);
+        gain.connect(pan);
+        pan.connect(
+          this.stemBus("aura")
+        );
+        oscillator.start(time);
+        oscillator.stop(
+          time + 0.44
+        );
+      }
+    );
   }
 
   scheduleBossStem(
@@ -3357,7 +3870,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.46",
+      "../songs/index.json?v=0.47",
       import.meta.url
     );
 
@@ -3559,7 +4072,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.46`,
+      `../songs/${entry.file}?v=0.47`,
       import.meta.url
     );
 
@@ -4478,6 +4991,23 @@ function resolveTapHit(note, side, songTime) {
     note
   );
 
+  if (
+    combo > 0 &&
+    combo % 12 === 0
+  ) {
+    clock.triggerInteractiveCue(
+      "flow",
+      {
+        strength:
+          Math.min(
+            1.3,
+            0.85 +
+            combo / 80
+          )
+      }
+    );
+  }
+
   if (navigator.vibrate) {
     navigator.vibrate(
       Math.round(
@@ -5126,6 +5656,18 @@ function breakNoteShield(
     "sine"
   );
 
+  clock.triggerInteractiveCue(
+    chain
+      ? "chain"
+      : "shieldBreak",
+    {
+      strength:
+        chain
+          ? 1.18
+          : 0.92
+    }
+  );
+
   if (navigator.vibrate) {
     navigator.vibrate(
       chain
@@ -5304,6 +5846,18 @@ function resolveProjectileCollisions() {
         );
         chainSound(
           Math.min(5, chainCount)
+        );
+        clock.triggerInteractiveCue(
+          "chain",
+          {
+            strength:
+              Math.min(
+                1.3,
+                0.86 +
+                chainCount *
+                  0.08
+              )
+          }
         );
         bumpFeedback(
           Math.min(
