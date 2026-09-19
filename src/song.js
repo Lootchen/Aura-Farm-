@@ -1334,6 +1334,99 @@ export function validateGameChart(
     }
 
     if (
+      event.shieldEcho !==
+        undefined
+    ) {
+      const echo =
+        event.shieldEcho;
+
+      if (
+        event.type !== "tap" ||
+        event.shield !== true ||
+        !echo ||
+        typeof echo !== "object"
+      ) {
+        throw new Error(
+          `Evento ${index}: shieldEcho requiere un Tap con shield.`
+        );
+      }
+
+      if (
+        !Number.isFinite(
+          echo.targetBeat
+        ) ||
+        echo.targetBeat <=
+          event.beat ||
+        echo.targetBeat >
+          event.beat + 8 ||
+        echo.targetBeat >=
+          timing.beats ||
+        !onGrid(
+          echo.targetBeat,
+          timing.stepsPerBeat
+        )
+      ) {
+        throw new Error(
+          `Evento ${index}: shieldEcho.targetBeat debe apuntar 0–8 beats hacia adelante y caer en grid.`
+        );
+      }
+
+      if (
+        echo.targetSide !==
+          undefined &&
+        ![
+          "left",
+          "right"
+        ].includes(
+          echo.targetSide
+        )
+      ) {
+        throw new Error(
+          `Evento ${index}: shieldEcho.targetSide inválido.`
+        );
+      }
+
+      if (
+        echo.minLeadBeats !==
+          undefined &&
+        (
+          !Number.isFinite(
+            echo.minLeadBeats
+          ) ||
+          echo.minLeadBeats < 0 ||
+          echo.minLeadBeats > 2
+        )
+      ) {
+        throw new Error(
+          `Evento ${index}: shieldEcho.minLeadBeats debe estar entre 0 y 2.`
+        );
+      }
+
+      const targets =
+        chart.events.filter(
+          (candidate) =>
+            candidate.type ===
+              "tap" &&
+            candidate.beat ===
+              echo.targetBeat &&
+            (
+              !echo.targetSide ||
+              candidate.side ===
+                echo.targetSide
+            )
+        );
+
+      if (
+        targets.length !== 1 ||
+        targets[0].shield
+      ) {
+        throw new Error(
+          `Evento ${index}: shieldEcho debe apuntar a un único Tap futuro sin shield.`
+        );
+      }
+    }
+
+    if (
       !["left", "right"].includes(
         event.side
       )
@@ -1847,6 +1940,13 @@ export function auditChartPerceptualLoad(
       taps.filter(
         (event) => Boolean(event.chainGroup)
       );
+    const shieldEchoes =
+      taps.filter(
+        (event) =>
+          Boolean(
+            event.shieldEcho
+          )
+      );
     const slides =
       events.filter(
         (event) =>
@@ -1892,6 +1992,7 @@ export function auditChartPerceptualLoad(
           taps.length * 0.65 +
           shields.length * 0.50 +
           chained.length * 0.45 +
+          shieldEchoes.length * 0.40 +
           starts.filter(
             (event) => event.type === "slide"
           ).length * 1.20
@@ -1929,6 +2030,8 @@ export function auditChartPerceptualLoad(
         shields: shields.length,
         shieldPressure,
         chainMarked: chained.length,
+        shieldEchoes:
+          shieldEchoes.length,
         physicalPotential
       }
     };
