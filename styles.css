@@ -5475,3 +5475,22 @@ button { font: inherit; }
   color: rgba(255,255,255,.52) !important;
   line-height: 1.45 !important;
 }
+
+
+/* v0.59 — replay as a mechanical experiment */
+.summary-experiment {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(var(--machine-secondary),.14);
+  background: rgba(var(--machine-secondary),.045);
+  color: rgba(235,244,255,.70);
+  font: 800 .54rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .035em;
+}
+
+.summary-experiment[data-kind="bank"],
+.summary-experiment[data-kind="overload"],
+.summary-experiment[data-kind="pierce"],
+.summary-experiment[data-kind="echo"] {
+  color: rgba(255,241,169,.82);
+}
