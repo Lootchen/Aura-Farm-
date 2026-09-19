@@ -5477,7 +5477,17 @@ button { font: inherit; }
 }
 
 
-/* v0.59 — replay as a mechanical experiment */
+/* v0.59–v0.60 — replay as a controlled mechanical experiment */
+.summary-comparison {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 2px solid rgba(var(--machine-accent),.42);
+  background: rgba(var(--machine-accent),.055);
+  color: rgba(238,249,255,.78);
+  font: 900 .52rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .035em;
+}
+
 .summary-experiment {
   margin: 0;
   padding: 9px 10px;

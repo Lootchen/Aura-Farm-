@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.59  
+Current baseline: v0.60  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -210,7 +210,7 @@ Only after P0–P5 are validated:
 - [x] Armor/aperture visuals hint at relevant physical solutions without adding a tutorial panel.
 - [ ] Playtest whether players describe these as different boss strategies rather than bonus damage.
 
-### v0.59 — current
+### v0.59 — completed implementation pass
 - [x] Standard runs use their recorded seed for upgrade RNG instead of unseeded Math.random.
 - [x] MISMO SEED repeats the same song/RNG problem for controlled build comparison.
 - [x] Seed retry is recorded as seedRetries for playtest replay-intent analysis.
@@ -218,6 +218,14 @@ Only after P0–P5 are validated:
 - [x] Share card includes seed on standard runs plus BANK / PERFORA / OVERLOAD evidence when present.
 - [x] No currency or permanent damage tree introduced.
 - [ ] Playtest whether players use MISMO SEED to test a hypothesis rather than simply retry score.
+
+### v0.60 — current
+- [x] Harden AURA CORE armor collision state so same-frame projectile overlap cannot re-break a node or chain extra OVERLOAD from stale geometry.
+- [x] Attribute Core source damage, score and hit messaging to effective damage actually removed instead of nominal overkill.
+- [x] Keep reserve modules out of Core laws while preserving properties already embodied in launched matter.
+- [x] MISMO SEED now compares the immediately previous run on the same song/seed/mode and reports build delta plus physical evidence (CORE, BANK, PERFORA, OVERLOAD, ECHO, aim, Resonance or Sync).
+- [x] Store same-seed comparison evidence in run telemetry without adding currency, permanent stats or new content.
+- [ ] Playtest whether the comparison line causes players to change one law at a time instead of optimizing score blindly.
 
 ## Kill criteria
 

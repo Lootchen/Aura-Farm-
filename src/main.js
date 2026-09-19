@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.59";
+} from "./song.js?v=0.60";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.59";
+} from "./music.js?v=0.60";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.59";
+} from "./audio-file.js?v=0.60";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -40,6 +40,7 @@ const summaryDailyButton = document.querySelector("#summaryDailyButton");
 const summaryShareButton = document.querySelector("#summaryShareButton");
 const summaryRetrySeedButton = document.querySelector("#summaryRetrySeedButton");
 const summaryExperiment = document.querySelector("#summaryExperiment");
+const summaryComparison = document.querySelector("#summaryComparison");
 const summaryMenuButton = document.querySelector("#summaryMenuButton");
 const leftButton = document.querySelector("#leftButton");
 const rightButton = document.querySelector("#rightButton");
@@ -109,7 +110,7 @@ const advancedTimingToggle = document.querySelector("#advancedTimingToggle");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.59";
+const GAME_VERSION = "0.60";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -123,9 +124,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.59";
+  "./assets/world/glasshouse-far.svg?v=0.60";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.59";
+  "./assets/world/growth-bays.svg?v=0.60";
 
 function drawWorldAsset(
   image,
@@ -725,6 +726,7 @@ selectedSongId =
 let runMode = "standard";
 let dailyReturnSongId = null;
 let lastShareCard = "";
+let previousCompletedRun = null;
 let runPaused = false;
 let runSeed = 1;
 let rngState = 1;
@@ -979,6 +981,8 @@ function newRunStats() {
   return {
     startedAt: performance.now(),
     seed: runSeed,
+    songId: selectedSongId,
+    mode: runMode,
     retryOfSeed: null,
     traceAttempts: 0,
     traceSuccess: 0,
@@ -4766,7 +4770,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.59",
+      "../songs/index.json?v=0.60",
       import.meta.url
     );
 
@@ -5082,7 +5086,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.59`,
+      `../songs/${entry.file}?v=0.60`,
       import.meta.url
     );
 
@@ -8704,6 +8708,7 @@ function bossArmorOverload(
         (node) =>
           node.index !==
             hitNode.index &&
+          !node.broken &&
           !bossState.armor[
             node.index
           ]
@@ -8727,6 +8732,7 @@ function bossArmorOverload(
   bossState.armor[
     target.index
   ] = true;
+  target.broken = true;
   bossState.armorOverloads +=
     1;
 
@@ -8835,7 +8841,14 @@ function resolveBossCollisions(songTime) {
     let armorHit = false;
 
     for (const node of nodes) {
-      if (node.broken) continue;
+      if (
+        node.broken ||
+        bossState.armor[
+          node.index
+        ]
+      ) {
+        continue;
+      }
 
       const distance =
         Math.hypot(
@@ -8853,6 +8866,7 @@ function resolveBossCollisions(songTime) {
 
       bossState.armor[node.index] =
         true;
+      node.broken = true;
       const armorPierce =
         Number(
           projectile.piercesLeft ||
@@ -9072,6 +9086,11 @@ function resolveBossCollisions(songTime) {
       ) +
       resonanceBonus +
       routeBonus;
+    const appliedDamage =
+      Math.min(
+        damage,
+        bossState.health
+      );
     const damageSource =
       bossDamageSource(
         projectile
@@ -9080,7 +9099,7 @@ function resolveBossCollisions(songTime) {
     recordSource(
       bossState.damageSources,
       damageSource,
-      damage
+      appliedDamage
     );
 
     if (routed) {
@@ -9115,14 +9134,16 @@ function resolveBossCollisions(songTime) {
     bossState.health =
       Math.max(
         0,
-        bossState.health - damage
+        bossState.health -
+          appliedDamage
       );
-    bossState.damage += damage;
+    bossState.damage +=
+      appliedDamage;
     bossState.hitFlash = 0.18;
 
     awardScore(
       125 *
-      damage *
+      appliedDamage *
       comboMultiplier(combo)
     );
 
@@ -9151,7 +9172,7 @@ function resolveBossCollisions(songTime) {
     ].filter(Boolean);
 
     showMessage(
-      `CORE -${damage}${damageTags.length ? ` · ${damageTags.join(" · ")}` : ""}`,
+      `CORE -${appliedDamage}${damageTags.length ? ` · ${damageTags.join(" · ")}` : ""}`,
       damageTags.length > 0
         ? "#fff1a9"
         : "#ffdf85",
@@ -18623,6 +18644,236 @@ function flowRankForRun({
   };
 }
 
+function activeBuildSnapshot() {
+  return Object.fromEntries(
+    [...activeBuildCounts()]
+      .sort(
+        ([a], [b]) =>
+          a.localeCompare(b)
+      )
+  );
+}
+
+function completedRunSnapshot({
+  timing,
+  bossDamage
+}) {
+  return {
+    seed: runSeed,
+    songId: selectedSongId,
+    mode: runMode,
+    build:
+      activeBuildSnapshot(),
+    bossDamage,
+    sync:
+      timing.count > 0
+        ? Math.round(
+            timing.centerRate *
+              100
+          )
+        : null,
+    bankHits:
+      Number(
+        runStats?.bossExam
+          ?.bankHits || 0
+      ),
+    armorPierces:
+      Number(
+        runStats?.bossExam
+          ?.armorPierces || 0
+      ),
+    armorOverloads:
+      Number(
+        runStats?.bossExam
+          ?.armorOverloads || 0
+      ),
+    echoResolved:
+      Number(
+        runStats?.shieldEcho
+          ?.resolved || 0
+      ),
+    aimedChains:
+      Number(
+        runStats?.aimedChains ||
+          0
+      ),
+    peakResonance:
+      Math.round(
+        peakResonance
+      )
+  };
+}
+
+function signedRunDelta(
+  value,
+  suffix = ""
+) {
+  const amount =
+    Number(value || 0);
+
+  if (amount === 0) {
+    return `0${suffix}`;
+  }
+
+  return `${amount > 0 ? "+" : "−"}${Math.abs(amount)}${suffix}`;
+}
+
+function sameSeedBuildDelta(
+  previousBuild,
+  currentBuild
+) {
+  const changes = [];
+  const ids =
+    new Set([
+      ...Object.keys(
+        previousBuild ?? {}
+      ),
+      ...Object.keys(
+        currentBuild ?? {}
+      )
+    ]);
+
+  for (const upgrade of UPGRADES) {
+    if (!ids.has(upgrade.id)) {
+      continue;
+    }
+
+    const delta =
+      Number(
+        currentBuild?.[
+          upgrade.id
+        ] || 0
+      ) -
+      Number(
+        previousBuild?.[
+          upgrade.id
+        ] || 0
+      );
+
+    if (delta === 0) {
+      continue;
+    }
+
+    changes.push(
+      `${delta > 0 ? "+" : "−"}${upgrade.title}${Math.abs(delta) > 1 ? ` ×${Math.abs(delta)}` : ""}`
+    );
+  }
+
+  return changes.length > 0
+    ? changes
+        .slice(0, 3)
+        .join(" / ")
+    : "BUILD FINAL IDÉNTICA";
+}
+
+function compareSameSeedRuns(
+  previous,
+  current
+) {
+  if (
+    !previous ||
+    !current ||
+    runStats?.retryOfSeed !==
+      current.seed ||
+    previous.seed !==
+      current.seed ||
+    previous.songId !==
+      current.songId ||
+    previous.mode !==
+      current.mode
+  ) {
+    return null;
+  }
+
+  const signals = [
+    {
+      label: "CORE",
+      value:
+        current.bossDamage -
+        previous.bossDamage,
+      suffix: "pp"
+    },
+    {
+      label: "BANK",
+      value:
+        current.bankHits -
+        previous.bankHits
+    },
+    {
+      label: "PERFORA",
+      value:
+        current.armorPierces -
+        previous.armorPierces
+    },
+    {
+      label: "OVERLOAD",
+      value:
+        current.armorOverloads -
+        previous.armorOverloads
+    },
+    {
+      label: "ECHO",
+      value:
+        current.echoResolved -
+        previous.echoResolved
+    },
+    {
+      label: "AIM",
+      value:
+        current.aimedChains -
+        previous.aimedChains
+    },
+    {
+      label: "RES",
+      value:
+        current.peakResonance -
+        previous.peakResonance
+    },
+    {
+      label: "SYNC",
+      value:
+        current.sync !== null &&
+        previous.sync !== null
+          ? current.sync -
+            previous.sync
+          : 0,
+      suffix: "pp"
+    }
+  ]
+    .filter(
+      (signal) =>
+        signal.value !== 0
+    )
+    .slice(0, 3);
+
+  const evidence =
+    signals.length > 0
+      ? signals
+          .map(
+            (signal) =>
+              `${signal.label} ${signedRunDelta(signal.value, signal.suffix)}`
+          )
+          .join(" · ")
+      : "SALIDA CLAVE SIN CAMBIO";
+
+  return {
+    seed: current.seed,
+    buildDelta:
+      sameSeedBuildDelta(
+        previous.build,
+        current.build
+      ),
+    signals:
+      signals.map(
+        (signal) => ({
+          ...signal
+        })
+      ),
+    text:
+      `CONTROL MISMO SEED · ${sameSeedBuildDelta(previous.build, current.build)} · ${evidence}`
+  };
+}
+
 function nextRunExperiment({
   practice = false
 } = {}) {
@@ -19010,6 +19261,30 @@ function completeRun() {
       };
   }
 
+  const completedSnapshot =
+    completedRunSnapshot({
+      timing,
+      bossDamage:
+        completedBossDamage
+    });
+  const sameSeedComparison =
+    practice
+      ? null
+      : compareSameSeedRuns(
+          previousCompletedRun,
+          completedSnapshot
+        );
+
+  if (runStats) {
+    runStats.sameSeedComparison =
+      sameSeedComparison;
+  }
+
+  if (!practice) {
+    previousCompletedRun =
+      completedSnapshot;
+  }
+
   const flowRank =
     flowRankForRun({
       practice,
@@ -19241,6 +19516,14 @@ function completeRun() {
   if (runStats) {
     runStats.nextExperiment =
       experiment;
+  }
+
+  if (summaryComparison) {
+    summaryComparison.hidden =
+      !sameSeedComparison;
+    summaryComparison.textContent =
+      sameSeedComparison?.text ??
+      "";
   }
 
   if (summaryExperiment) {
