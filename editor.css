@@ -328,7 +328,7 @@ button.danger {
 .lane-labels {
   z-index: 2;
   display: grid;
-  grid-template-rows: 42px 54px 72px 72px 90px;
+  grid-template-rows: 42px 54px 72px 72px 90px 48px;
   border-right: 1px solid rgba(255,255,255,.08);
   background: #0a1018;
 }
@@ -344,6 +344,7 @@ button.danger {
 
 .lane-labels .cyan { color: rgba(var(--cyan),.72); }
 .lane-labels .violet { color: rgba(var(--violet),.72); }
+.lane-labels .load { color: rgba(255,196,92,.74); }
 
 .timeline-viewport {
   min-width: 0;
@@ -359,7 +360,7 @@ button.danger {
 
 #timelineCanvas {
   display: block;
-  height: 330px;
+  height: 378px;
   cursor: crosshair;
 }
 
@@ -695,4 +696,17 @@ button.danger {
   color: #ffc45c;
   background: rgba(255,196,92,.05);
   border-left: 2px solid rgba(255,196,92,.30);
+}
+
+
+/* v0.55 — perceptual-load audit lane */
+.legend-load,
+.load-summary {
+  color: rgba(94,226,215,.78);
+}
+
+.validation-item.load-warning {
+  color: #ffc45c;
+  border-color: rgba(255,196,92,.22);
+  background: rgba(255,196,92,.055);
 }
