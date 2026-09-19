@@ -684,3 +684,15 @@ button.danger {
 .waveform-empty-label {
   color: rgba(255,255,255,.30);
 }
+
+
+/* v0.47 — flow audit */
+.legend-flow {
+  color: #ffc45c;
+}
+
+.validation-item.flow-warning {
+  color: #ffc45c;
+  background: rgba(255,196,92,.05);
+  border-left: 2px solid rgba(255,196,92,.30);
+}
