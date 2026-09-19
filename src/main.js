@@ -729,6 +729,8 @@ let bossState = {
   broken: false,
   damage: 0,
   damageSources: {},
+  routedHits: 0,
+  routeDamage: 0,
   hitFlash: 0,
   shieldFlash: 0,
   armor: [false, false, false],
@@ -7976,6 +7978,60 @@ function reflectProjectileFromCircle(
     projectile.y;
 }
 
+function bossApertureAngle() {
+  const beat =
+    Math.max(
+      0,
+      clock?.beat ?? 0
+    );
+  const step =
+    Math.floor(
+      beat / 4
+    ) % 3;
+
+  return [
+    Math.PI * 0.68,
+    Math.PI * 0.50,
+    Math.PI * 0.32
+  ][step];
+}
+
+function circularAngleDistance(
+  a,
+  b
+) {
+  return Math.abs(
+    Math.atan2(
+      Math.sin(a - b),
+      Math.cos(a - b)
+    )
+  );
+}
+
+function bossRoutedHit(
+  projectile,
+  center
+) {
+  if (projectile?.power) {
+    return false;
+  }
+
+  const impactAngle =
+    Math.atan2(
+      projectile.y -
+        center.y,
+      projectile.x -
+        center.x
+    );
+
+  return (
+    circularAngleDistance(
+      impactAngle,
+      bossApertureAngle()
+    ) <= 0.52
+  );
+}
+
 function bossDamageSource(
   projectile
 ) {
@@ -8161,13 +8217,23 @@ function resolveBossCollisions(songTime) {
         resonanceBloomThreshold()
         ? 1
         : 0;
+    const routed =
+      bossRoutedHit(
+        projectile,
+        center
+      );
+    const routeBonus =
+      routed
+        ? 1
+        : 0;
     const damage =
       (
         projectile.power
           ? 3
           : 1
       ) +
-      resonanceBonus;
+      resonanceBonus +
+      routeBonus;
     const damageSource =
       bossDamageSource(
         projectile
@@ -8178,6 +8244,18 @@ function resolveBossCollisions(songTime) {
       damageSource,
       damage
     );
+
+    if (routed) {
+      bossState.routedHits += 1;
+      bossState.routeDamage +=
+        routeBonus;
+
+      if (runStats) {
+        runStats.bossRoutedHits += 1;
+        runStats.bossRouteDamage +=
+          routeBonus;
+      }
+    }
 
     active.delete(projectile.key);
     bossState.health =
@@ -8207,15 +8285,22 @@ function resolveBossCollisions(songTime) {
       }
     );
 
+    const damageTags = [
+      resonanceBonus > 0
+        ? "RESONANT"
+        : null,
+      routed
+        ? "ROUTE"
+        : null
+    ].filter(Boolean);
+
     showMessage(
-      resonanceBonus > 0
-        ? `CORE -${damage} · RESONANT`
-        : `CORE -${damage}`,
-      resonanceBonus > 0
+      `CORE -${damage}${damageTags.length ? ` · ${damageTags.join(" · ")}` : ""}`,
+      damageTags.length > 0
         ? "#fff1a9"
         : "#ffdf85",
-      resonanceBonus > 0
-        ? 460
+      damageTags.length > 0
+        ? 520
         : 320
     );
     setOperatorMood(
@@ -11741,6 +11826,40 @@ function drawBossCore(songTime) {
 
   ctx.shadowBlur = 0;
 
+  if (
+    !shielded &&
+    !bossState.broken
+  ) {
+    const aperture =
+      bossApertureAngle();
+
+    ctx.strokeStyle =
+      "#fff1a9";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      64,
+      aperture - 0.52,
+      aperture + 0.52
+    );
+    ctx.stroke();
+
+    ctx.strokeStyle =
+      "rgba(255,241,169,.20)";
+    ctx.lineWidth = 12;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      72,
+      aperture - 0.64,
+      aperture + 0.64
+    );
+    ctx.stroke();
+  }
+
   for (let i = 0; i < 6; i += 1) {
     const angle =
       (Math.PI * 2 * i) / 6 +
@@ -14730,7 +14849,7 @@ function drawDebug(songTime) {
     `song ${SONG?.id ?? "loading"} · sync ${songAlignmentReport?.checked ?? 0}/${CHART.length}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)} · RES ${Math.round(resonance)} · load ${Math.round(readabilityBudget().pressure * 100)}%`,
-    `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · aimCHAIN ${runStats?.aimedChains ?? 0}`
+    `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · world ${phaseWorldSpec()?.mode ?? "none"} · route ${bossState.routedHits ?? 0}`
   ];
 
   ctx.fillStyle = "rgba(0,0,0,.52)";
@@ -17138,6 +17257,8 @@ async function beginAct() {
     broken: false,
     damage: 0,
     damageSources: {},
+    routedHits: 0,
+    routeDamage: 0,
     hitFlash: 0,
     shieldFlash: 0,
     armor: [false, false, false],
@@ -17606,7 +17727,7 @@ function completeRun() {
     summaryBossPath.textContent =
       practice
         ? "CORE PATH · —"
-        : `CORE PATH · ${dominantBossPath()}`;
+        : `CORE PATH · ${dominantBossPath()}${bossState.routedHits > 0 ? ` · ROUTE ×${bossState.routedHits}` : ""}`;
   }
 
   summaryTitle.textContent =
@@ -18358,6 +18479,8 @@ async function startRun(mode = "standard") {
     broken: false,
     damage: 0,
     damageSources: {},
+    routedHits: 0,
+    routeDamage: 0,
     hitFlash: 0,
     shieldFlash: 0,
     armor: [false, false, false],
