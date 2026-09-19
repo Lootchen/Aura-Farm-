@@ -836,6 +836,7 @@ function newRunStats() {
     resonanceEvents: [],
     chainSources: {},
     aimedChains: 0,
+    upgradeOffers: [],
     chosenUpgrades: [],
     firstChainMs: null
   };
@@ -3143,6 +3144,7 @@ const UPGRADES = [
   {
     id: "twin-shot",
     family: "shot",
+    kind: "multiplication",
     icon: "Ⅱ",
     title: "Gemela",
     effect: "+1 ORB",
@@ -3154,6 +3156,7 @@ const UPGRADES = [
   {
     id: "ricochet",
     family: "collision",
+    kind: "rule",
     icon: "↗",
     title: "Rebote",
     effect: "+1 REBOTE",
@@ -3165,6 +3168,7 @@ const UPGRADES = [
   {
     id: "pierce",
     family: "collision",
+    kind: "rule",
     icon: "➞",
     title: "Perfora",
     effect: "+1 BLANCO",
@@ -3176,6 +3180,7 @@ const UPGRADES = [
   {
     id: "fragments",
     family: "explosion",
+    kind: "multiplication",
     icon: "✣",
     title: "Astillas",
     effect: "+FRAGMENTOS",
@@ -3187,6 +3192,7 @@ const UPGRADES = [
   {
     id: "bumper",
     family: "arena",
+    kind: "topology",
     icon: "◉",
     title: "Bumper",
     effect: "+OBSTÁCULO",
@@ -3202,6 +3208,7 @@ const UPGRADES = [
   {
     id: "nova",
     family: "slide",
+    kind: "conversion",
     icon: "✹",
     title: "Nova",
     effect: "+2 POWER",
@@ -3213,6 +3220,7 @@ const UPGRADES = [
   {
     id: "mirror-slide",
     family: "slide",
+    kind: "multiplication",
     icon: "◇",
     title: "Espejo",
     effect: "DOBLE GARRA",
@@ -3224,6 +3232,7 @@ const UPGRADES = [
   {
     id: "chain-relay",
     family: "chain",
+    kind: "conversion",
     icon: "↯",
     title: "Relevo",
     effect: "CHAIN → ORB",
@@ -3235,6 +3244,7 @@ const UPGRADES = [
   {
     id: "shockwave",
     family: "explosion",
+    kind: "conversion",
     icon: "◎",
     title: "Shock",
     effect: "POWER AOE",
@@ -3246,6 +3256,7 @@ const UPGRADES = [
   {
     id: "fusion",
     family: "collision",
+    kind: "conversion",
     icon: "✦",
     title: "Fusión",
     effect: "ORB × ORB",
@@ -3257,6 +3268,7 @@ const UPGRADES = [
   {
     id: "wall-charge",
     family: "wall",
+    kind: "conversion",
     icon: "⬡",
     title: "Carga",
     effect: "PARED → POWER",
@@ -3269,6 +3281,7 @@ const UPGRADES = [
   {
     id: "bumper-split",
     family: "arena",
+    kind: "multiplication",
     icon: "⋔",
     title: "Duplicador",
     effect: "BUMPER ×2",
@@ -3283,6 +3296,7 @@ const UPGRADES = [
   {
     id: "combo-shield",
     family: "defense",
+    kind: "defense",
     icon: "▱",
     title: "Shield",
     effect: "SALVA 1",
@@ -3333,6 +3347,8 @@ const BUILD_SYNERGIES = [
 ];
 
 let announcedSynergies = new Set();
+let lastOfferRoles =
+  new Map();
 
 function upgradeById(id) {
   return UPGRADES.find(
@@ -14104,6 +14120,9 @@ function shuffledUpgrades(items) {
 }
 
 function pickUpgradeChoices() {
+  lastOfferRoles =
+    new Map();
+
   const pool =
     shuffledUpgrades(
       UPGRADES.filter(
@@ -14132,7 +14151,8 @@ function pickUpgradeChoices() {
   const add = (
     upgrade,
     {
-      allowFamilyRepeat = false
+      allowFamilyRepeat = false,
+      role = "variety"
     } = {}
   ) => {
     if (
@@ -14155,6 +14175,10 @@ function pickUpgradeChoices() {
     usedFamilies.add(
       upgrade.family
     );
+    lastOfferRoles.set(
+      upgrade.id,
+      role
+    );
     return true;
   };
 
@@ -14170,7 +14194,12 @@ function pickUpgradeChoices() {
     );
 
   if (finishers.length > 0) {
-    add(finishers[0]);
+    add(
+      finishers[0],
+      {
+        role: "synergy"
+      }
+    );
   }
 
   // Slot 2: reinforce a family already being built.
@@ -14193,7 +14222,8 @@ function pickUpgradeChoices() {
       continuation,
       {
         allowFamilyRepeat:
-          choices.length === 0
+          choices.length === 0,
+        role: "continuation"
       }
     );
   }
@@ -14214,13 +14244,23 @@ function pickUpgradeChoices() {
           )
       );
 
-    add(discovery);
+    add(
+      discovery,
+      {
+        role: "discovery"
+      }
+    );
   }
 
   // Fill remaining slots with distinct families when possible.
   for (const upgrade of pool) {
     if (choices.length >= 3) break;
-    add(upgrade);
+    add(
+      upgrade,
+      {
+        role: "variety"
+      }
+    );
   }
 
   // Small pools can force a repeated family.
@@ -14229,7 +14269,8 @@ function pickUpgradeChoices() {
     add(
       upgrade,
       {
-        allowFamilyRepeat: true
+        allowFamilyRepeat: true,
+        role: "fallback"
       }
     );
   }
@@ -16123,6 +16164,31 @@ function renderUpgradeChoices() {
   const choices =
     pickUpgradeChoices();
 
+  if (runStats) {
+    runStats.upgradeOffers.push({
+      chapter: wave,
+      offers:
+        choices.map(
+          (upgrade) => ({
+            id: upgrade.id,
+            family:
+              upgrade.family,
+            kind:
+              upgrade.kind,
+            role:
+              lastOfferRoles.get(
+                upgrade.id
+              ) ??
+              "unknown",
+            level:
+              moduleLevel(
+                upgrade.id
+              ) + 1
+          })
+        )
+    });
+  }
+
   renderBuildVisibility();
   upgradeCards.innerHTML = "";
 
@@ -16230,9 +16296,21 @@ function renderUpgradeChoices() {
         );
 
         if (runStats) {
-          runStats.chosenUpgrades.push(
-            upgrade.id
-          );
+          runStats.chosenUpgrades.push({
+            id: upgrade.id,
+            family:
+              upgrade.family,
+            kind:
+              upgrade.kind,
+            role:
+              lastOfferRoles.get(
+                upgrade.id
+              ) ??
+              "unknown",
+            chapter: wave,
+            level:
+              result.level
+          });
         }
 
         const installLabel =
