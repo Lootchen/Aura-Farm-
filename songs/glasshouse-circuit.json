@@ -1477,5 +1477,196 @@
         "bloom": 0.88
       }
     }
+  },
+  "musicFeel": {
+    "motif": [
+      0,
+      3,
+      7,
+      12,
+      10
+    ],
+    "synthesis": {
+      "leadWave": "triangle",
+      "leadHarmonic": 0.18,
+      "bassHarmonic": 0.26,
+      "auraDetune": 5,
+      "brightness": 0.98
+    },
+    "sectionCues": {
+      "GERMINATE": {
+        "intervals": [
+          0,
+          7
+        ],
+        "gain": 0.0043
+      },
+      "SPROUT": {
+        "intervals": [
+          0,
+          3,
+          7
+        ],
+        "gain": 0.005
+      },
+      "CURRENT": {
+        "intervals": [
+          0,
+          7,
+          10
+        ],
+        "gain": 0.0054
+      },
+      "RELAY": {
+        "intervals": [
+          0,
+          3,
+          10
+        ],
+        "gain": 0.0058
+      },
+      "FRACTURE": {
+        "intervals": [
+          0,
+          1,
+          7
+        ],
+        "gain": 0.006
+      },
+      "OVERDRIVE": {
+        "intervals": [
+          0,
+          7,
+          12
+        ],
+        "gain": 0.0064
+      },
+      "ASCENT": {
+        "intervals": [
+          0,
+          10,
+          12
+        ],
+        "gain": 0.0068
+      },
+      "BLOOM": {
+        "intervals": [
+          0,
+          3,
+          7,
+          12
+        ],
+        "gain": 0.0074
+      },
+      "ROOT": {
+        "intervals": [
+          0,
+          7,
+          12
+        ],
+        "gain": 0.008,
+        "stem": "boss"
+      }
+    },
+    "interactiveCues": {
+      "shieldBreak": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          7
+        ],
+        "gain": 0.0052,
+        "duckDb": -1.8,
+        "durationBeats": 0.28
+      },
+      "chain": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "gain": 0.005,
+        "duckDb": -1.5,
+        "durationBeats": 0.34
+      },
+      "flow": {
+        "quantize": "beat",
+        "intervals": [
+          0,
+          7,
+          12
+        ],
+        "gain": 0.003,
+        "duckDb": -1,
+        "durationBeats": 0.42
+      }
+    },
+    "actArrangements": [
+      {
+        "drums": 0.82,
+        "bass": 0.86,
+        "harmony": 0.62,
+        "lead": 0.48,
+        "aura": 0.38,
+        "brightness": 0.7,
+        "drive": 0.6
+      },
+      {
+        "drums": 0.88,
+        "bass": 0.9,
+        "harmony": 0.68,
+        "lead": 0.58,
+        "aura": 0.46,
+        "brightness": 0.76,
+        "drive": 0.66
+      },
+      {
+        "drums": 0.92,
+        "bass": 0.94,
+        "harmony": 0.74,
+        "lead": 0.68,
+        "aura": 0.54,
+        "brightness": 0.82,
+        "drive": 0.72
+      },
+      {
+        "drums": 0.96,
+        "bass": 0.98,
+        "harmony": 0.82,
+        "lead": 0.78,
+        "aura": 0.64,
+        "brightness": 0.88,
+        "drive": 0.8
+      },
+      {
+        "drums": 1,
+        "bass": 1,
+        "harmony": 0.88,
+        "lead": 0.88,
+        "aura": 0.74,
+        "brightness": 0.94,
+        "drive": 0.88
+      },
+      {
+        "drums": 1.04,
+        "bass": 1.02,
+        "harmony": 0.96,
+        "lead": 0.98,
+        "aura": 0.86,
+        "brightness": 1.02,
+        "drive": 0.98
+      },
+      {
+        "drums": 1.08,
+        "bass": 1.04,
+        "harmony": 1,
+        "lead": 1.04,
+        "aura": 0.98,
+        "brightness": 1.1,
+        "drive": 1.08
+      }
+    ]
   }
 }
