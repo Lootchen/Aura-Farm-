@@ -25,6 +25,10 @@
           <span id="comboMult">×1</span>
         </div>
         <em>COMBO</em>
+        <div class="hud-resonance" aria-label="Resonancia de la máquina">
+          <span>RES <strong id="resonanceValue">50</strong></span>
+          <i aria-hidden="true"><b id="resonanceBar"></b></i>
+        </div>
         <div class="hud-progress" aria-hidden="true">
           <i id="trackProgress"></i>
         </div>
@@ -59,7 +63,7 @@
             <span><strong>AURA FARM</strong><small>BUILD THE BEAT</small></span>
           </div>
           <div class="menu-top-actions">
-            <span id="menuVersion" class="menu-version" aria-label="Versión del juego">v0.51</span>
+            <span id="menuVersion" class="menu-version" aria-label="Versión del juego">v0.52</span>
             <button id="menuSettingsButton" class="menu-icon-button" type="button" aria-label="Abrir ajustes">⚙</button>
           </div>
         </header>
@@ -126,7 +130,7 @@
         <section class="menu-garage">
           <header>
             <span class="eyebrow">MÁQUINA</span>
-            <small>Toca para cambiar el chasis visual</small>
+            <small>Chasis en prototipo · identidad mecánica en desarrollo</small>
           </header>
           <div class="machine-picker" aria-label="Máquina">
             <button class="machine-option is-selected" type="button" data-machine="forge">
@@ -286,6 +290,9 @@
           <span>SYNC ±45ms</span>
           <strong id="summarySync">—</strong>
           <small id="summaryTimingBias">SIN MUESTRAS</small>
+          <span>RESONANCE</span>
+          <strong id="summaryResonance">50 · PEAK 50</strong>
+          <small id="summaryBossPath">CORE PATH · —</small>
         </div>
         <div>
           <span class="summary-label">BUILD</span>
