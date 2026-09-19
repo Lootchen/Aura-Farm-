@@ -1,6 +1,6 @@
 import {
   songFrameFromData
-} from "./song.js?v=0.47";
+} from "./song.js?v=0.48";
 
 let ACTIVE_SONG = null;
 
