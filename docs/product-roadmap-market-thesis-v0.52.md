@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.54  
+Current baseline: v0.55  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -100,7 +100,7 @@ Do not add a large song/content batch until:
 - [x] Limit non-semantic physical impact voice rate while Tap / Shield / CHAIN / Power cues bypass the drop budget.
 - [x] Keep note silhouettes, receivers and TRACE rails outside the adaptive visual degradation path.
 - [ ] Profile FPS and input latency during worst-case build combinations.
-- [ ] Add Chart Lab perceptual-load lane: event density + TRACE occupancy + Shield load + VFX load.
+- [x] Add Chart Lab perceptual-load lane: per-bar score combines event density, TRACE occupancy, Shield pressure, CHAIN/physical potential and BPM.
 
 ## P6 — Meta progression and replay
 
@@ -163,7 +163,7 @@ Only after P0–P5 are validated:
 - [ ] Playtest / tune density thresholds on worst-case builds.
 - [ ] Continue mutation pass only where an added rule remains legible.
 
-### v0.54 — current
+### v0.54 — completed implementation pass
 - [x] BLOOM phase-specific arena mutation.
 - [x] FRACTURE reflective split / SURGE conductive recombination.
 - [x] TRACE-to-world consequence prototype (8-beat rewrite).
@@ -171,6 +171,13 @@ Only after P0–P5 are validated:
 - [x] Core now supports three efficiency paths: Power, Resonance and Route.
 - [ ] Playtest whether the membrane is perceived as a strategic obstacle instead of visual noise.
 - [ ] Tune route aperture width after mobile playtest.
+
+### v0.55 — current
+- [x] Chart Lab perceptual LOAD audit.
+- [x] LOAD lane visualizes per-bar pressure without turning estimated load into schema failure.
+- [x] Validation panel reports LOAD average/peak and only warns at very high estimated pressure.
+- [ ] Daily share card / native share fallback.
+- [ ] Verify deterministic Daily includes the same song as well as seed/offers.
 
 ## Kill criteria
 
