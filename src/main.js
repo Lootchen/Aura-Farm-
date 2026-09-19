@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.52";
+} from "./song.js?v=0.53";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.52";
+} from "./music.js?v=0.53";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.52";
+} from "./audio-file.js?v=0.53";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -103,7 +103,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.52";
+const GAME_VERSION = "0.53";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -117,9 +117,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.52";
+  "./assets/world/glasshouse-far.svg?v=0.53";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.52";
+  "./assets/world/growth-bays.svg?v=0.53";
 
 function drawWorldAsset(
   image,
@@ -836,6 +836,11 @@ function newRunStats() {
     resonanceEvents: [],
     chainSources: {},
     aimedChains: 0,
+    peakProjectiles: 0,
+    peakFragments: 0,
+    peakExplosions: 0,
+    peakDensityPressure: 0,
+    impactVoicesDropped: 0,
     upgradeOffers: [],
     chosenUpgrades: [],
     firstChainMs: null
@@ -2980,6 +2985,8 @@ let missCount = 0;
 let chainCount = 0;
 let collisionCount = 0;
 let wallExplosionCount = 0;
+let impactVoiceTimes = [];
+let impactVoicesDropped = 0;
 let resonance = RESONANCE_START;
 let peakResonance = RESONANCE_START;
 let minResonance = RESONANCE_START;
@@ -4530,7 +4537,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.52",
+      "../songs/index.json?v=0.53",
       import.meta.url
     );
 
@@ -4805,7 +4812,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.52`,
+      `../songs/${entry.file}?v=0.53`,
       import.meta.url
     );
 
@@ -5457,6 +5464,124 @@ function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
   oscillator.stop(now + duration + 0.01);
 }
 
+function readabilityBudget() {
+  let projectiles = 0;
+  let fragments = 0;
+
+  for (const event of active.values()) {
+    if (
+      event.type === "tap" &&
+      event.launched
+    ) {
+      projectiles += 1;
+
+      if (event.fragment) {
+        fragments += 1;
+      }
+    }
+  }
+
+  const explosionCount =
+    explosions.length;
+  const flashCount =
+    impactFlashes.length;
+  const weighted =
+    projectiles +
+    fragments * 0.55 +
+    explosionCount * 2.1 +
+    flashCount * 0.25;
+  const pressure =
+    clamp(
+      (
+        weighted - 9
+      ) / 24,
+      0,
+      1
+    );
+
+  if (runStats) {
+    runStats.peakProjectiles =
+      Math.max(
+        runStats.peakProjectiles || 0,
+        projectiles
+      );
+    runStats.peakFragments =
+      Math.max(
+        runStats.peakFragments || 0,
+        fragments
+      );
+    runStats.peakExplosions =
+      Math.max(
+        runStats.peakExplosions || 0,
+        explosionCount
+      );
+    runStats.peakDensityPressure =
+      Math.max(
+        runStats.peakDensityPressure || 0,
+        pressure
+      );
+  }
+
+  return {
+    projectiles,
+    fragments,
+    explosions:
+      explosionCount,
+    flashes:
+      flashCount,
+    weighted,
+    pressure
+  };
+}
+
+function impactVoiceAllowed(
+  kind,
+  now
+) {
+  const semantic =
+    [
+      "tap",
+      "shield",
+      "chain",
+      "power"
+    ].includes(kind);
+
+  impactVoiceTimes =
+    impactVoiceTimes.filter(
+      (time) =>
+        now - time <
+        0.075
+    );
+
+  const pressure =
+    readabilityBudget()
+      .pressure;
+  const maxVoices =
+    pressure >= 0.80
+      ? 2
+      : pressure >= 0.48
+        ? 3
+        : 5;
+
+  if (
+    !semantic &&
+    impactVoiceTimes.length >=
+      maxVoices
+  ) {
+    impactVoicesDropped += 1;
+
+    if (runStats) {
+      runStats.impactVoicesDropped =
+        impactVoicesDropped;
+    }
+
+    return false;
+  }
+
+  impactVoiceTimes.push(now);
+  return true;
+}
+
 function impactProfile() {
   const configured =
     SONG?.musicFeel?.impactProfile ?? {};
@@ -5531,6 +5656,16 @@ function impactSound(
     profile.sfxGain;
   const now =
     clock.context.currentTime;
+
+  if (
+    !impactVoiceAllowed(
+      kind,
+      now
+    )
+  ) {
+    return;
+  }
+
   const frequencyScale = {
     tap: 1.18,
     shield: 1.34,
@@ -9800,6 +9935,13 @@ function processSongEvents() {
 }
 
 function updateEffects(dt) {
+  readabilityBudget();
+
+  if (runStats) {
+    runStats.impactVoicesDropped =
+      impactVoicesDropped;
+  }
+
   for (const explosion of explosions) {
     explosion.life += dt;
   }
@@ -12498,10 +12640,17 @@ function drawImpactVeil() {
     machinePalette();
 
   ctx.save();
+  const pressure =
+    readabilityBudget()
+      .pressure;
   ctx.globalAlpha =
     Math.min(
       0.22,
       impactVeil
+    ) *
+    (
+      1 -
+      pressure * 0.68
     );
   ctx.fillStyle =
     `rgb(${palette.accent.join(",")})`;
@@ -12517,6 +12666,37 @@ function drawImpactVeil() {
 
 function drawTrail(note) {
   if (note.launched) {
+    const pressure =
+      readabilityBudget()
+        .pressure;
+    const priority =
+      note.power ||
+      note.resonant
+        ? 0.88
+        : Number(
+            note.piercesLeft || 0
+          ) > 0 ||
+          Number(
+            note.ricochetsLeft || 0
+          ) > 0
+          ? 0.66
+          : 0.34;
+    const trailAlpha =
+      clamp(
+        1 -
+          pressure *
+          (
+            1 -
+            priority
+          ),
+        0.24,
+        1
+      );
+
+    ctx.save();
+    ctx.globalAlpha *=
+      trailAlpha;
+
     const speed = Math.hypot(note.vx, note.vy) || 1;
     const ux = note.vx / speed;
     const uy = note.vy / speed;
@@ -12622,6 +12802,7 @@ function drawTrail(note) {
     }
 
     ctx.shadowColor = "transparent";
+    ctx.restore();
     return;
   }
 
@@ -13690,6 +13871,16 @@ function drawImpactFlashes() {
 }
 
 function drawExplosions() {
+  const pressure =
+    readabilityBudget()
+      .pressure;
+  const particleStride =
+    pressure >= 0.82
+      ? 3
+      : pressure >= 0.52
+        ? 2
+        : 1;
+
   for (const explosion of explosions) {
     const t = clamp(explosion.life / explosion.duration, 0, 1);
     const alpha = 1 - t;
@@ -13753,7 +13944,17 @@ function drawExplosions() {
       ctx.setLineDash([]);
     }
 
-    for (const particle of explosion.particles) {
+    for (
+      let particleIndex = 0;
+      particleIndex <
+        explosion.particles.length;
+      particleIndex +=
+        particleStride
+    ) {
+      const particle =
+        explosion.particles[
+          particleIndex
+        ];
       const distance = particle.speed * explosion.life;
       const x =
         explosion.x +
@@ -13993,7 +14194,7 @@ function drawDebug(songTime) {
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `song ${SONG?.id ?? "loading"} · sync ${songAlignmentReport?.checked ?? 0}/${CHART.length}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
-    `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)} · RES ${Math.round(resonance)}`,
+    `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)} · RES ${Math.round(resonance)} · load ${Math.round(readabilityBudget().pressure * 100)}%`,
     `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · aimCHAIN ${runStats?.aimedChains ?? 0}`
   ];
 
@@ -16767,6 +16968,10 @@ function completeRun() {
       {
         ...bossState.damageSources
       };
+    runStats.impactVoicesDropped =
+      impactVoicesDropped;
+    runStats.density =
+      readabilityBudget();
   }
 
   const timing =
@@ -17555,6 +17760,8 @@ async function startRun(mode = "standard") {
   chainCount = 0;
   collisionCount = 0;
   wallExplosionCount = 0;
+  impactVoiceTimes = [];
+  impactVoicesDropped = 0;
   resonance =
     RESONANCE_START;
   peakResonance =
