@@ -154,3 +154,29 @@ A procedural section with four or more events warns if it has no event-free gap 
 The goal is to preserve phrase-level breathing room rather than map every audible transient.
 
 Red still means invalid/sync failure. Amber means the chart is legal but deserves a playability review.
+
+
+## Song-level authoring — v0.48
+
+Chart Lab now displays song phases as alternating labeled regions on the timeline.
+
+Sparse `songEvents` appear as markers in the MUSIC lane. This makes song-specific world direction visible next to notes instead of keeping level cues in source code.
+
+### TRACE recovery audit
+
+The flow audit now distinguishes three TRACE timing problems:
+
+- **setup** — a Tap leaves less than the configured pre-TRACE recovery;
+- **occupancy** — a Tap falls strictly inside the TRACE gesture;
+- **escape** — a Tap arrives before the configured post-TRACE recovery expires.
+
+Standard defaults are 0.5 beat before and 1 beat after. A song can set stricter values through `chartFeel`.
+
+BLOOM OVERDRIVE uses:
+
+- 0.75 beat setup;
+- 1 beat escape;
+- max 6 authored events per bar;
+- minimum 1-beat recovery gap.
+
+The flagship chart currently passes all semantic-sync and flow checks with no warnings.
