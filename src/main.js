@@ -17505,6 +17505,9 @@ function renderUpgradeChoices() {
 
 
 async function beginAct() {
+  lastFrame =
+    performance.now();
+
   const phase =
     currentLevelPhase();
 
@@ -18092,7 +18095,13 @@ function completeRun() {
 
   if (runStats) {
     runStats.performanceSummary =
-      performanceStats;
+      {
+        ...performanceStats,
+        hapticsEnabled:
+          profile.hapticsEnabled,
+        advancedTiming:
+          profile.advancedTiming
+      };
   }
 
   const flowRank =
@@ -18602,6 +18611,10 @@ function captureTracePointer(
   pointerEvent
 ) {
   if (!running) return false;
+
+  recordInputDispatch(
+    pointerEvent.timeStamp
+  );
 
   const songTime =
     eventSongTime(
