@@ -169,3 +169,71 @@ File audio without analysis. Structural/timing validation passes, but the packag
 10. register it in `songs/index.json`.
 
 Use `docs/file-song-template.json` as a starting point.
+
+
+## musicFeel
+
+`musicFeel` is optional presentation/audio-direction data used by the procedural runtime.
+
+```json
+"musicFeel": {
+  "motif": [0, 3, 7, 10, 7],
+  "synthesis": {
+    "leadWave": "triangle",
+    "leadHarmonic": 0.24,
+    "bassHarmonic": 0.30,
+    "auraDetune": 7,
+    "brightness": 1.08
+  },
+  "sectionCues": {
+    "SPARK": {
+      "intervals": [0, 3, 7],
+      "gain": 0.0055
+    }
+  },
+  "interactiveCues": {
+    "shieldBreak": {
+      "quantize": "step",
+      "intervals": [0, 7],
+      "gain": 0.0054,
+      "duckDb": -1.8,
+      "durationBeats": 0.28
+    }
+  },
+  "actArrangements": [
+    {
+      "drums": 0.82,
+      "bass": 0.86,
+      "harmony": 0.60,
+      "lead": 0.52,
+      "aura": 0.42,
+      "brightness": 0.72,
+      "drive": 0.62
+    }
+  ]
+}
+```
+
+### motif
+
+Intervals relative to the local song root. Runtime reward sounds such as CHAIN and module install can reuse this identity.
+
+### sectionCues
+
+A cue is scheduled only when the procedural composition actually changes section. Section names are never hardcoded in gameplay source.
+
+### interactiveCues
+
+Supported quantization values are:
+
+- `step`;
+- `beat`;
+- `bar`.
+
+Immediate gameplay feedback is still played immediately. These cues are the secondary musical response.
+
+### actArrangements
+
+The active entry is chosen from the current act. Values scale stem mix/brightness rather than rewriting chart timing.
+
+This provides vertical reorchestration while retaining one validated chart contract.
