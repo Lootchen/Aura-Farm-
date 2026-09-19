@@ -1301,6 +1301,7 @@ export function songFrameFromData(
     barIndex,
     step,
     section: bar.section,
+    rootMidi: bar.root,
     kick:
       drums.kick.includes(
         step
