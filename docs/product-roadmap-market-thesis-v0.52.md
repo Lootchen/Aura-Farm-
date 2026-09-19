@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.57  
+Current baseline: v0.58  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -75,11 +75,11 @@ Do not add a large song/content batch until:
 ## P3 — Boss as build exam
 
 - [x] AURA CORE now adds a rotating route aperture: non-Power matter can earn route damage while Power and Resonance remain alternate efficiency paths.
-- [ ] At least three build families must have visibly different effective approaches.
-- [x] Boss geometry exposes a visible route aperture rotating every 4 beats; non-Power impacts through it gain +1 route damage.
+- [x] At least three build approaches are mechanically distinct at AURA CORE: routed/banked ricochet matter attacks the exposed aperture, Perfora passes through armor without disappearing, and Shock + Power overload breaks a neighboring armor node.
+- [x] Boss geometry exposes a visible route aperture rotating every 4 beats; direct non-Power ROUTE gains +1 while matter that physically bounced first gains the stronger BANK bonus.
 - [x] Precision / Resonance can improve boss efficiency without making misses end the song.
 - [x] Track Core damage source from projectile provenance (direct/twin/TRACE/chain/wall/fusion/fragment/bumper).
-- [x] End screen explains the dominant Core damage path so players understand what their build actually did.
+- [x] End screen explains dominant Core provenance plus BANK / PERFORA / OVERLOAD exam events so players can identify how their build solved the boss.
 
 ## P4 — Mastery, calibration and accessibility
 
@@ -190,7 +190,7 @@ Only after P0–P5 are validated:
 - [x] Share fallback only reports success after an actual copy path succeeds.
 - [ ] Validate frame/input metrics on representative phones and Bluetooth/audio paths.
 
-### v0.57 — current
+### v0.57 — completed implementation pass
 - [x] Add authored Shield ECHO links without adding chart events or input types.
 - [x] Early physical Shield break arms a future existing Tap; late break keeps normal Shield behavior.
 - [x] ECHO target is visually marked and resolves into a distinct Power return.
@@ -200,6 +200,15 @@ Only after P0–P5 are validated:
 - [x] Rebote LV2/LV3 mutate the first bounce into Resonant / Resonant+Perfora matter.
 - [x] Perfora LV2 preserves pierce through Shield; LV3 passes a perforating mutation into ECHO return.
 - [ ] Playtest whether players can verbally connect Shield break → future ECHO without tutorial text.
+
+### v0.58 — current
+- [x] Core armor preserves Perfora matter instead of consuming every projectile.
+- [x] Shock + Power overloads one neighboring armor node for a visible area solution.
+- [x] Route aperture distinguishes direct ROUTE from ricocheted BANK matter.
+- [x] BANK requires recorded wall / bumper / FRACTURE membrane reflection and grants stronger route efficiency.
+- [x] Boss summary reports BANK / PERFORA / OVERLOAD exam events.
+- [x] Armor/aperture visuals hint at relevant physical solutions without adding a tutorial panel.
+- [ ] Playtest whether players describe these as different boss strategies rather than bonus damage.
 
 ## Kill criteria
 
