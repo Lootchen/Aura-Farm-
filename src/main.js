@@ -15543,7 +15543,7 @@ function drawDebug(songTime) {
     `song ${SONG?.id ?? "loading"} · sync ${songAlignmentReport?.checked ?? 0}/${CHART.length}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)} · RES ${Math.round(resonance)} · load ${Math.round(readabilityBudget().pressure * 100)}%`,
-    `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · world ${phaseWorldSpec()?.mode ?? "none"} · route ${bossState.routedHits ?? 0}`
+    `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · ECHO ${runStats?.shieldEcho?.resolved ?? 0}/${runStats?.shieldEcho?.armed ?? 0} · route ${bossState.routedHits ?? 0}`
   ];
 
   ctx.fillStyle = "rgba(0,0,0,.52)";
@@ -18673,6 +18673,10 @@ function completeRun() {
         performanceStats
           .highLoadSlowFrames > 0
           ? `LOAD+SLOW ${performanceStats.highLoadSlowFrames} frames`
+          : null,
+        runStats?.shieldEcho
+          ?.armed > 0
+          ? `ECHO ${runStats.shieldEcho.resolved}/${runStats.shieldEcho.armed}`
           : null
       ]
         .filter(Boolean)
