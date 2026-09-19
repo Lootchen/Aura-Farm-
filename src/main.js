@@ -37,6 +37,7 @@ const songPickerItems = document.querySelector("#songPickerItems");
 const menuVersion = document.querySelector("#menuVersion");
 const rerunButton = document.querySelector("#rerunButton");
 const summaryDailyButton = document.querySelector("#summaryDailyButton");
+const summaryShareButton = document.querySelector("#summaryShareButton");
 const summaryMenuButton = document.querySelector("#summaryMenuButton");
 const leftButton = document.querySelector("#leftButton");
 const rightButton = document.querySelector("#rightButton");
@@ -218,6 +219,8 @@ const BOSS_MAX_HEALTH = 18;
 const ACTIVE_MODULE_LIMIT = 4;
 const RESERVE_MODULE_LIMIT = 4;
 const MODULE_MAX_LEVEL = 3;
+const DAILY_SONG_ID =
+  "bloom-overdrive";
 
 const ACTS = [
   null,
@@ -706,6 +709,8 @@ selectedSongId =
     ? profile.selectedSongId
     : null;
 let runMode = "standard";
+let dailyReturnSongId = null;
+let lastShareCard = "";
 let runPaused = false;
 let runSeed = 1;
 let rngState = 1;
@@ -4775,6 +4780,55 @@ function renderSongPicker() {
   }
 }
 
+function invalidateLoadedSong() {
+  chartLoaded = false;
+  CHART = [];
+  SONG = null;
+  songSourceUrl = null;
+  songAlignmentReport = null;
+  configureSong(null);
+  clock.stopMusic();
+  renderSongPicker();
+}
+
+function prepareRunSong(
+  mode
+) {
+  if (mode === "daily") {
+    if (
+      selectedSongId !==
+        DAILY_SONG_ID
+    ) {
+      dailyReturnSongId ??=
+        selectedSongId;
+      selectedSongId =
+        DAILY_SONG_ID;
+      invalidateLoadedSong();
+      return true;
+    }
+
+    return false;
+  }
+
+  if (dailyReturnSongId) {
+    const restoreId =
+      dailyReturnSongId;
+    dailyReturnSongId = null;
+
+    if (
+      selectedSongId !==
+        restoreId
+    ) {
+      selectedSongId =
+        restoreId;
+      invalidateLoadedSong();
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function selectSong(
   id
 ) {
@@ -4810,15 +4864,7 @@ async function selectSong(
     profile
   );
 
-  chartLoaded = false;
-  CHART = [];
-  SONG = null;
-  songSourceUrl = null;
-  songAlignmentReport = null;
-  configureSong(null);
-  clock.stopMusic();
-
-  renderSongPicker();
+  invalidateLoadedSong();
 
   try {
     await ensureChartLoaded();
@@ -17544,6 +17590,107 @@ function flowRankForRun({
   };
 }
 
+function buildRunShareCard({
+  flowRank,
+  timing,
+  bossDamage
+}) {
+  const build =
+    activeModuleIds
+      .map(
+        (id) => {
+          const upgrade =
+            upgradeById(id);
+          return upgrade
+            ? `${upgrade.title} LV${moduleLevel(id)}`
+            : null;
+        }
+      )
+      .filter(Boolean)
+      .join(" · ") ||
+    "SIN MÓDULOS";
+  const sync =
+    timing.count > 0
+      ? `${Math.round(timing.centerRate * 100)}%`
+      : "—";
+  const header =
+    runMode === "daily"
+      ? `AURA FARM DAILY · ${localDateKey()}`
+      : "AURA FARM · RUN";
+
+  return [
+    header,
+    SONG?.title ??
+      "AURA TRACK",
+    `${MACHINES[selectedMachine]?.name ?? "FORGE"} · FLOW ${flowRank.rank} · ${score} PTS`,
+    `SYNC ${sync} · CHAIN ${chainCount} · RES ${Math.round(resonance)} · CORE ${bossDamage}%`,
+    `BUILD · ${build}`,
+    runMode === "daily"
+      ? `SEED · ${runSeed}`
+      : null,
+    "BUILD THE BEAT."
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function shareLastRun() {
+  if (!lastShareCard) {
+    return;
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title:
+          runMode === "daily"
+            ? "Aura Farm Daily"
+            : "Aura Farm",
+        text:
+          lastShareCard
+      });
+      return;
+    } catch (error) {
+      if (
+        error?.name ===
+          "AbortError"
+      ) {
+        return;
+      }
+    }
+  }
+
+  try {
+    await navigator.clipboard
+      ?.writeText(
+        lastShareCard
+      );
+
+    if (summaryShareButton) {
+      const previous =
+        summaryShareButton
+          .textContent;
+      summaryShareButton
+        .textContent =
+          "COPIADO";
+
+      window.setTimeout(
+        () => {
+          summaryShareButton
+            .textContent =
+              previous;
+        },
+        1200
+      );
+    }
+  } catch {
+    if (summaryUnlock) {
+      summaryUnlock.textContent =
+        "NO SE PUDO COPIAR · USA CAPTURA";
+    }
+  }
+}
+
 function completeRun() {
   if (!running) return;
 
@@ -17650,6 +17797,28 @@ function completeRun() {
       bossDamage:
         completedBossDamage
     });
+
+  lastShareCard =
+    buildRunShareCard({
+      flowRank,
+      timing,
+      bossDamage:
+        completedBossDamage
+    });
+
+  if (runStats) {
+    runStats.shareCard =
+      lastShareCard;
+  }
+
+  if (summaryShareButton) {
+    summaryShareButton.hidden =
+      practice;
+    summaryShareButton.textContent =
+      runMode === "daily"
+        ? "COMPARTIR DAILY"
+        : "COMPARTIR";
+  }
 
   summaryMachine.textContent =
     MACHINES[
@@ -18419,6 +18588,7 @@ window.addEventListener("keyup", (event) => {
 
 async function startRun(mode = "standard") {
   closeAutoCalibration();
+  prepareRunSong(mode);
   runMode = mode;
   runPaused = false;
   pausePanel.hidden = true;
@@ -18596,9 +18766,31 @@ summaryDailyButton.addEventListener(
   () => startRun("daily")
 );
 
+summaryShareButton?.addEventListener(
+  "click",
+  () => shareLastRun()
+);
+
 summaryMenuButton.addEventListener(
   "click",
-  () => {
+  async () => {
+    const restored =
+      prepareRunSong(
+        "standard"
+      );
+
+    if (restored) {
+      try {
+        await ensureChartLoaded();
+        buildPaths();
+      } catch (error) {
+        console.error(
+          "[Aura Farm] restore song failed",
+          error
+        );
+      }
+    }
+
     summaryPanel.hidden = true;
     buildDock.hidden = true;
     menuSettings.hidden = true;
