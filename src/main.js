@@ -536,19 +536,57 @@ const MACHINES = {
     name: "FORGE",
     unlockRuns: 0,
     accent: [255, 196, 92],
-    secondary: [110, 215, 255]
+    secondary: [110, 215, 255],
+    short:
+      "RES WALL→POWER · AIM PESADO",
+    rules: {
+      aimScale: 0.82,
+      startResonance: 55,
+      tapResonanceScale: 1,
+      resonanceThreshold:
+        RESONANCE_BLOOM_THRESHOLD,
+      strongAimRicochets: 0,
+      resonantWallPower: true,
+      chainResonanceBonus: 0,
+      traceResonanceBonus: 0
+    }
   },
   prism: {
     name: "PRISM",
     unlockRuns: 1,
     accent: [211, 139, 255],
-    secondary: [94, 226, 215]
+    secondary: [94, 226, 215],
+    short:
+      "AIM AMPLIO · STRONG AIM +REBOTE",
+    rules: {
+      aimScale: 1.28,
+      startResonance: 45,
+      tapResonanceScale: 0.9,
+      resonanceThreshold:
+        RESONANCE_BLOOM_THRESHOLD,
+      strongAimRicochets: 1,
+      resonantWallPower: false,
+      chainResonanceBonus: 0,
+      traceResonanceBonus: 0
+    }
   },
   pulse: {
     name: "PULSE",
     unlockRuns: 3,
     accent: [255, 105, 148],
-    secondary: [255, 226, 104]
+    secondary: [255, 226, 104],
+    short:
+      "CHAIN/TRACE CARGAN BLOOM",
+    rules: {
+      aimScale: 1,
+      startResonance: 40,
+      tapResonanceScale: 0.62,
+      resonanceThreshold: 65,
+      strongAimRicochets: 0,
+      resonantWallPower: false,
+      chainResonanceBonus: 2,
+      traceResonanceBonus: 3
+    }
   }
 };
 
@@ -699,6 +737,34 @@ function machinePalette() {
     MACHINES.forge;
 }
 
+function machineRules() {
+  return (
+    MACHINES[selectedMachine]
+      ?.rules ??
+    MACHINES.forge.rules
+  );
+}
+
+function resonanceBloomThreshold() {
+  return Number(
+    machineRules()
+      .resonanceThreshold ??
+    resonanceBloomThreshold()
+  );
+}
+
+function machineStartResonance() {
+  return clamp(
+    Number(
+      machineRules()
+        .startResonance ??
+      RESONANCE_START
+    ),
+    0,
+    RESONANCE_MAX
+  );
+}
+
 function machineUnlocked(id) {
   return (
     profile.runsCompleted >=
@@ -737,9 +803,18 @@ function refreshMachineOptions() {
     );
     option.disabled = !unlocked;
 
-    if (unlocked && id !== "forge") {
-      const small = option.querySelector("small");
-      if (small) small.textContent = "Desbloqueada";
+    const small =
+      option.querySelector("small");
+
+    if (small) {
+      small.textContent =
+        unlocked
+          ? (
+              MACHINES[id]
+                ?.short ??
+              "CHASIS"
+            )
+          : `Completa ${MACHINES[id]?.unlockRuns ?? 0} run${(MACHINES[id]?.unlockRuns ?? 0) === 1 ? "" : "s"}`;
     }
   }
 
@@ -3006,7 +3081,7 @@ let awaitingUpgrade = false;
 function resonanceTier() {
   if (
     resonance >=
-    RESONANCE_BLOOM_THRESHOLD
+    resonanceBloomThreshold()
   ) {
     return "bloom";
   }
@@ -3856,7 +3931,15 @@ function moduleLevelEffect(
     case "pierce":
       return `ATRAVIESA ${level} BLANCO${level === 1 ? "" : "S"}`;
     case "fragments":
-      return `${2 + level} FRAGMENTOS POR EXPLOSIÓN`;
+      if (level === 1) {
+        return "3 FRAGMENTOS POR EXPLOSIÓN";
+      }
+
+      if (level === 2) {
+        return "4 FRAGMENTOS · +1 REBOTE";
+      }
+
+      return "5 FRAGMENTOS · RESONANT→POWER";
     case "bumper":
       return `${Math.min(level, BUMPER_LAYOUT.length)} BUMPER${level === 1 ? "" : "S"} ACTIVOS`;
     case "nova":
@@ -3864,7 +3947,15 @@ function moduleLevelEffect(
     case "mirror-slide":
       return `${Math.min(3, level)} ORB${level === 1 ? "" : "S"} ESPEJO`;
     case "chain-relay":
-      return `${Math.min(3, level)} RELEVO${level === 1 ? "" : "S"} TRAS CHAIN`;
+      if (level === 1) {
+        return "CHAIN → 1 ORB";
+      }
+
+      if (level === 2) {
+        return "2 ORBS · +1 REBOTE";
+      }
+
+      return "3 ORBS · BLOOM→POWER";
     case "shockwave":
       return `RADIO SHOCK ${68 + level * 16}px`;
     case "fusion":
@@ -6237,13 +6328,17 @@ function resolveTapHit(note, side, songTime) {
 
   const absDeltaMs =
     Math.abs(deltaMs);
-  adjustResonance(
+  const baseTapResonance =
     absDeltaMs <=
       SYNC_CENTER_MS
       ? 4
       : absDeltaMs <= 90
         ? 2
-        : 1,
+        : 1;
+  adjustResonance(
+    baseTapResonance *
+      machineRules()
+        .tapResonanceScale,
     absDeltaMs <=
       SYNC_CENTER_MS
       ? "tap-center"
@@ -6253,7 +6348,7 @@ function resolveTapHit(note, side, songTime) {
     absDeltaMs <=
       SYNC_CENTER_MS &&
     resonance >=
-      RESONANCE_BLOOM_THRESHOLD;
+      resonanceBloomThreshold();
 
   const segment = flipperSegment(side, songTime);
   const baseAngle =
@@ -6262,7 +6357,9 @@ function resolveTapHit(note, side, songTime) {
       segment.tip.x - segment.pivot.x
     ) +
     aimBias *
-      AIM_MAX_RADIANS;
+      AIM_MAX_RADIANS *
+      machineRules()
+        .aimScale;
 
   const shotCount = 1 + runMods.twinShots;
   const angles = fanAngles(baseAngle, shotCount, 0.20);
@@ -6276,7 +6373,12 @@ function resolveTapHit(note, side, songTime) {
       resonant:
         resonantMatter,
       aimIntent:
-        aimBias
+        aimBias,
+      bonusRicochets:
+        Math.abs(aimBias) >= 0.45
+          ? machineRules()
+              .strongAimRicochets
+          : 0
     }
   );
 
@@ -6292,7 +6394,12 @@ function resolveTapHit(note, side, songTime) {
       resonant:
         resonantMatter,
       aimIntent:
-        aimBias
+        aimBias,
+      bonusRicochets:
+        Math.abs(aimBias) >= 0.45
+          ? machineRules()
+              .strongAimRicochets
+          : 0
     });
   }
 
@@ -6621,10 +6728,26 @@ function createExplosion(
         angle,
         side,
         symbol: "·",
-        radiusScale: 0.48,
+        radiusScale:
+          moduleLevel(
+            "fragments"
+          ) >= 3
+            ? 0.56
+            : 0.48,
         fragment: true,
+        power:
+          moduleLevel(
+            "fragments"
+          ) >= 3 &&
+          resonant,
         speed: POST_HIT_SPEED * 0.72,
         inheritMods: false,
+        bonusRicochets:
+          moduleLevel(
+            "fragments"
+          ) >= 2
+            ? 1
+            : 0,
         source:
           source === "explosion"
             ? "fragment"
@@ -7186,11 +7309,24 @@ function resolveProjectileCollisions() {
               side:
                 projectile.side,
               symbol: "↯",
-              radiusScale: 0.72,
+              radiusScale:
+                runMods.chainRelay >= 3 &&
+                resonance >=
+                  resonanceBloomThreshold()
+                  ? 0.86
+                  : 0.72,
+              power:
+                runMods.chainRelay >= 3 &&
+                resonance >=
+                  resonanceBloomThreshold(),
               speed:
                 POST_HIT_SPEED *
                 0.86,
               inheritMods: false,
+              bonusRicochets:
+                runMods.chainRelay >= 2
+                  ? 1
+                  : 0,
               source: "chain",
               resonant:
                 Boolean(
@@ -7222,7 +7358,9 @@ function resolveProjectileCollisions() {
         chainCount += 1;
         recordLifetimeMetric("totalChains", 1);
         adjustResonance(
-          2,
+          2 +
+            machineRules()
+              .chainResonanceBonus,
           "chain"
         );
 
@@ -7385,9 +7523,22 @@ function resolveProjectileCollisions() {
             angle,
             side: projectile.side,
             symbol: "↯",
-            radiusScale: 0.72,
+            radiusScale:
+              runMods.chainRelay >= 3 &&
+              resonance >=
+                resonanceBloomThreshold()
+                ? 0.86
+                : 0.72,
+            power:
+              runMods.chainRelay >= 3 &&
+              resonance >=
+                resonanceBloomThreshold(),
             speed: POST_HIT_SPEED * 0.86,
             inheritMods: false,
+            bonusRicochets:
+              runMods.chainRelay >= 2
+                ? 1
+                : 0,
             source: "chain",
             resonant:
               Boolean(
@@ -7682,7 +7833,7 @@ function resolveBossCollisions(songTime) {
     const resonanceBonus =
       projectile.resonant &&
       resonance >=
-        RESONANCE_BLOOM_THRESHOLD
+        resonanceBloomThreshold()
         ? 1
         : 0;
     const damage =
@@ -8202,14 +8353,25 @@ function updateTap(note, dt, songTime) {
       createExplosion(
         clamp(note.x, radius, DESIGN.width - radius),
         clamp(note.y, 72, DESIGN.height - radius),
-        note.power || runMods.wallCharge > 0
+        note.power ||
+        runMods.wallCharge > 0 ||
+        (
+          machineRules()
+            .resonantWallPower &&
+          note.resonant
+        )
           ? 1.65
           : 1,
         {
           emitFragments: !note.fragment,
           side: note.side,
           source:
-            runMods.wallCharge > 0
+            runMods.wallCharge > 0 ||
+            (
+              machineRules()
+                .resonantWallPower &&
+              note.resonant
+            )
               ? "wall"
               : note.source ??
                 "collision",
@@ -8647,7 +8809,7 @@ function spawnSlideProjectile(event) {
       source: "trace",
       resonant:
         resonance >=
-        RESONANCE_BLOOM_THRESHOLD
+        resonanceBloomThreshold()
     });
   }
 
@@ -8702,7 +8864,7 @@ function spawnSlideProjectile(event) {
         source: "trace",
         resonant:
           resonance >=
-          RESONANCE_BLOOM_THRESHOLD
+          resonanceBloomThreshold()
       });
     }
   }
@@ -8741,7 +8903,9 @@ function finishSlide(event) {
     1
   );
   adjustResonance(
-    7,
+    7 +
+      machineRules()
+        .traceResonanceBonus,
     "trace"
   );
 
@@ -17763,11 +17927,11 @@ async function startRun(mode = "standard") {
   impactVoiceTimes = [];
   impactVoicesDropped = 0;
   resonance =
-    RESONANCE_START;
+    machineStartResonance();
   peakResonance =
-    RESONANCE_START;
+    resonance;
   minResonance =
-    RESONANCE_START;
+    resonance;
   wave = 1;
   awaitingUpgrade = false;
   buildHistory = [];
