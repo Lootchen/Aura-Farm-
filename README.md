@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.46
+# Aura Farm — Vertical Slice v0.47
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,100 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.47 — Music Feel System / Flow-safe charting
+
+v0.47 turns the previous music research into runtime rules.
+
+### Music and SFX are separate buses
+
+The audio graph now has:
+
+```text
+STEMS / FILE AUDIO → MUSIC BUS ┐
+                               ├→ MASTER → saturation → compressor
+GAMEPLAY SFX       → SFX BUS   ┘
+```
+
+Important gameplay events can briefly duck the Music Bus without delaying the immediate input sound.
+
+The first layer remains instant so rhythm judgement stays honest; the second musical layer can be quantized.
+
+### Immediate + quantized feedback
+
+- Tap judgement feedback remains immediate.
+- Shield Break adds a song-specific cue on the next legal rhythmic step.
+- CHAIN adds notes from the song motif.
+- every 12-combo flow milestone can add a restrained beat-quantized resonance;
+- boss phase transition and Core Break use dedicated song cues;
+- act completion produces a short musical closure before Module Bay.
+
+### Song motifs
+
+Each procedural song may declare `musicFeel.motif`.
+
+CHAIN and module-install sounds now derive from that motif instead of fixed generic scales, so reward sounds share harmonic identity with the active track.
+
+### Section cues are data-driven
+
+The previous hardcoded GLASSHOUSE section-name table has been removed.
+
+`musicFeel.sectionCues` is stored inside each song package. Runtime detects actual section changes and schedules the cue from that data.
+
+A new song therefore does not need source-code changes to receive correct section stingers.
+
+### Seven act arrangements
+
+Both current songs now declare seven `actArrangements`.
+
+Stem balances and timbral brightness evolve between acts, so restarting the same underlying composition no longer produces exactly the same orchestration each time.
+
+The arrangement also remains influenced by the player's build through the existing stem-mix system.
+
+### Mobile-friendly synthesis
+
+The procedural engine now keeps the original lightweight architecture but improves audibility and identity:
+
+- bass retains its sub oscillator and adds a controlled second harmonic for phone speakers;
+- lead is a dual-oscillator glassy voice instead of one permanent sawtooth;
+- Aura uses subtle stereo detune;
+- act arrangement controls brightness;
+- section and interaction cues share the song's tonal root.
+
+### NEON GERMINATION flow revision
+
+Track 02 has been recomposed for less constant pressure:
+
+- hats are less continuous outside the climax;
+- melodic patterns contain more rests;
+- BREAK has more negative space;
+- the final CROWN phrase leaves room for the long TRACE before the closing hits;
+- three accidental Tap-inside-TRACE demands were removed.
+
+The chart changed from 51 to **48 events**.
+
+Current audit:
+
+- semantic sync errors: **0**;
+- Tap-inside-TRACE overlaps: **0**;
+- over-dense bar warnings: **0**;
+- missing recovery-gap warnings: **0**.
+
+GLASSHOUSE CIRCUIT also passes the same flow audit with zero warnings.
+
+### Chart Lab flow audit
+
+Chart Lab now distinguishes correctness from comfort.
+
+Red remains a sync/schema error.
+
+Amber means an authoring decision needs flow review:
+
+- Tap inside an active TRACE unless `allowDuringTrace: true` is explicitly authored;
+- excessive events inside one bar;
+- dense sections with no recovery gap of at least one beat.
+
+These warnings do not silently rewrite a chart. They make potentially uncomfortable mapping visible while the author is editing.
 
 ## v0.46 — Second Song / Music-Directed World
 
