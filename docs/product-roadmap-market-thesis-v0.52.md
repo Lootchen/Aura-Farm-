@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.53  
+Current baseline: v0.54  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -64,19 +64,19 @@ Do not add a large song/content batch until:
 
 ## P2 — Make the song alter the physical problem
 
-- [ ] Prototype one phase-specific physical topology change in BLOOM.
-- [ ] Keep incoming note / TRACE readability isolated from environmental transformation.
-- [ ] FRACTURE should alter the physical arena in a way that changes build value.
-- [ ] SURGE should recombine / reactivate the arena rather than only increase density.
-- [ ] Extend sparse `songEvents` to physical world state only where the musical event deserves it.
-- [ ] TRACE completions can charge / redirect / rewrite one physical subsystem for the following phrase.
+- [x] Prototype phase-specific physical topology in BLOOM: FRACTURE split membrane and SURGE conduit.
+- [x] Incoming note / TRACE paths stay outside world collision logic; only launched projectiles interact with phase topology.
+- [x] FRACTURE adds a central reflective membrane that changes routing and ricochet value.
+- [x] SURGE replaces the blocker with a crossing conduit that adds projectile persistence; TRACE overcharges it.
+- [x] BLOOM now authors `phase-world` events at FRACTURE beat 128 and SURGE beat 160 alongside phase world metadata.
+- [x] TRACE rewrites phase topology for 8 beats: opens FRACTURE membrane or overcharges SURGE conduit.
 - [ ] Shield-like mechanics expand the pattern “past physical action changes a future rhythmic obligation”.
 
 ## P3 — Boss as build exam
 
-- [ ] AURA CORE should test routing and build rules rather than only projectile throughput.
+- [x] AURA CORE now adds a rotating route aperture: non-Power matter can earn route damage while Power and Resonance remain alternate efficiency paths.
 - [ ] At least three build families must have visibly different effective approaches.
-- [ ] Boss geometry exposes windows that reward deliberate micro-direction.
+- [x] Boss geometry exposes a visible route aperture rotating every 4 beats; non-Power impacts through it gain +1 route damage.
 - [x] Precision / Resonance can improve boss efficiency without making misses end the song.
 - [x] Track Core damage source from projectile provenance (direct/twin/TRACE/chain/wall/fusion/fragment/bumper).
 - [x] End screen explains the dominant Core damage path so players understand what their build actually did.
@@ -163,10 +163,14 @@ Only after P0–P5 are validated:
 - [ ] Playtest / tune density thresholds on worst-case builds.
 - [ ] Continue mutation pass only where an added rule remains legible.
 
-### v0.54 — next
-- [ ] BLOOM phase-specific arena mutation.
-- [ ] TRACE-to-world consequence prototype.
-- [ ] Boss routing windows / family-specific effectiveness.
+### v0.54 — current
+- [x] BLOOM phase-specific arena mutation.
+- [x] FRACTURE reflective split / SURGE conductive recombination.
+- [x] TRACE-to-world consequence prototype (8-beat rewrite).
+- [x] Boss route aperture rewards deliberate routing.
+- [x] Core now supports three efficiency paths: Power, Resonance and Route.
+- [ ] Playtest whether the membrane is perceived as a strategic obstacle instead of visual noise.
+- [ ] Tune route aperture width after mobile playtest.
 
 ## Kill criteria
 
