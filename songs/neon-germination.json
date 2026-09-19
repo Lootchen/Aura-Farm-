@@ -782,20 +782,6 @@
         },
         {
           "type": "tap",
-          "beat": 12,
-          "side": "right",
-          "route": 2,
-          "symbol": "●",
-          "music": {
-            "stem": "aura",
-            "intent": "response",
-            "energy": 0.7,
-            "phrase": "spark-answer"
-          },
-          "chainGroup": "spark-a"
-        },
-        {
-          "type": "tap",
           "beat": 13,
           "side": "left",
           "route": 1,
@@ -926,20 +912,6 @@
         },
         {
           "type": "tap",
-          "beat": 24,
-          "side": "left",
-          "route": 0,
-          "symbol": "●",
-          "music": {
-            "stem": "drums",
-            "intent": "pulse",
-            "energy": 0.72,
-            "phrase": "run-drive"
-          },
-          "shield": true
-        },
-        {
-          "type": "tap",
           "beat": 25,
           "side": "right",
           "route": 1,
@@ -1064,21 +1036,6 @@
             "phrase": "bloom-open",
             "contour": true
           }
-        },
-        {
-          "type": "tap",
-          "beat": 36,
-          "side": "right",
-          "route": 2,
-          "symbol": "●",
-          "music": {
-            "stem": "aura",
-            "intent": "accent",
-            "energy": 0.84,
-            "phrase": "bloom-chain"
-          },
-          "chainGroup": "bloom-a",
-          "shield": true
         },
         {
           "type": "tap",
@@ -1242,36 +1199,6 @@
         },
         {
           "type": "tap",
-          "beat": 52,
-          "side": "left",
-          "route": 2,
-          "symbol": "●",
-          "music": {
-            "stem": "aura",
-            "intent": "accent",
-            "energy": 0.88,
-            "phrase": "surge-chain"
-          },
-          "chainGroup": "surge-a",
-          "shield": true
-        },
-        {
-          "type": "tap",
-          "beat": 52.5,
-          "side": "right",
-          "route": 1,
-          "symbol": "●",
-          "music": {
-            "stem": "lead",
-            "intent": "syncopation",
-            "energy": 0.82,
-            "phrase": "surge-chain"
-          },
-          "minAct": 3,
-          "chainGroup": "surge-a"
-        },
-        {
-          "type": "tap",
           "beat": 53,
           "side": "left",
           "route": 2,
@@ -1374,20 +1301,6 @@
             "contour": true
           },
           "minAct": 2
-        },
-        {
-          "type": "tap",
-          "beat": 62,
-          "side": "right",
-          "route": 2,
-          "symbol": "●",
-          "music": {
-            "stem": "boss",
-            "intent": "climax",
-            "energy": 0.99,
-            "phrase": "crown-release"
-          },
-          "shield": true
         },
         {
           "type": "tap",
