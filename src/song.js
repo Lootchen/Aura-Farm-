@@ -1910,9 +1910,9 @@ export function auditChartPerceptualLoad(
         Math.round(raw * 100)
       );
     const state =
-      score >= 92
+      score >= 88
         ? "high"
-        : score >= 68
+        : score >= 55
           ? "elevated"
           : "stable";
     const bar = {
