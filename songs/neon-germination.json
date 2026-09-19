@@ -111,13 +111,9 @@
         ],
         "hat": [
           0,
-          1,
           2,
-          3,
           4,
-          5,
-          6,
-          7
+          6
         ]
       },
       "drive": {
@@ -135,11 +131,9 @@
           0,
           1,
           2,
-          3,
           4,
           5,
-          6,
-          7
+          6
         ]
       },
       "break": {
@@ -153,7 +147,6 @@
         ],
         "hat": [
           1,
-          3,
           5,
           7
         ]
@@ -292,21 +285,21 @@
       ],
       "arc": [
         19,
-        17,
+        null,
         15,
         null,
         12,
         15,
-        17,
+        null,
         19
       ],
       "run": [
         12,
         15,
-        17,
+        null,
         19,
         22,
-        19,
+        null,
         17,
         15
       ],
@@ -315,10 +308,10 @@
         null,
         22,
         24,
-        27,
         null,
+        27,
         24,
-        22
+        null
       ],
       "break": [
         24,
@@ -333,18 +326,18 @@
       "surge": [
         19,
         22,
-        24,
+        null,
         27,
         29,
         27,
-        24,
+        null,
         22
       ],
       "crown": [
         24,
         25,
         27,
-        31,
+        null,
         29,
         27,
         25,
@@ -394,31 +387,31 @@
       ],
       "bloom": [
         24,
+        null,
         27,
-        null,
         31,
+        null,
         34,
-        null,
         31,
-        29
+        null
       ],
       "high": [
         31,
         null,
         34,
         36,
-        38,
         null,
+        38,
         36,
-        34
+        null
       ],
       "final": [
         31,
         34,
-        36,
+        null,
         38,
         41,
-        38,
+        null,
         36,
         34
       ]
@@ -837,7 +830,7 @@
           "route": 1,
           "symbol": "●",
           "music": {
-            "stem": "lead",
+            "stem": "aura",
             "intent": "fill",
             "energy": 0.8,
             "phrase": "spark-answer"
@@ -892,7 +885,7 @@
           "route": 1,
           "symbol": "●",
           "music": {
-            "stem": "lead",
+            "stem": "drums",
             "intent": "pickup",
             "energy": 0.7,
             "phrase": "lift-motif"
@@ -933,20 +926,6 @@
         },
         {
           "type": "tap",
-          "beat": 23.5,
-          "side": "left",
-          "route": 2,
-          "symbol": "●",
-          "music": {
-            "stem": "lead",
-            "intent": "fill",
-            "energy": 0.84,
-            "phrase": "lift-arc"
-          },
-          "minAct": 4
-        },
-        {
-          "type": "tap",
           "beat": 24,
           "side": "left",
           "route": 0,
@@ -966,7 +945,7 @@
           "route": 1,
           "symbol": "●",
           "music": {
-            "stem": "lead",
+            "stem": "aura",
             "intent": "response",
             "energy": 0.72,
             "phrase": "run-drive"
@@ -1108,7 +1087,7 @@
           "route": 1,
           "symbol": "●",
           "music": {
-            "stem": "lead",
+            "stem": "aura",
             "intent": "response",
             "energy": 0.78,
             "phrase": "bloom-chain"
@@ -1298,7 +1277,7 @@
           "route": 2,
           "symbol": "●",
           "music": {
-            "stem": "lead",
+            "stem": "aura",
             "intent": "response",
             "energy": 0.86,
             "phrase": "surge-chain"
@@ -1312,7 +1291,7 @@
           "route": 2,
           "symbol": "●",
           "music": {
-            "stem": "aura",
+            "stem": "lead",
             "intent": "accent",
             "energy": 0.92,
             "phrase": "surge-chain"
@@ -1398,34 +1377,6 @@
         },
         {
           "type": "tap",
-          "beat": 60,
-          "side": "right",
-          "route": 2,
-          "symbol": "●",
-          "music": {
-            "stem": "boss",
-            "intent": "climax",
-            "energy": 0.96,
-            "phrase": "crown-core"
-          },
-          "shield": true
-        },
-        {
-          "type": "tap",
-          "beat": 61,
-          "side": "left",
-          "route": 2,
-          "symbol": "●",
-          "music": {
-            "stem": "boss",
-            "intent": "climax",
-            "energy": 0.94,
-            "phrase": "crown-core"
-          },
-          "minAct": 3
-        },
-        {
-          "type": "tap",
           "beat": 62,
           "side": "right",
           "route": 2,
@@ -1433,8 +1384,8 @@
           "music": {
             "stem": "boss",
             "intent": "climax",
-            "energy": 0.98,
-            "phrase": "crown-core"
+            "energy": 0.99,
+            "phrase": "crown-release"
           },
           "shield": true
         },
@@ -1448,11 +1399,194 @@
             "stem": "boss",
             "intent": "resolve",
             "energy": 1,
-            "phrase": "crown-core"
+            "phrase": "crown-release"
           },
           "minAct": 4
         }
       ]
     }
-  ]
+  ],
+  "musicFeel": {
+    "motif": [
+      0,
+      3,
+      7,
+      10,
+      7
+    ],
+    "synthesis": {
+      "leadWave": "triangle",
+      "leadHarmonic": 0.24,
+      "bassHarmonic": 0.3,
+      "auraDetune": 7,
+      "brightness": 1.08
+    },
+    "sectionCues": {
+      "DORMANT": {
+        "intervals": [
+          0,
+          7
+        ],
+        "gain": 0.0045
+      },
+      "SPARK": {
+        "intervals": [
+          0,
+          3,
+          7
+        ],
+        "gain": 0.0055
+      },
+      "LIFT": {
+        "intervals": [
+          0,
+          7,
+          10
+        ],
+        "gain": 0.0058
+      },
+      "RUN": {
+        "intervals": [
+          0,
+          3,
+          10
+        ],
+        "gain": 0.006
+      },
+      "BLOOM": {
+        "intervals": [
+          0,
+          7,
+          12
+        ],
+        "gain": 0.0068
+      },
+      "BREAK": {
+        "intervals": [
+          0,
+          5
+        ],
+        "gain": 0.0045
+      },
+      "SURGE": {
+        "intervals": [
+          0,
+          7,
+          10,
+          12
+        ],
+        "gain": 0.0072
+      },
+      "CROWN": {
+        "intervals": [
+          0,
+          3,
+          7,
+          12
+        ],
+        "gain": 0.0082,
+        "stem": "boss"
+      }
+    },
+    "interactiveCues": {
+      "shieldBreak": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          7
+        ],
+        "gain": 0.0054,
+        "duckDb": -1.8,
+        "durationBeats": 0.28
+      },
+      "chain": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "gain": 0.0052,
+        "duckDb": -1.5,
+        "durationBeats": 0.34
+      },
+      "flow": {
+        "quantize": "beat",
+        "intervals": [
+          0,
+          7,
+          12
+        ],
+        "gain": 0.0032,
+        "duckDb": -1,
+        "durationBeats": 0.42
+      }
+    },
+    "actArrangements": [
+      {
+        "drums": 0.82,
+        "bass": 0.86,
+        "harmony": 0.6,
+        "lead": 0.52,
+        "aura": 0.42,
+        "brightness": 0.72,
+        "drive": 0.62
+      },
+      {
+        "drums": 0.88,
+        "bass": 0.9,
+        "harmony": 0.66,
+        "lead": 0.62,
+        "aura": 0.5,
+        "brightness": 0.78,
+        "drive": 0.68
+      },
+      {
+        "drums": 0.92,
+        "bass": 0.94,
+        "harmony": 0.72,
+        "lead": 0.72,
+        "aura": 0.58,
+        "brightness": 0.84,
+        "drive": 0.74
+      },
+      {
+        "drums": 0.96,
+        "bass": 0.98,
+        "harmony": 0.8,
+        "lead": 0.82,
+        "aura": 0.66,
+        "brightness": 0.9,
+        "drive": 0.82
+      },
+      {
+        "drums": 1,
+        "bass": 1,
+        "harmony": 0.88,
+        "lead": 0.92,
+        "aura": 0.76,
+        "brightness": 0.96,
+        "drive": 0.9
+      },
+      {
+        "drums": 1.04,
+        "bass": 1.02,
+        "harmony": 0.96,
+        "lead": 1,
+        "aura": 0.88,
+        "brightness": 1.04,
+        "drive": 1
+      },
+      {
+        "drums": 1.08,
+        "bass": 1.04,
+        "harmony": 1,
+        "lead": 1.06,
+        "aura": 1,
+        "brightness": 1.12,
+        "drive": 1.1
+      }
+    ]
+  }
 }
