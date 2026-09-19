@@ -2017,7 +2017,7 @@
         {
           "type": "slide",
           "mode": "trace",
-          "beat": 37,
+          "beat": 36.75,
           "side": "right",
           "route": 1,
           "durationBeats": 2,
@@ -2039,7 +2039,7 @@
             }
           ],
           "music": {
-            "stem": "drums",
+            "stem": "lead",
             "intent": "phrase",
             "energy": 0.725,
             "phrase": "pressure-trace-a",
@@ -2114,7 +2114,7 @@
         {
           "type": "slide",
           "mode": "trace",
-          "beat": 49,
+          "beat": 48.75,
           "side": "left",
           "route": 2,
           "durationBeats": 3,
@@ -2136,7 +2136,7 @@
             }
           ],
           "music": {
-            "stem": "drums",
+            "stem": "lead",
             "intent": "phrase",
             "energy": 0.765,
             "phrase": "pressure-trace-b",
@@ -2277,7 +2277,7 @@
         {
           "type": "slide",
           "mode": "trace",
-          "beat": 69,
+          "beat": 68.75,
           "side": "left",
           "route": 2,
           "durationBeats": 2,
@@ -2299,7 +2299,7 @@
             }
           ],
           "music": {
-            "stem": "drums",
+            "stem": "lead",
             "intent": "phrase",
             "energy": 0.7899999999999999,
             "phrase": "germinate-trace-a",
@@ -2375,7 +2375,7 @@
         {
           "type": "slide",
           "mode": "trace",
-          "beat": 81,
+          "beat": 80.75,
           "side": "right",
           "route": 2,
           "durationBeats": 3,
@@ -2397,7 +2397,7 @@
             }
           ],
           "music": {
-            "stem": "drums",
+            "stem": "lead",
             "intent": "phrase",
             "energy": 0.83,
             "phrase": "germinate-trace-b",
@@ -2829,64 +2829,6 @@
           "shield": true
         },
         {
-          "type": "slide",
-          "mode": "trace",
-          "beat": 133,
-          "side": "left",
-          "route": 2,
-          "durationBeats": 2,
-          "anchors": [
-            {
-              "beat": 0,
-              "x": -0.58,
-              "y": -0.7
-            },
-            {
-              "beat": 1,
-              "x": 0,
-              "y": -0.98
-            },
-            {
-              "beat": 2,
-              "x": 0.58,
-              "y": -0.72
-            }
-          ],
-          "music": {
-            "stem": "bass",
-            "intent": "phrase",
-            "energy": 0.9199999999999999,
-            "phrase": "fracture-trace-a",
-            "contour": true
-          }
-        },
-        {
-          "type": "tap",
-          "beat": 136,
-          "side": "right",
-          "route": 1,
-          "symbol": "●",
-          "music": {
-            "stem": "drums",
-            "intent": "resolve",
-            "energy": 0.89,
-            "phrase": "fracture-release"
-          }
-        },
-        {
-          "type": "tap",
-          "beat": 137.5,
-          "side": "left",
-          "route": 1,
-          "symbol": "●",
-          "music": {
-            "stem": "drums",
-            "intent": "response",
-            "energy": 0.8999999999999999,
-            "phrase": "fracture-release"
-          }
-        },
-        {
           "type": "tap",
           "beat": 139,
           "side": "right",
@@ -2929,10 +2871,10 @@
         {
           "type": "slide",
           "mode": "trace",
-          "beat": 145,
+          "beat": 143.5,
           "side": "right",
           "route": 2,
-          "durationBeats": 3,
+          "durationBeats": 2,
           "anchors": [
             {
               "beat": 0,
@@ -2940,18 +2882,18 @@
               "y": -0.7
             },
             {
-              "beat": 1.5,
+              "beat": 1,
               "x": 0,
               "y": -0.98
             },
             {
-              "beat": 3,
+              "beat": 2,
               "x": -0.58,
               "y": -0.72
             }
           ],
           "music": {
-            "stem": "boss",
+            "stem": "lead",
             "intent": "phrase",
             "energy": 0.96,
             "phrase": "fracture-trace-b",
@@ -3200,7 +3142,7 @@
           "music": {
             "stem": "drums",
             "intent": "fill",
-            "energy": 1.0050000000000001,
+            "energy": 1,
             "phrase": "surge-release"
           }
         },
@@ -3231,7 +3173,7 @@
           "music": {
             "stem": "aura",
             "intent": "phrase",
-            "energy": 1.025,
+            "energy": 1,
             "phrase": "surge-trace-b",
             "contour": true
           }
@@ -3258,7 +3200,7 @@
           "music": {
             "stem": "lead",
             "intent": "response",
-            "energy": 1.0050000000000001,
+            "energy": 1,
             "phrase": "surge-drive"
           }
         },
@@ -3271,7 +3213,7 @@
           "music": {
             "stem": "drums",
             "intent": "accent",
-            "energy": 1.025,
+            "energy": 1,
             "phrase": "surge-drive"
           },
           "shield": true
@@ -3285,7 +3227,7 @@
           "music": {
             "stem": "lead",
             "intent": "response",
-            "energy": 1.0050000000000001,
+            "energy": 1,
             "phrase": "surge-chain"
           },
           "chainGroup": "surge-chain"
@@ -3299,7 +3241,7 @@
           "music": {
             "stem": "lead",
             "intent": "response",
-            "energy": 1.025,
+            "energy": 1,
             "phrase": "surge-chain"
           },
           "chainGroup": "surge-chain"
@@ -3313,7 +3255,7 @@
           "music": {
             "stem": "drums",
             "intent": "accent",
-            "energy": 1.045,
+            "energy": 1,
             "phrase": "surge-chain"
           },
           "shield": true,
@@ -3368,7 +3310,7 @@
           "music": {
             "stem": "lead",
             "intent": "pickup",
-            "energy": 1.01,
+            "energy": 1,
             "phrase": "bloomcore-open"
           }
         },
@@ -3381,7 +3323,7 @@
           "music": {
             "stem": "drums",
             "intent": "accent",
-            "energy": 1.03,
+            "energy": 1,
             "phrase": "bloomcore-open"
           },
           "shield": true
@@ -3413,7 +3355,7 @@
           "music": {
             "stem": "lead",
             "intent": "phrase",
-            "energy": 1.05,
+            "energy": 1,
             "phrase": "bloomcore-trace-a",
             "contour": true
           }
@@ -3427,7 +3369,7 @@
           "music": {
             "stem": "drums",
             "intent": "resolve",
-            "energy": 1.02,
+            "energy": 1,
             "phrase": "bloomcore-release"
           }
         },
@@ -3440,7 +3382,7 @@
           "music": {
             "stem": "lead",
             "intent": "response",
-            "energy": 1.03,
+            "energy": 1,
             "phrase": "bloomcore-release"
           }
         },
@@ -3453,7 +3395,7 @@
           "music": {
             "stem": "drums",
             "intent": "accent",
-            "energy": 1.06,
+            "energy": 1,
             "phrase": "bloomcore-release"
           },
           "shield": true
@@ -3467,7 +3409,7 @@
           "music": {
             "stem": "lead",
             "intent": "response",
-            "energy": 1.03,
+            "energy": 1,
             "phrase": "bloomcore-release"
           }
         },
@@ -3480,7 +3422,7 @@
           "music": {
             "stem": "drums",
             "intent": "fill",
-            "energy": 1.07,
+            "energy": 1,
             "phrase": "bloomcore-release"
           }
         },
@@ -3511,7 +3453,7 @@
           "music": {
             "stem": "lead",
             "intent": "phrase",
-            "energy": 1.0899999999999999,
+            "energy": 1,
             "phrase": "bloomcore-trace-b",
             "contour": true
           }
@@ -3525,7 +3467,7 @@
           "music": {
             "stem": "drums",
             "intent": "pulse",
-            "energy": 1.05,
+            "energy": 1,
             "phrase": "bloomcore-drive"
           }
         },
@@ -3538,7 +3480,7 @@
           "music": {
             "stem": "lead",
             "intent": "response",
-            "energy": 1.07,
+            "energy": 1,
             "phrase": "bloomcore-drive"
           }
         },
@@ -3551,7 +3493,7 @@
           "music": {
             "stem": "drums",
             "intent": "accent",
-            "energy": 1.0899999999999999,
+            "energy": 1,
             "phrase": "bloomcore-drive"
           },
           "shield": true
@@ -3565,7 +3507,7 @@
           "music": {
             "stem": "lead",
             "intent": "response",
-            "energy": 1.07,
+            "energy": 1,
             "phrase": "bloomcore-chain"
           },
           "chainGroup": "bloomcore-chain"
@@ -3579,7 +3521,7 @@
           "music": {
             "stem": "aura",
             "intent": "response",
-            "energy": 1.0899999999999999,
+            "energy": 1,
             "phrase": "bloomcore-chain"
           },
           "chainGroup": "bloomcore-chain"
@@ -3593,7 +3535,7 @@
           "music": {
             "stem": "drums",
             "intent": "accent",
-            "energy": 1.1099999999999999,
+            "energy": 1,
             "phrase": "bloomcore-chain"
           },
           "shield": true,
