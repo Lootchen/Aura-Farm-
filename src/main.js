@@ -1653,13 +1653,25 @@ class RhythmClock {
         LOOP_BEATS
       );
 
-    // startAt is the moment the first playable beat of THIS phase occurs.
-    // songTime remains phase-local; beat is exposed as absolute song beat.
+    // Give incoming gameplay enough visual travel time without forcing
+    // an equally long audible countdown. Only the final COUNT_IN_BEATS
+    // receive count-in clicks.
+    const audibleCountIn =
+      COUNT_IN_BEATS *
+      beatDuration;
+    const visualPreRoll =
+      phaseRequiredPreRollSeconds(
+        this.segmentStartBeat,
+        this.segmentEndBeat
+      );
+
     this.startAt =
       this.context.currentTime +
       0.10 +
-      COUNT_IN_BEATS *
-        beatDuration;
+      Math.max(
+        audibleCountIn,
+        visualPreRoll
+      );
 
     this.nextStep =
       Math.round(
@@ -3790,6 +3802,67 @@ function loopDuration() {
       ACT_END_BEAT -
       ACT_START_BEAT
     )
+  );
+}
+
+function phaseRequiredPreRollSeconds(
+  startBeat =
+    ACT_START_BEAT,
+  endBeat =
+    ACT_END_BEAT
+) {
+  let required = 0;
+
+  for (const event of CHART) {
+    if (
+      event.beat <
+        startBeat ||
+      event.beat >=
+        endBeat
+    ) {
+      continue;
+    }
+
+    const targetOffset =
+      beatToSeconds(
+        event.beat -
+        startBeat
+      );
+    let lead = 0;
+
+    if (
+      event.type === "tap" &&
+      routes
+    ) {
+      const path =
+        routeFor(
+          event.side,
+          event.route
+        );
+      lead =
+        path.length /
+        NOTE_SPEED;
+    } else if (
+      event.type === "slide"
+    ) {
+      lead =
+        SLIDE.leadSeconds;
+    }
+
+    required =
+      Math.max(
+        required,
+        lead -
+          targetOffset
+      );
+  }
+
+  return (
+    Math.max(
+      0,
+      required
+    ) +
+    0.12
   );
 }
 
@@ -12787,22 +12860,44 @@ function drawMessage() {
   ctx.fillText(message, DESIGN.width / 2, 510);
 }
 
-function drawCountIn(songTime) {
-  if (songTime >= 0) return;
+function drawCountIn(
+  songTime
+) {
+  if (songTime >= 0) {
+    return;
+  }
+
+  const beatDuration =
+    60 / BPM;
+  const localBeat =
+    songTime /
+    beatDuration;
+
+  // The earlier silent pre-roll exists only to let incoming notes travel
+  // naturally from the top of the playfield.
+  if (
+    localBeat <
+    -COUNT_IN_BEATS
+  ) {
+    return;
+  }
 
   const palette =
     machinePalette();
   const remaining =
     Math.max(
       1,
-      Math.ceil(
-        -clock.beat
+      Math.min(
+        COUNT_IN_BEATS,
+        Math.ceil(
+          -localBeat
+        )
       )
     );
   const fraction =
     (
       (
-        clock.beat %
+        localBeat %
         1
       ) +
       1
@@ -12820,7 +12915,6 @@ function drawCountIn(songTime) {
 
   ctx.save();
 
-  // Boot capsule.
   ctx.fillStyle =
     "rgba(5,10,17,.82)";
   ctx.strokeStyle =
@@ -12837,25 +12931,42 @@ function drawCountIn(songTime) {
   ctx.fill();
   ctx.stroke();
 
-  // Four sync ticks.
+  const tickCount =
+    Math.max(
+      1,
+      Math.min(
+        4,
+        COUNT_IN_BEATS
+      )
+    );
+
   for (
     let tick = 0;
-    tick < 4;
+    tick < tickCount;
     tick += 1
   ) {
     const angle =
       -Math.PI / 2 +
       tick *
-        Math.PI / 2;
+        Math.PI *
+        2 /
+        tickCount;
     const active =
-      tick >= 4 - remaining;
+      tick >=
+      tickCount -
+        Math.min(
+          tickCount,
+          remaining
+        );
 
     ctx.strokeStyle =
       active
         ? `rgb(${palette.accent.join(",")})`
         : "rgba(255,255,255,.12)";
     ctx.lineWidth =
-      active ? 5 : 3;
+      active
+        ? 5
+        : 3;
     ctx.beginPath();
     ctx.moveTo(
       x +
@@ -12876,7 +12987,6 @@ function drawCountIn(songTime) {
     ctx.stroke();
   }
 
-  // Contracting beat ring.
   ctx.shadowBlur = 18;
   ctx.shadowColor =
     `rgb(${palette.secondary.join(",")})`;
@@ -12892,8 +13002,8 @@ function drawCountIn(songTime) {
     Math.PI * 2
   );
   ctx.stroke();
-
   ctx.shadowBlur = 0;
+
   ctx.fillStyle =
     "#0c1520";
   ctx.strokeStyle =
@@ -12937,14 +13047,14 @@ function drawCountIn(songTime) {
   ctx.font =
     "800 9px system-ui, sans-serif";
   ctx.fillText(
-    SONG?.title ?? "GLASSHOUSE CIRCUIT",
+    SONG?.title ??
+      "GLASSHOUSE CIRCUIT",
     x,
     y + 57
   );
 
   ctx.restore();
 }
-
 
 function drawDebug(songTime) {
   const loopBeat =
