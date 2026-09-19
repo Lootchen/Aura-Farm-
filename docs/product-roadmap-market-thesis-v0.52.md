@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.58  
+Current baseline: v0.59  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -108,8 +108,8 @@ Do not add a large song/content batch until:
 - [ ] Progression is horizontal: new chassis / rule families / mutators / song-levels, not permanent damage inflation.
 - [x] Daily is deterministic at the product level: fixed BLOOM song + date seed; offer shuffles use the seeded RNG while player choices can intentionally branch later drafts.
 - [x] Create compact shareable result with native Web Share / clipboard fallback: date, song, Flow Rank, Sync, CHAIN, Resonance, Core, build and seed.
-- [ ] Track “next-run intent” during playtests: players should want to try another mechanical hypothesis.
-- [ ] Avoid currencies / trees unless they unlock decisions, not stat grind.
+- [x] Instrument next-run experimental intent: the summary proposes one telemetry-derived hypothesis and MISMO SEED records seedRetries when the player chooses a controlled replay.
+- [x] Current progression contains no currency/stat tree; replay unlocks decisions/chassis, and v0.59 adds controlled same-seed experiments instead of grind rewards.
 
 ## P7 — Mobile market / commercial shape
 
@@ -201,7 +201,7 @@ Only after P0–P5 are validated:
 - [x] Perfora LV2 preserves pierce through Shield; LV3 passes a perforating mutation into ECHO return.
 - [ ] Playtest whether players can verbally connect Shield break → future ECHO without tutorial text.
 
-### v0.58 — current
+### v0.58 — completed implementation pass
 - [x] Core armor preserves Perfora matter instead of consuming every projectile.
 - [x] Shock + Power overloads one neighboring armor node for a visible area solution.
 - [x] Route aperture distinguishes direct ROUTE from ricocheted BANK matter.
@@ -209,6 +209,15 @@ Only after P0–P5 are validated:
 - [x] Boss summary reports BANK / PERFORA / OVERLOAD exam events.
 - [x] Armor/aperture visuals hint at relevant physical solutions without adding a tutorial panel.
 - [ ] Playtest whether players describe these as different boss strategies rather than bonus damage.
+
+### v0.59 — current
+- [x] Standard runs use their recorded seed for upgrade RNG instead of unseeded Math.random.
+- [x] MISMO SEED repeats the same song/RNG problem for controlled build comparison.
+- [x] Seed retry is recorded as seedRetries for playtest replay-intent analysis.
+- [x] End summary chooses one next mechanical experiment from actual run telemetry.
+- [x] Share card includes seed on standard runs plus BANK / PERFORA / OVERLOAD evidence when present.
+- [x] No currency or permanent damage tree introduced.
+- [ ] Playtest whether players use MISMO SEED to test a hypothesis rather than simply retry score.
 
 ## Kill criteria
 
