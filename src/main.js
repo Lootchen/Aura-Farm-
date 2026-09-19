@@ -1949,44 +1949,57 @@ class RhythmClock {
     }
 
     // STEM 4 — LEAD
+    // Authored semantic stems must remain genuinely audible even before
+    // the player's build begins to amplify them.
     if (frame.leadMidi !== null) {
+      const arrangement =
+        this.actArrangement();
       const leadMix =
-        0.0015 +
-        actEnergy * 0.006 +
-        slideBuild * 0.010 +
-        synergyMix * 0.0025;
+        0.0028 +
+        (
+          arrangement.lead ??
+          1
+        ) *
+          0.0022 +
+        actEnergy * 0.004 +
+        slideBuild * 0.008 +
+        synergyMix * 0.002;
 
-      if (leadMix > 0.002) {
-        this.scheduleLeadStem(
-          time,
-          midiToHz(
-            frame.leadMidi
-          ),
-          leadMix
-        );
-      }
+      this.scheduleLeadStem(
+        time,
+        midiToHz(
+          frame.leadMidi
+        ),
+        leadMix
+      );
     }
 
     // STEM 5 — AURA
     if (frame.auraMidi !== null) {
+      const arrangement =
+        this.actArrangement();
       const auraMix =
-        actEnergy * 0.003 +
-        auraBuild * 0.012 +
+        0.0018 +
+        (
+          arrangement.aura ??
+          1
+        ) *
+          0.0018 +
+        actEnergy * 0.002 +
+        auraBuild * 0.009 +
         (
           chainCount > 0
-            ? 0.0025
+            ? 0.002
             : 0
         );
 
-      if (auraMix > 0.002) {
-        this.scheduleAuraStem(
-          time,
-          midiToHz(
-            frame.auraMidi
-          ),
-          auraMix
-        );
-      }
+      this.scheduleAuraStem(
+        time,
+        midiToHz(
+          frame.auraMidi
+        ),
+        auraMix
+      );
     }
 
     // STEM 6 — BOSS
@@ -8753,7 +8766,10 @@ function updateLiveHud(songTime) {
   if (!chartLoaded) return;
 
   const beat =
-    clock.beat;
+    Math.max(
+      ACT_START_BEAT,
+      clock.beat
+    );
   const frame =
     songFrameAtBeat(
       clamp(
@@ -8941,7 +8957,10 @@ function musicReactivePalette(
 function worldMusicResponse() {
   const beat =
     clamp(
-      clock.beat,
+      Math.max(
+        ACT_START_BEAT,
+        clock.beat
+      ),
       0,
       Math.max(
         0,
