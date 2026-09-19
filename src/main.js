@@ -915,6 +915,7 @@ function newRunStats() {
     peakFragments: 0,
     peakExplosions: 0,
     peakDensityPressure: 0,
+    peakImpactVoices: 0,
     impactVoicesDropped: 0,
     upgradeOffers: [],
     chosenUpgrades: [],
@@ -5684,6 +5685,15 @@ function impactVoiceAllowed(
   }
 
   impactVoiceTimes.push(now);
+
+  if (runStats) {
+    runStats.peakImpactVoices =
+      Math.max(
+        runStats.peakImpactVoices || 0,
+        impactVoiceTimes.length
+      );
+  }
+
   return true;
 }
 
