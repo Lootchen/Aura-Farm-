@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.57";
+} from "./song.js?v=0.58";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.57";
+} from "./music.js?v=0.58";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.57";
+} from "./audio-file.js?v=0.58";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -107,7 +107,7 @@ const advancedTimingToggle = document.querySelector("#advancedTimingToggle");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.57";
+const GAME_VERSION = "0.58";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -121,9 +121,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.57";
+  "./assets/world/glasshouse-far.svg?v=0.58";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.57";
+  "./assets/world/growth-bays.svg?v=0.58";
 
 function drawWorldAsset(
   image,
@@ -748,6 +748,10 @@ let bossState = {
   damageSources: {},
   routedHits: 0,
   routeDamage: 0,
+  bankHits: 0,
+  bankDamage: 0,
+  armorPierces: 0,
+  armorOverloads: 0,
   hitFlash: 0,
   shieldFlash: 0,
   armor: [false, false, false],
@@ -1006,6 +1010,12 @@ function newRunStats() {
     },
     bossRoutedHits: 0,
     bossRouteDamage: 0,
+    bossExam: {
+      bankHits: 0,
+      bankDamage: 0,
+      armorPierces: 0,
+      armorOverloads: 0
+    },
     shieldEcho: {
       armed: 0,
       resolved: 0,
@@ -4756,7 +4766,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.57",
+      "../songs/index.json?v=0.58",
       import.meta.url
     );
 
@@ -5072,7 +5082,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.57`,
+      `../songs/${entry.file}?v=0.58`,
       import.meta.url
     );
 
@@ -5982,6 +5992,33 @@ function activateTraceWorldRewrite() {
   return world.mode;
 }
 
+function markProjectileRicochet(
+  projectile,
+  kind = "surface"
+) {
+  if (!projectile) {
+    return 0;
+  }
+
+  projectile.ricochetCount =
+    Number(
+      projectile.ricochetCount ||
+      0
+    ) + 1;
+  projectile.lastRicochetKind =
+    kind;
+  projectile.lastRicochetBeat =
+    Number.isFinite(
+      clock?.beat
+    )
+      ? Number(
+          clock.beat.toFixed(3)
+        )
+      : null;
+
+  return projectile.ricochetCount;
+}
+
 function phaseWorldCrossed(note, x) {
   const before = Number(note.prevX) - x;
   const after = Number(note.x) - x;
@@ -6044,6 +6081,10 @@ function resolvePhaseWorldProjectile(note) {
     note.prevX = note.x;
     note.phaseWorldHitAt = now;
     note.ricochetAt = now;
+    markProjectileRicochet(
+      note,
+      "membrane"
+    );
 
     if (runStats?.phaseWorld) {
       runStats.phaseWorld.membraneHits += 1;
@@ -6848,6 +6889,11 @@ function configureLaunchedProjectile(
   note.launchedAt =
     performance.now();
   note.ricochetAt = -Infinity;
+  note.ricochetCount =
+    Number(
+      note.ricochetCount ||
+      0
+    );
   note.ricochetMutationUsed =
     false;
   note.prevX = note.x;
@@ -8622,6 +8668,112 @@ function bossRoutedHit(
   );
 }
 
+function bossBankedRoute(
+  projectile,
+  center
+) {
+  return (
+    bossRoutedHit(
+      projectile,
+      center
+    ) &&
+    Number(
+      projectile?.ricochetCount ||
+      0
+    ) > 0
+  );
+}
+
+function bossArmorOverload(
+  hitNode,
+  nodes,
+  projectile
+) {
+  if (
+    !projectile?.power ||
+    activeModuleLevel(
+      "shockwave"
+    ) <= 0
+  ) {
+    return null;
+  }
+
+  const target =
+    nodes
+      .filter(
+        (node) =>
+          node.index !==
+            hitNode.index &&
+          !bossState.armor[
+            node.index
+          ]
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(
+            a.x - hitNode.x,
+            a.y - hitNode.y
+          ) -
+          Math.hypot(
+            b.x - hitNode.x,
+            b.y - hitNode.y
+          )
+      )[0];
+
+  if (!target) {
+    return null;
+  }
+
+  bossState.armor[
+    target.index
+  ] = true;
+  bossState.armorOverloads +=
+    1;
+
+  if (runStats?.bossExam) {
+    runStats
+      .bossExam
+      .armorOverloads += 1;
+  }
+
+  createExplosion(
+    target.x,
+    target.y,
+    1.28 +
+      Math.min(
+        0.28,
+        activeModuleLevel(
+          "shockwave"
+        ) * 0.08
+      ),
+    {
+      emitFragments: false,
+      side:
+        projectile.side,
+      source: "shockwave",
+      resonant:
+        Boolean(
+          projectile.resonant
+        ),
+      aimIntent:
+        projectile.aimIntent
+    }
+  );
+  createImpactFlash(
+    target.x,
+    target.y,
+    {
+      color: "#ffc45c"
+    }
+  );
+  impactSound(
+    "power",
+    0.88
+  );
+
+  return target;
+}
+
 function bossDamageSource(
   projectile
 ) {
@@ -8701,9 +8853,56 @@ function resolveBossCollisions(songTime) {
 
       bossState.armor[node.index] =
         true;
-      active.delete(
-        projectile.key
-      );
+      const armorPierce =
+        Number(
+          projectile.piercesLeft ||
+          0
+        ) > 0;
+
+      if (armorPierce) {
+        projectile.piercesLeft -=
+          1;
+        bossState.armorPierces +=
+          1;
+
+        if (runStats?.bossExam) {
+          runStats
+            .bossExam
+            .armorPierces += 1;
+        }
+
+        const speed =
+          Math.hypot(
+            projectile.vx,
+            projectile.vy
+          ) || 1;
+        const push =
+          node.radius +
+          noteRadius(
+            projectile
+          ) +
+          7;
+
+        projectile.x =
+          node.x +
+          projectile.vx /
+            speed *
+            push;
+        projectile.y =
+          node.y +
+          projectile.vy /
+            speed *
+            push;
+        projectile.prevX =
+          projectile.x;
+        projectile.prevY =
+          projectile.y;
+      } else {
+        active.delete(
+          projectile.key
+        );
+      }
+
       armorHit = true;
 
       createExplosion(
@@ -8715,13 +8914,42 @@ function resolveBossCollisions(songTime) {
         {
           emitFragments:
             !projectile.fragment,
-          side: projectile.side
+          side:
+            projectile.side,
+          source:
+            projectile.source ??
+            "boss-armor",
+          resonant:
+            Boolean(
+              projectile.resonant
+            ),
+          aimIntent:
+            projectile.aimIntent
         }
       );
+
+      const overloadedNode =
+        bossArmorOverload(
+          node,
+          nodes,
+          projectile
+        );
       awardScore(
-        projectile.power
-          ? 450
-          : 275
+        (
+          projectile.power
+            ? 450
+            : 275
+        ) +
+        (
+          armorPierce
+            ? 125
+            : 0
+        ) +
+        (
+          overloadedNode
+            ? 225
+            : 0
+        )
       );
       bumpFeedback(
         projectile.power
@@ -8739,14 +8967,29 @@ function resolveBossCollisions(songTime) {
       const remaining =
         bossArmorRemaining();
 
+      const armorTags = [
+        armorPierce
+          ? "PERFORA"
+          : null,
+        overloadedNode
+          ? "OVERLOAD"
+          : null
+      ].filter(Boolean);
+
       showMessage(
         remaining === 0
-          ? "ARMOR BREAK · CORE EXPOSED"
-          : `ARMOR -1 · ${remaining} RESTAN`,
-        "#ffdf85",
+          ? `ARMOR BREAK · CORE EXPOSED${armorTags.length ? ` · ${armorTags.join(" · ")}` : ""}`
+          : `ARMOR -${overloadedNode ? 2 : 1} · ${remaining} RESTAN${armorTags.length ? ` · ${armorTags.join(" · ")}` : ""}`,
+        overloadedNode
+          ? "#ffc45c"
+          : armorPierce
+            ? "#ff7d99"
+            : "#ffdf85",
         remaining === 0
-          ? 900
-          : 480
+          ? 980
+          : armorTags.length
+            ? 620
+            : 480
       );
 
       triggerHaptic(
@@ -8810,10 +9053,17 @@ function resolveBossCollisions(songTime) {
         projectile,
         center
       );
+    const banked =
+      bossBankedRoute(
+        projectile,
+        center
+      );
     const routeBonus =
-      routed
-        ? 1
-        : 0;
+      banked
+        ? 2
+        : routed
+          ? 1
+          : 0;
     const damage =
       (
         projectile.power
@@ -8837,6 +9087,22 @@ function resolveBossCollisions(songTime) {
       bossState.routedHits += 1;
       bossState.routeDamage +=
         routeBonus;
+
+      if (banked) {
+        bossState.bankHits += 1;
+        bossState.bankDamage +=
+          routeBonus;
+
+        if (runStats?.bossExam) {
+          runStats
+            .bossExam
+            .bankHits += 1;
+          runStats
+            .bossExam
+            .bankDamage +=
+              routeBonus;
+        }
+      }
 
       if (runStats) {
         runStats.bossRoutedHits += 1;
@@ -8877,9 +9143,11 @@ function resolveBossCollisions(songTime) {
       resonanceBonus > 0
         ? "RESONANT"
         : null,
-      routed
-        ? "ROUTE"
-        : null
+      banked
+        ? "BANK"
+        : routed
+          ? "ROUTE"
+          : null
     ].filter(Boolean);
 
     showMessage(
@@ -9038,6 +9306,10 @@ function resolveBumperCollisions() {
       projectile.prevY = projectile.y;
       projectile.ricochetAt =
         performance.now();
+      markProjectileRicochet(
+        projectile,
+        "bumper"
+      );
 
       bumpFeedback(
         0.75,
@@ -9089,6 +9361,10 @@ function resolveBumperCollisions() {
           });
 
         child.bumperSplitUsed = true;
+        child.ricochetCount =
+          projectile.ricochetCount;
+        child.lastRicochetKind =
+          "bumper";
       }
 
       impactSound("bumper", 0.72);
@@ -9324,6 +9600,10 @@ function updateTap(note, dt, songTime) {
         note.prevY = note.y;
         note.ricochetAt =
           performance.now();
+        markProjectileRicochet(
+          note,
+          "wall"
+        );
 
         const ricochetLevel =
           activeModuleLevel(
@@ -12473,6 +12753,31 @@ function drawBossCore(songTime) {
       aperture + 0.64
     );
     ctx.stroke();
+
+    ctx.strokeStyle =
+      "rgba(94,226,215,.58)";
+    ctx.lineWidth = 2;
+
+    for (
+      const offset of [
+        -0.52,
+        0.52
+      ]
+    ) {
+      const angle =
+        aperture + offset;
+
+      ctx.beginPath();
+      ctx.moveTo(
+        Math.cos(angle) * 76,
+        Math.sin(angle) * 76
+      );
+      ctx.lineTo(
+        Math.cos(angle) * 84,
+        Math.sin(angle) * 84
+      );
+      ctx.stroke();
+    }
   }
 
   for (let i = 0; i < 6; i += 1) {
@@ -12571,6 +12876,41 @@ function drawBossCore(songTime) {
       Math.PI * 2
     );
     ctx.fill();
+
+    if (!node.broken) {
+      const pierceReady =
+        activeModuleLevel(
+          "pierce"
+        ) > 0;
+      const overloadReady =
+        activeModuleLevel(
+          "shockwave"
+        ) > 0;
+
+      if (
+        pierceReady ||
+        overloadReady
+      ) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle =
+          overloadReady
+            ? "rgba(255,196,92,.72)"
+            : "rgba(255,125,153,.72)";
+        ctx.font =
+          "900 8px ui-monospace, monospace";
+        ctx.textAlign =
+          "center";
+        ctx.textBaseline =
+          "middle";
+        ctx.fillText(
+          overloadReady
+            ? "◎"
+            : "➞",
+          0,
+          -28
+        );
+      }
+    }
 
     ctx.restore();
   }
@@ -15543,7 +15883,7 @@ function drawDebug(songTime) {
     `song ${SONG?.id ?? "loading"} · sync ${songAlignmentReport?.checked ?? 0}/${CHART.length}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
     `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)} · RES ${Math.round(resonance)} · load ${Math.round(readabilityBudget().pressure * 100)}%`,
-    `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · ECHO ${runStats?.shieldEcho?.resolved ?? 0}/${runStats?.shieldEcho?.armed ?? 0} · route ${bossState.routedHits ?? 0}`
+    `mode ${runMode} seed ${runSeed} · ECHO ${runStats?.shieldEcho?.resolved ?? 0}/${runStats?.shieldEcho?.armed ?? 0} · BANK ${bossState.bankHits ?? 0} · PIERCE ${bossState.armorPierces ?? 0} · OVL ${bossState.armorOverloads ?? 0}`
   ];
 
   ctx.fillStyle = "rgba(0,0,0,.52)";
@@ -17966,6 +18306,10 @@ async function beginAct() {
     damageSources: {},
     routedHits: 0,
     routeDamage: 0,
+    bankHits: 0,
+    bankDamage: 0,
+    armorPierces: 0,
+    armorOverloads: 0,
     hitFlash: 0,
     shieldFlash: 0,
     armor: [false, false, false],
@@ -18692,7 +19036,20 @@ function completeRun() {
     summaryBossPath.textContent =
       practice
         ? "CORE PATH · —"
-        : `CORE PATH · ${dominantBossPath()}${bossState.routedHits > 0 ? ` · ROUTE ×${bossState.routedHits}` : ""}`;
+        : [
+            `CORE PATH · ${dominantBossPath()}`,
+            bossState.bankHits > 0
+              ? `BANK ×${bossState.bankHits}`
+              : null,
+            bossState.armorPierces > 0
+              ? `PERFORA ×${bossState.armorPierces}`
+              : null,
+            bossState.armorOverloads > 0
+              ? `OVERLOAD ×${bossState.armorOverloads}`
+              : null
+          ]
+            .filter(Boolean)
+            .join(" · ");
   }
 
   summaryTitle.textContent =
@@ -19454,6 +19811,10 @@ async function startRun(mode = "standard") {
     damageSources: {},
     routedHits: 0,
     routeDamage: 0,
+    bankHits: 0,
+    bankDamage: 0,
+    armorPierces: 0,
+    armorOverloads: 0,
     hitFlash: 0,
     shieldFlash: 0,
     armor: [false, false, false],
