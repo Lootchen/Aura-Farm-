@@ -45,14 +45,14 @@ Do not add a large song/content batch until:
 ## P1 — Make builds change laws, not just quantities
 
 ### Module audit
-- [ ] Classify every module as **rule mutation**, **topology**, **conversion**, **multiplication**, **defense**, or **pure quantity**.
-- [ ] Preserve simple level-1 mutations; avoid replacing understandable modules only for novelty.
+- [x] Classify every module as **rule mutation**, **topology**, **conversion**, **multiplication**, **defense**, or **pure quantity**.
+- [x] Preserve simple level-1 mutations; current v0.52 audit keeps existing rule-changing level-1 modules intact.
 - [ ] Redesign weak higher levels so level 2/3 add a new interaction where practical instead of only `+1`.
-- [ ] Make card text describe the next actual rule change, not internal stats.
+- [x] Make card text describe the next actual outcome through `moduleLevelEffect`; future mutation pass must keep this contract.
 
 ### Draft quality
 - [x] Offer logic includes synergy finisher, build continuation and new-family discovery.
-- [ ] Add explicit offer-role telemetry so playtests can show which type players pick.
+- [x] Add explicit offer-role telemetry so playtests can show which type players pick.
 - [ ] Ensure no run is forced into a designer-authored recipe.
 - [ ] Synergy names should recognize emergent systems after they work, not be the only way to discover them.
 
@@ -154,6 +154,7 @@ Only after P0–P5 are validated:
 - next tuning question: does Resonance create useful tension without encouraging players to stare at the meter?
 
 ### v0.53 — next
+- [x] Module role classification + draft-role telemetry landed early in v0.52.
 - [ ] Readability budget / projectile and audio voice pressure.
 - [ ] First level-2/3 module mutation pass.
 - [ ] Offer-role telemetry.
