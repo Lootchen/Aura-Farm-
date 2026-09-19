@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.58";
+} from "./song.js?v=0.59";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.58";
+} from "./music.js?v=0.59";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.58";
+} from "./audio-file.js?v=0.59";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -38,6 +38,8 @@ const menuVersion = document.querySelector("#menuVersion");
 const rerunButton = document.querySelector("#rerunButton");
 const summaryDailyButton = document.querySelector("#summaryDailyButton");
 const summaryShareButton = document.querySelector("#summaryShareButton");
+const summaryRetrySeedButton = document.querySelector("#summaryRetrySeedButton");
+const summaryExperiment = document.querySelector("#summaryExperiment");
 const summaryMenuButton = document.querySelector("#summaryMenuButton");
 const leftButton = document.querySelector("#leftButton");
 const rightButton = document.querySelector("#rightButton");
@@ -107,7 +109,7 @@ const advancedTimingToggle = document.querySelector("#advancedTimingToggle");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.58";
+const GAME_VERSION = "0.59";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -121,9 +123,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.58";
+  "./assets/world/glasshouse-far.svg?v=0.59";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.58";
+  "./assets/world/growth-bays.svg?v=0.59";
 
 function drawWorldAsset(
   image,
@@ -954,10 +956,6 @@ function seedRunRng(seed) {
 }
 
 function runRandom() {
-  if (runMode !== "daily") {
-    return Math.random();
-  }
-
   let x = rngState >>> 0;
   x ^= x << 13;
   x ^= x >>> 17;
@@ -980,6 +978,8 @@ function recordLifetimeMetric(key, amount = 1) {
 function newRunStats() {
   return {
     startedAt: performance.now(),
+    seed: runSeed,
+    retryOfSeed: null,
     traceAttempts: 0,
     traceSuccess: 0,
     timingSamples: [],
@@ -4766,7 +4766,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.58",
+      "../songs/index.json?v=0.59",
       import.meta.url
     );
 
@@ -5082,7 +5082,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.58`,
+      `../songs/${entry.file}?v=0.59`,
       import.meta.url
     );
 
@@ -18623,6 +18623,123 @@ function flowRankForRun({
   };
 }
 
+function nextRunExperiment({
+  practice = false
+} = {}) {
+  if (practice) {
+    return {
+      id: "trace",
+      text:
+        "PRÓXIMO EXPERIMENTO · completa TRACE sin mirar la garra; sigue la frase."
+    };
+  }
+
+  const exam =
+    runStats?.bossExam ?? {};
+  const echo =
+    runStats?.shieldEcho ?? {};
+  const hasRicochetRoute =
+    activeModuleLevel(
+      "ricochet"
+    ) > 0 ||
+    activeModuleLevel(
+      "bumper"
+    ) > 0 ||
+    activeModuleLevel(
+      "bumper-split"
+    ) > 0;
+
+  if (
+    activeModuleLevel(
+      "shockwave"
+    ) > 0 &&
+    Number(
+      exam.armorOverloads ||
+      0
+    ) === 0
+  ) {
+    return {
+      id: "overload",
+      text:
+        "PRÓXIMO EXPERIMENTO · lleva un Power orb al ARMOR con Shock y busca OVERLOAD."
+    };
+  }
+
+  if (
+    activeModuleLevel(
+      "pierce"
+    ) > 0 &&
+    Number(
+      exam.armorPierces ||
+      0
+    ) === 0
+  ) {
+    return {
+      id: "pierce",
+      text:
+        "PRÓXIMO EXPERIMENTO · conserva Perfora hasta AURA CORE y atraviesa un nodo."
+    };
+  }
+
+  if (
+    hasRicochetRoute &&
+    Number(
+      exam.bankHits ||
+      0
+    ) === 0
+  ) {
+    return {
+      id: "bank",
+      text:
+        "PRÓXIMO EXPERIMENTO · rebota materia y métela por la apertura dorada para BANK."
+    };
+  }
+
+  if (
+    Number(echo.armed || 0) >
+      Number(
+        echo.resolved || 0
+      )
+  ) {
+    return {
+      id: "echo",
+      text:
+        "PRÓXIMO EXPERIMENTO · rompe un Shield temprano y resuelve el Tap dorado ECHO."
+    };
+  }
+
+  if (
+    chainCount > 0 &&
+    Number(
+      runStats?.aimedChains ||
+      0
+    ) === 0
+  ) {
+    return {
+      id: "aim",
+      text:
+        "PRÓXIMO EXPERIMENTO · usa micro-dirección para provocar un CHAIN deliberado."
+    };
+  }
+
+  if (
+    peakResonance <
+    resonanceBloomThreshold()
+  ) {
+    return {
+      id: "resonance",
+      text:
+        "PRÓXIMO EXPERIMENTO · centra Tap/TRACE para entrar en BLOOM antes del Core."
+    };
+  }
+
+  return {
+    id: "compare",
+    text:
+      "PRÓXIMO EXPERIMENTO · repite el seed, cambia una familia y compara cómo resuelve el Core."
+  };
+}
+
 function buildRunShareCard({
   flowRank,
   timing,
@@ -18651,16 +18768,33 @@ function buildRunShareCard({
       ? `AURA FARM DAILY · ${localDateKey()}`
       : "AURA FARM · RUN";
 
+  const exam =
+    runStats?.bossExam ?? {};
+  const examLine = [
+    Number(exam.bankHits || 0) > 0
+      ? `BANK ×${exam.bankHits}`
+      : null,
+    Number(exam.armorPierces || 0) > 0
+      ? `PERFORA ×${exam.armorPierces}`
+      : null,
+    Number(exam.armorOverloads || 0) > 0
+      ? `OVERLOAD ×${exam.armorOverloads}`
+      : null
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return [
     header,
     SONG?.title ??
       "AURA TRACK",
     `${MACHINES[selectedMachine]?.name ?? "FORGE"} · FLOW ${flowRank.rank} · ${score} PTS`,
     `SYNC ${sync} · CHAIN ${chainCount} · RES ${Math.round(resonance)} · CORE ${bossDamage}%`,
-    `BUILD · ${build}`,
-    runMode === "daily"
-      ? `SEED · ${runSeed}`
+    examLine
+      ? `CORE LAW · ${examLine}`
       : null,
+    `BUILD · ${build}`,
+    `SEED · ${runSeed}`,
     "BUILD THE BEAT."
   ]
     .filter(Boolean)
@@ -19097,6 +19231,32 @@ function completeRun() {
         "family-chain";
       summaryBuild.append(chip);
     }
+  }
+
+  const experiment =
+    nextRunExperiment({
+      practice
+    });
+
+  if (runStats) {
+    runStats.nextExperiment =
+      experiment;
+  }
+
+  if (summaryExperiment) {
+    summaryExperiment.textContent =
+      experiment.text;
+    summaryExperiment.dataset.kind =
+      experiment.id;
+  }
+
+  if (summaryRetrySeedButton) {
+    summaryRetrySeedButton.hidden =
+      practice;
+    summaryRetrySeedButton.textContent =
+      runMode === "daily"
+        ? "REPETIR DAILY"
+        : "MISMO SEED";
   }
 
   const unlocked =
@@ -19746,18 +19906,31 @@ window.addEventListener("keyup", (event) => {
   }
 });
 
-async function startRun(mode = "standard") {
+async function startRun(
+  mode = "standard",
+  {
+    seedOverride = null,
+    retryOfSeed = null
+  } = {}
+) {
   closeAutoCalibration();
   prepareRunSong(mode);
   runMode = mode;
   runPaused = false;
   pausePanel.hidden = true;
+  const requestedSeed =
+    Number(seedOverride);
+
   seedRunRng(
-    mode === "daily"
-      ? hashString(
-          `aura-farm-daily:${localDateKey()}`
-        )
-      : Date.now()
+    Number.isFinite(
+      requestedSeed
+    )
+      ? requestedSeed
+      : mode === "daily"
+        ? hashString(
+            `aura-farm-daily:${localDateKey()}`
+          )
+        : Date.now()
   );
 
   score = 0;
@@ -19792,6 +19965,14 @@ async function startRun(mode = "standard") {
     new Set();
   renderBuildVisibility();
   runStats = newRunStats();
+  runStats.retryOfSeed =
+    Number.isFinite(
+      Number(retryOfSeed)
+    )
+      ? Number(
+          retryOfSeed
+        )
+      : null;
   runStartedAt = performance.now();
 
   lastDeltaMs = null;
@@ -19934,6 +20115,32 @@ summaryShareButton?.addEventListener(
   "click",
   () => shareLastRun()
 );
+
+summaryRetrySeedButton
+  ?.addEventListener(
+    "click",
+    () => {
+      const seed =
+        runSeed;
+      const mode =
+        runMode === "daily"
+          ? "daily"
+          : "standard";
+
+      recordLifetimeMetric(
+        "seedRetries",
+        1
+      );
+
+      startRun(
+        mode,
+        {
+          seedOverride: seed,
+          retryOfSeed: seed
+        }
+      );
+    }
+  );
 
 summaryMenuButton.addEventListener(
   "click",
