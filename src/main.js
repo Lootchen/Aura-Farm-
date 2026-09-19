@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.55";
+} from "./song.js?v=0.56";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.55";
+} from "./music.js?v=0.56";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.55";
+} from "./audio-file.js?v=0.56";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -89,6 +89,7 @@ const summaryMisses = document.querySelector("#summaryMisses");
 const summaryBoss = document.querySelector("#summaryBoss");
 const summarySync = document.querySelector("#summarySync");
 const summaryTimingBias = document.querySelector("#summaryTimingBias");
+const summaryTimingDetails = document.querySelector("#summaryTimingDetails");
 const summaryResonance = document.querySelector("#summaryResonance");
 const summaryBossPath = document.querySelector("#summaryBossPath");
 const summaryBuild = document.querySelector("#summaryBuild");
@@ -101,10 +102,12 @@ const calibrationTap = document.querySelector("#calibrationTap");
 const calibrationStatus = document.querySelector("#calibrationStatus");
 const calibrationClose = document.querySelector("#calibrationClose");
 const calibrationValue = document.querySelector("#calibrationValue");
+const hapticsToggle = document.querySelector("#hapticsToggle");
+const advancedTimingToggle = document.querySelector("#advancedTimingToggle");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.55";
+const GAME_VERSION = "0.56";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -118,9 +121,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.55";
+  "./assets/world/glasshouse-far.svg?v=0.56";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.55";
+  "./assets/world/growth-bays.svg?v=0.56";
 
 function drawWorldAsset(
   image,
@@ -671,11 +674,20 @@ const profile = loadLocalJson(
     selectedMachine: "forge",
     selectedSongId: "bloom-overdrive",
     calibrationOffsetMs: 0,
+    hapticsEnabled: true,
+    advancedTiming: false,
     dailyBest: {},
     tutorialSeen: false,
     shieldTutorialSeen: false
   }
 );
+
+profile.hapticsEnabled =
+  profile.hapticsEnabled !==
+  false;
+profile.advancedTiming =
+  profile.advancedTiming ===
+  true;
 
 profile.dailyBest =
   profile.dailyBest &&
@@ -975,6 +987,15 @@ function newRunStats() {
     peakDensityPressure: 0,
     peakImpactVoices: 0,
     impactVoicesDropped: 0,
+    performance: {
+      frameCount: 0,
+      frameMsTotal: 0,
+      frameMsSamples: [],
+      slowFrames: 0,
+      highLoadSlowFrames: 0,
+      worstFrameMs: 0,
+      inputDispatchMs: []
+    },
     phaseWorld: {
       membraneHits: 0,
       conduitCrossings: 0,
@@ -4703,7 +4724,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.55",
+      "../songs/index.json?v=0.56",
       import.meta.url
     );
 
@@ -5019,7 +5040,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.55`,
+      `../songs/${entry.file}?v=0.56`,
       import.meta.url
     );
 
@@ -5339,13 +5360,237 @@ function pointAtDistance(path, distance) {
   };
 }
 
-function eventSongTime(eventTimestamp) {
-  const timestamp = Number(eventTimestamp);
-  const processingDelayMs = Number.isFinite(timestamp)
-    ? clamp(performance.now() - timestamp, 0, 100)
-    : 0;
+function hapticsEnabled() {
+  return (
+    profile.hapticsEnabled !==
+      false &&
+    typeof navigator.vibrate ===
+      "function"
+  );
+}
 
-  return clock.songTime - processingDelayMs / 1000 + calibrationOffsetMs / 1000;
+function triggerHaptic(pattern) {
+  if (!hapticsEnabled()) {
+    return false;
+  }
+
+  return navigator.vibrate(
+    pattern
+  );
+}
+
+function eventDispatchDelayMs(
+  eventTimestamp
+) {
+  const timestamp =
+    Number(eventTimestamp);
+
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  const delay =
+    performance.now() -
+    timestamp;
+
+  if (
+    !Number.isFinite(delay) ||
+    delay < 0 ||
+    delay > 250
+  ) {
+    return null;
+  }
+
+  return delay;
+}
+
+function recordInputDispatch(
+  eventTimestamp
+) {
+  const delay =
+    eventDispatchDelayMs(
+      eventTimestamp
+    );
+
+  if (
+    delay === null ||
+    !runStats?.performance
+  ) {
+    return delay;
+  }
+
+  const samples =
+    runStats.performance
+      .inputDispatchMs;
+
+  samples.push(delay);
+
+  if (samples.length > 240) {
+    samples.shift();
+  }
+
+  return delay;
+}
+
+function recordFramePerformance(
+  rawFrameMs
+) {
+  const perf =
+    runStats?.performance;
+
+  if (
+    !perf ||
+    !Number.isFinite(rawFrameMs) ||
+    rawFrameMs <= 0 ||
+    rawFrameMs > 1000
+  ) {
+    return;
+  }
+
+  perf.frameCount += 1;
+  perf.frameMsTotal +=
+    rawFrameMs;
+  perf.worstFrameMs =
+    Math.max(
+      perf.worstFrameMs,
+      rawFrameMs
+    );
+
+  perf.frameMsSamples.push(
+    rawFrameMs
+  );
+
+  if (
+    perf.frameMsSamples.length >
+    360
+  ) {
+    perf.frameMsSamples.shift();
+  }
+
+  if (rawFrameMs > 22.22) {
+    perf.slowFrames += 1;
+
+    if (
+      readabilityBudget()
+        .pressure >= 0.48
+    ) {
+      perf.highLoadSlowFrames +=
+        1;
+    }
+  }
+}
+
+function percentile(
+  values,
+  ratio
+) {
+  if (
+    !Array.isArray(values) ||
+    values.length === 0
+  ) {
+    return null;
+  }
+
+  const ordered =
+    [...values]
+      .filter(Number.isFinite)
+      .sort(
+        (a, b) => a - b
+      );
+
+  if (ordered.length === 0) {
+    return null;
+  }
+
+  const index =
+    Math.min(
+      ordered.length - 1,
+      Math.max(
+        0,
+        Math.ceil(
+          ratio *
+          ordered.length
+        ) - 1
+      )
+    );
+
+  return ordered[index];
+}
+
+function runPerformanceStats() {
+  const perf =
+    runStats?.performance;
+
+  if (!perf) {
+    return {
+      frameCount: 0,
+      averageFps: 0,
+      p05Fps: 0,
+      worstFps: 0,
+      slowFrameRate: 0,
+      highLoadSlowFrames: 0,
+      dispatchP95Ms: null
+    };
+  }
+
+  const p95FrameMs =
+    percentile(
+      perf.frameMsSamples,
+      0.95
+    );
+  const worstMs =
+    Number(
+      perf.worstFrameMs || 0
+    );
+  const averageMs =
+    perf.frameCount > 0
+      ? perf.frameMsTotal /
+        perf.frameCount
+      : 0;
+
+  return {
+    frameCount:
+      perf.frameCount,
+    averageFps:
+      averageMs > 0
+        ? 1000 / averageMs
+        : 0,
+    p05Fps:
+      p95FrameMs
+        ? 1000 / p95FrameMs
+        : 0,
+    worstFps:
+      worstMs > 0
+        ? 1000 / worstMs
+        : 0,
+    slowFrameRate:
+      perf.frameCount > 0
+        ? perf.slowFrames /
+          perf.frameCount
+        : 0,
+    highLoadSlowFrames:
+      perf.highLoadSlowFrames,
+    dispatchP95Ms:
+      percentile(
+        perf.inputDispatchMs,
+        0.95
+      )
+  };
+}
+
+function eventSongTime(eventTimestamp) {
+  const processingDelayMs =
+    eventDispatchDelayMs(
+      eventTimestamp
+    ) ?? 0;
+
+  return (
+    clock.songTime -
+    processingDelayMs /
+      1000 +
+    calibrationOffsetMs /
+      1000
+  );
 }
 
 function spawnReady(
@@ -6504,6 +6749,9 @@ function triggerFlipper(
 ) {
   if (!running) return;
 
+  recordInputDispatch(
+    eventTimestamp
+  );
   const inputTime = eventSongTime(eventTimestamp);
   const currentPhase = flipperPhase(side, inputTime);
 
@@ -6864,14 +7112,12 @@ function resolveTapHit(note, side, songTime) {
     );
   }
 
-  if (navigator.vibrate) {
-    navigator.vibrate(
-      Math.round(
-        5 +
-        musicEnergy * 7
-      )
-    );
-  }
+  triggerHaptic(
+    Math.round(
+      5 +
+      musicEnergy * 7
+    )
+  );
 
   updateHud();
   return true;
@@ -6922,7 +7168,7 @@ function failEvent(event, label = "MISS") {
     protectedCombo ? 480 : 360
   );
 
-  if (navigator.vibrate) navigator.vibrate(12);
+  triggerHaptic(12);
 
   updateHud();
 }
@@ -7554,13 +7800,11 @@ function breakNoteShield(
     }
   );
 
-  if (navigator.vibrate) {
-    navigator.vibrate(
-      chain
-        ? [7, 14, 9]
-        : [5, 12, 7]
-    );
-  }
+  triggerHaptic(
+    chain
+      ? [7, 14, 9]
+      : [5, 12, 7]
+  );
 
   return true;
 }
@@ -7805,13 +8049,11 @@ function resolveProjectileCollisions() {
           0.8
         );
 
-        if (navigator.vibrate) {
-          navigator.vibrate(
-            chainCount >= 3
-              ? [7, 12, 10]
-              : 8
-          );
-        }
+        triggerHaptic(
+          chainCount >= 3
+            ? [7, 12, 10]
+            : 8
+        );
       } else {
         collisionCount += 1;
         awardScore(50 * comboMultiplier(combo));
@@ -8205,13 +8447,11 @@ function resolveBossCollisions(songTime) {
           : 480
       );
 
-      if (navigator.vibrate) {
-        navigator.vibrate(
-          remaining === 0
-            ? [10, 20, 16]
-            : 9
-        );
-      }
+      triggerHaptic(
+        remaining === 0
+          ? [10, 20, 16]
+          : 9
+      );
 
       break;
     }
@@ -8354,13 +8594,11 @@ function resolveBossCollisions(songTime) {
       0.85
     );
 
-    if (navigator.vibrate) {
-      navigator.vibrate(
-        projectile.power
-          ? [10, 18, 14]
-          : 7
-      );
-    }
+    triggerHaptic(
+      projectile.power
+        ? [10, 18, 14]
+        : 7
+    );
 
     if (
       bossState.health <=
@@ -8400,11 +8638,9 @@ function resolveBossCollisions(songTime) {
         0.18
       );
 
-      if (navigator.vibrate) {
-        navigator.vibrate(
-          [14, 24, 14, 24, 18]
-        );
-      }
+      triggerHaptic(
+        [14, 24, 14, 24, 18]
+      );
     }
 
     if (bossState.health <= 0) {
@@ -8440,11 +8676,9 @@ function resolveBossCollisions(songTime) {
         0.28
       );
 
-      if (navigator.vibrate) {
-        navigator.vibrate(
-          [14, 28, 18, 28, 24]
-        );
-      }
+      triggerHaptic(
+        [14, 28, 18, 28, 24]
+      );
     }
 
     break;
@@ -9100,9 +9334,7 @@ function beginSlide(event, side, songTime) {
 
   successTone(620);
 
-  if (navigator.vibrate) {
-    navigator.vibrate(6);
-  }
+  triggerHaptic(6);
 }
 
 function slideTipPoint(side, vector) {
@@ -9424,9 +9656,9 @@ function finishSlide(event) {
 
   successTone(820);
 
-  if (navigator.vibrate) {
-    navigator.vibrate([6, 20, 7]);
-  }
+  triggerHaptic(
+    [6, 20, 7]
+  );
 
   const control = slideControl[event.side];
   control.x = 0;
@@ -17185,11 +17417,9 @@ function renderUpgradeChoices() {
         );
         moduleInstallSound();
 
-        if (navigator.vibrate) {
-          navigator.vibrate(
-            [7, 20, 10]
-          );
-        }
+        triggerHaptic(
+          [7, 20, 10]
+        );
 
         const result =
           acquireModule(upgrade);
@@ -17426,6 +17656,7 @@ function runTimingStats() {
       count: 0,
       meanMs: 0,
       meanAbsMs: 0,
+      p95AbsMs: 0,
       centerRate: 0,
       earlyRate: 0,
       lateRate: 0
@@ -17464,6 +17695,27 @@ function runTimingStats() {
         SYNC_CENTER_MS
     ).length;
 
+  const absolute =
+    samples
+      .map(
+        (value) =>
+          Math.abs(value)
+      )
+      .sort(
+        (a, b) => a - b
+      );
+  const p95Index =
+    Math.min(
+      absolute.length - 1,
+      Math.max(
+        0,
+        Math.ceil(
+          absolute.length *
+          0.95
+        ) - 1
+      )
+    );
+
   return {
     count: samples.length,
     meanMs:
@@ -17475,6 +17727,12 @@ function runTimingStats() {
       Math.round(
         absTotal /
         samples.length
+      ),
+    p95AbsMs:
+      Math.round(
+        absolute[
+          p95Index
+        ] ?? 0
       ),
     centerRate:
       center /
@@ -17660,34 +17918,72 @@ async function shareLastRun() {
     }
   }
 
+  let copied = false;
+
   try {
-    await navigator.clipboard
-      ?.writeText(
-        lastShareCard
+    if (
+      typeof navigator.clipboard
+        ?.writeText === "function"
+    ) {
+      await navigator.clipboard
+        .writeText(
+          lastShareCard
+        );
+      copied = true;
+    } else {
+      const textarea =
+        document.createElement(
+          "textarea"
+        );
+      textarea.value =
+        lastShareCard;
+      textarea.setAttribute(
+        "readonly",
+        ""
       );
-
-    if (summaryShareButton) {
-      const previous =
-        summaryShareButton
-          .textContent;
-      summaryShareButton
-        .textContent =
-          "COPIADO";
-
-      window.setTimeout(
-        () => {
-          summaryShareButton
-            .textContent =
-              previous;
-        },
-        1200
+      textarea.style.position =
+        "fixed";
+      textarea.style.opacity =
+        "0";
+      document.body.append(
+        textarea
       );
+      textarea.select();
+      copied =
+        document.execCommand(
+          "copy"
+        );
+      textarea.remove();
     }
   } catch {
-    if (summaryUnlock) {
-      summaryUnlock.textContent =
-        "NO SE PUDO COPIAR · USA CAPTURA";
-    }
+    copied = false;
+  }
+
+  if (
+    copied &&
+    summaryShareButton
+  ) {
+    const previous =
+      summaryShareButton
+        .textContent;
+    summaryShareButton
+      .textContent =
+        "COPIADO";
+
+    window.setTimeout(
+      () => {
+        summaryShareButton
+          .textContent =
+            previous;
+      },
+      1200
+    );
+    return;
+  }
+
+  if (summaryUnlock) {
+    summaryUnlock.textContent =
+      "NO SE PUDO COPIAR · USA CAPTURA";
   }
 }
 
@@ -17791,6 +18087,14 @@ function completeRun() {
     runStats.timing = timing;
   }
 
+  const performanceStats =
+    runPerformanceStats();
+
+  if (runStats) {
+    runStats.performanceSummary =
+      performanceStats;
+  }
+
   const flowRank =
     flowRankForRun({
       practice,
@@ -17885,6 +18189,57 @@ function completeRun() {
       summaryTimingBias.textContent =
         `${bias} AVG · ${timing.meanAbsMs}ms ERROR · ${direction}${suggestion}`;
     }
+  }
+
+  if (summaryTimingDetails) {
+    const early =
+      Math.round(
+        timing.earlyRate * 100
+      );
+    const center =
+      Math.round(
+        timing.centerRate * 100
+      );
+    const late =
+      Math.round(
+        timing.lateRate * 100
+      );
+    const p05Fps =
+      performanceStats.p05Fps > 0
+        ? Math.round(
+            performanceStats.p05Fps
+          )
+        : null;
+    const dispatch =
+      Number.isFinite(
+        performanceStats
+          .dispatchP95Ms
+      )
+        ? Math.round(
+            performanceStats
+              .dispatchP95Ms
+          )
+        : null;
+
+    summaryTimingDetails.hidden =
+      !profile.advancedTiming;
+    summaryTimingDetails.textContent =
+      [
+        `EARLY ${early}% · CENTER ${center}% · LATE ${late}%`,
+        `TIMING p95 ±${timing.p95AbsMs}ms`,
+        p05Fps
+          ? `PERF p05 ${p05Fps} FPS · SLOW ${Math.round(performanceStats.slowFrameRate * 100)}%`
+          : null,
+        dispatch !== null
+          ? `EVENT DISPATCH p95 ${dispatch}ms`
+          : null,
+        performanceStats
+          .highLoadSlowFrames > 0
+          ? `LOAD+SLOW ${performanceStats.highLoadSlowFrames} frames`
+          : null
+      ]
+        .filter(Boolean)
+        .join(" · ");
   }
 
   if (summaryResonance) {
@@ -17987,13 +18342,18 @@ function completeRun() {
 function frame(now) {
   if (!running) return;
 
+  const rawFrameMs =
+    now - lastFrame;
   const dt =
     Math.min(
       0.033,
-      (now - lastFrame) / 1000 || 0
+      rawFrameMs / 1000 || 0
     );
 
   lastFrame = now;
+  recordFramePerformance(
+    rawFrameMs
+  );
 
   if (dt > 0) {
     fps +=
@@ -18356,11 +18716,9 @@ function captureTracePointer(
     );
     successTone(560);
 
-    if (navigator.vibrate) {
-      navigator.vibrate(
-        [5, 18, 6]
-      );
-    }
+    triggerHaptic(
+      [5, 18, 6]
+    );
   } else if (!slide.started) {
     slide.playerVector =
       clawCatch
@@ -19055,9 +19413,7 @@ function recordCalibrationTap() {
   calibrationStatus.textContent =
     `${session.deltas.length} / ${session.times.length}`;
 
-  if (navigator.vibrate) {
-    navigator.vibrate(5);
-  }
+  triggerHaptic(5);
 
   if (
     session.deltas.length <
@@ -19103,6 +19459,45 @@ function recordCalibrationTap() {
   successTone(880);
 }
 
+function refreshFeedbackSettings() {
+  if (hapticsToggle) {
+    hapticsToggle.dataset.state =
+      profile.hapticsEnabled
+        ? "on"
+        : "off";
+    hapticsToggle.textContent =
+      profile.hapticsEnabled
+        ? "HAPTICS · ON"
+        : "HAPTICS · OFF";
+    hapticsToggle.setAttribute(
+      "aria-pressed",
+      String(
+        profile.hapticsEnabled
+      )
+    );
+  }
+
+  if (advancedTimingToggle) {
+    advancedTimingToggle
+      .dataset.state =
+        profile.advancedTiming
+          ? "on"
+          : "off";
+    advancedTimingToggle
+      .textContent =
+        profile.advancedTiming
+          ? "SYNC AVANZADO · ON"
+          : "SYNC AVANZADO · OFF";
+    advancedTimingToggle
+      .setAttribute(
+        "aria-pressed",
+        String(
+          profile.advancedTiming
+        )
+      );
+  }
+}
+
 function setCalibration(value) {
   calibrationOffsetMs =
     clamp(
@@ -19140,6 +19535,39 @@ autoCalibration.addEventListener(
   "click",
   () => startAutoCalibration()
 );
+
+hapticsToggle?.addEventListener(
+  "click",
+  () => {
+    profile.hapticsEnabled =
+      !profile.hapticsEnabled;
+    saveLocalJson(
+      PROFILE_KEY,
+      profile
+    );
+    refreshFeedbackSettings();
+
+    if (profile.hapticsEnabled) {
+      triggerHaptic(8);
+    }
+  }
+);
+
+advancedTimingToggle
+  ?.addEventListener(
+    "click",
+    () => {
+      profile.advancedTiming =
+        !profile.advancedTiming;
+      saveLocalJson(
+        PROFILE_KEY,
+        profile
+      );
+      refreshFeedbackSettings();
+    }
+  );
+
+refreshFeedbackSettings();
 
 calibrationTap.addEventListener(
   "pointerdown",
