@@ -4380,14 +4380,19 @@ function applySongMetadataToUi(
   }
 
   if (startRunMeta) {
-    const seconds =
+    const songSeconds =
       song.timing.beats *
       60 /
       song.timing.bpm;
+    const segmented =
+      phases.length > 0;
+    const runSeconds =
+      songSeconds *
+      (segmented ? 1 : RUN_ACTS);
     const roundedSeconds =
       Math.max(
         1,
-        Math.round(seconds)
+        Math.round(runSeconds)
       );
     const minutes =
       Math.floor(
@@ -4397,13 +4402,13 @@ function applySongMetadataToUi(
       String(
         roundedSeconds % 60
       ).padStart(2, "0");
-    const phaseCount =
-      phases.length > 0
-        ? phases.length
-        : RUN_ACTS;
+    const structureLabel =
+      segmented
+        ? `${phases.length} FASES`
+        : `${RUN_ACTS} ACTOS`;
 
     startRunMeta.textContent =
-      `${phaseCount} FASES · ${minutes}:${remainder} · BUILD ${ACTIVE_MODULE_LIMIT} SLOTS`;
+      `${structureLabel} · ${minutes}:${remainder} · BUILD ${ACTIVE_MODULE_LIMIT} SLOTS`;
   }
 
   if (summaryTrack) {
