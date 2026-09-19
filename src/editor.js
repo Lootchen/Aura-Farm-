@@ -2177,6 +2177,147 @@ function drawPerceptualLoadLane() {
   }
 }
 
+function drawShieldEchoLinks() {
+  if (!chart?.events) {
+    return;
+  }
+
+  for (
+    const source of
+    chart.events
+  ) {
+    const echo =
+      source.shieldEcho;
+
+    if (!echo) {
+      continue;
+    }
+
+    const target =
+      chart.events.find(
+        (event) =>
+          event.type === "tap" &&
+          event.beat ===
+            echo.targetBeat &&
+          (
+            !echo.targetSide ||
+            event.side ===
+              echo.targetSide
+          )
+      );
+
+    if (!target) {
+      continue;
+    }
+
+    const sourceLane =
+      laneForEvent(
+        source
+      );
+    const targetLane =
+      laneForEvent(
+        target
+      );
+    const x1 =
+      source.beat *
+      pxPerBeat;
+    const y1 =
+      sourceLane.y +
+      sourceLane.h / 2;
+    const x2 =
+      target.beat *
+      pxPerBeat;
+    const y2 =
+      targetLane.y +
+      targetLane.h / 2;
+    const controlX =
+      (x1 + x2) / 2;
+    const controlY =
+      Math.max(
+        Y.music + 10,
+        Math.min(
+          y1,
+          y2
+        ) - 28
+      );
+
+    ctx.save();
+    ctx.strokeStyle =
+      "rgba(255,241,169,.52)";
+    ctx.lineWidth = 1.7;
+    ctx.setLineDash(
+      [6, 6]
+    );
+    ctx.beginPath();
+    ctx.moveTo(
+      x1,
+      y1 - 13
+    );
+    ctx.quadraticCurveTo(
+      controlX,
+      controlY,
+      x2,
+      y2 - 13
+    );
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (
+      const [
+        x,
+        y,
+        scale
+      ] of [
+        [x1, y1 - 13, 1],
+        [x2, y2 - 13, 1.16]
+      ]
+    ) {
+      ctx.fillStyle =
+        "#fff1a9";
+      ctx.beginPath();
+      ctx.moveTo(
+        x,
+        y - 4 * scale
+      );
+      ctx.lineTo(
+        x + 4 * scale,
+        y
+      );
+      ctx.lineTo(
+        x,
+        y + 4 * scale
+      );
+      ctx.lineTo(
+        x - 4 * scale,
+        y
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    if (
+      x2 - x1 >=
+      pxPerBeat * 1.4
+    ) {
+      ctx.fillStyle =
+        "rgba(255,241,169,.72)";
+      ctx.font =
+        "900 8px ui-monospace, monospace";
+      ctx.textAlign =
+        "center";
+      ctx.textBaseline =
+        "bottom";
+      ctx.fillText(
+        "ECHO",
+        controlX,
+        controlY - 2
+      );
+    }
+
+    ctx.restore();
+  }
+}
+
 function renderTimeline() {
   if (!song || !chart) {
     return;
@@ -2185,6 +2326,7 @@ function renderTimeline() {
   drawGrid();
   drawMusicLane();
   drawSongEvents();
+  drawShieldEchoLinks();
   drawPerceptualLoadLane();
 
   chart.events.forEach(
