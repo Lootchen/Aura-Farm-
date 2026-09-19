@@ -1,4 +1,4 @@
-# Aura Farm Chart Lab v0.45
+# Aura Farm Chart Lab v0.47
 
 Chart Lab is the internal authoring surface for Aura Farm song packages.
 
@@ -123,3 +123,34 @@ Validation states:
 - **GRID ONLY** — timing/chart structure valid but no decoded-audio analysis.
 
 The remaining future step is true multi-stem produced audio analysis/mixing. A stereo mix can show waveform/onsets, but it cannot reliably prove that a specific event follows “lead” vs “drums”.
+
+
+## Flow audit — v0.47
+
+Sync and comfort are separate checks.
+
+Chart Lab now reports amber FLOW warnings for:
+
+### TRACE occupancy
+
+A Tap strictly inside a TRACE duration is flagged unless that Tap explicitly sets:
+
+```json
+"allowDuringTrace": true
+```
+
+Use that override only when multitouch is an intentional difficulty decision.
+
+### Bar density
+
+Standard charts warn when one bar contains more than six authored events. Advanced charts allow a slightly higher threshold.
+
+This is an overmapping heuristic, not a score target.
+
+### Recovery gaps
+
+A procedural section with four or more events warns if it has no event-free gap of at least one beat.
+
+The goal is to preserve phrase-level breathing room rather than map every audible transient.
+
+Red still means invalid/sync failure. Amber means the chart is legal but deserves a playability review.
