@@ -390,6 +390,7 @@ export function validateGameSong(
   }
 
   validateMusicFeel(song);
+  validateLevelPhases(song);
 
   if (
     !Array.isArray(
@@ -436,6 +437,140 @@ export function validateGameSong(
   ) {
     throw new Error(
       "defaultChart no existe en charts[]."
+    );
+  }
+}
+
+function validateLevelPhases(
+  song
+) {
+  const phases =
+    song.levelPhases;
+
+  if (phases === undefined) {
+    return;
+  }
+
+  if (
+    !Array.isArray(phases) ||
+    phases.length < 1 ||
+    phases.length > 12
+  ) {
+    throw new Error(
+      "levelPhases debe tener 1..12 fases."
+    );
+  }
+
+  let previousEnd = 0;
+
+  phases.forEach(
+    (
+      phase,
+      index
+    ) => {
+      if (
+        !phase ||
+        typeof phase !== "object"
+      ) {
+        throw new Error(
+          `levelPhases[${index}] inválida.`
+        );
+      }
+
+      requireString(
+        phase.id ??
+          phase.name,
+        `levelPhases[${index}].id/name`
+      );
+
+      const start =
+        Number(
+          phase.startBeat
+        );
+      const end =
+        Number(
+          phase.endBeat
+        );
+
+      if (
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        start < 0 ||
+        end <= start ||
+        end >
+          song.timing.beats
+      ) {
+        throw new Error(
+          `levelPhases[${index}] startBeat/endBeat inválidos.`
+        );
+      }
+
+      const steps =
+        song.timing
+          .stepsPerBeat;
+
+      if (
+        Math.abs(
+          start * steps -
+          Math.round(
+            start * steps
+          )
+        ) > 1e-6 ||
+        Math.abs(
+          end * steps -
+          Math.round(
+            end * steps
+          )
+        ) > 1e-6
+      ) {
+        throw new Error(
+          `levelPhases[${index}] debe caer en el grid del tema.`
+        );
+      }
+
+      if (
+        index === 0 &&
+        start !== 0
+      ) {
+        throw new Error(
+          "levelPhases debe comenzar en beat 0."
+        );
+      }
+
+      if (
+        start <
+        previousEnd -
+          1e-6
+      ) {
+        throw new Error(
+          "levelPhases no puede solaparse."
+        );
+      }
+
+      if (
+        index > 0 &&
+        Math.abs(
+          start -
+          previousEnd
+        ) > 1e-6
+      ) {
+        throw new Error(
+          "levelPhases debe ser contigua para v1."
+        );
+      }
+
+      previousEnd = end;
+    }
+  );
+
+  if (
+    Math.abs(
+      previousEnd -
+      song.timing.beats
+    ) > 1e-6
+  ) {
+    throw new Error(
+      "levelPhases debe cubrir toda la canción en v1."
     );
   }
 }
@@ -1548,15 +1683,45 @@ export function auditChartFlow(
   const warnings = [];
   const timing =
     song.timing;
+  const feel =
+    song.chartFeel ??
+    {};
   const events =
     [...chart.events]
       .sort(
         (a, b) =>
           a.beat - b.beat
       );
+  const advanced =
+    chart.difficulty ===
+      "advanced";
+  const preTraceRecovery =
+    Math.max(
+      0,
+      Number(
+        feel.tracePreRecoveryBeats ??
+        (
+          advanced
+            ? 0.25
+            : 0.5
+        )
+      )
+    );
+  const postTraceRecovery =
+    Math.max(
+      0,
+      Number(
+        feel.tracePostRecoveryBeats ??
+        (
+          advanced
+            ? 0.5
+            : 1
+        )
+      )
+    );
 
-  // TRACE occupies a continuous gesture. Standard charts should not
-  // accidentally ask for Tap during that gesture unless explicitly authored.
+  // TRACE is a continuous touch gesture. Validate setup, occupancy and escape,
+  // not only strict mathematical overlap.
   for (
     const [
       traceIndex,
@@ -1570,6 +1735,8 @@ export function auditChartFlow(
       continue;
     }
 
+    const start =
+      trace.beat;
     const end =
       trace.beat +
       trace.durationBeats;
@@ -1582,42 +1749,118 @@ export function auditChartFlow(
       events.entries()
     ) {
       if (
-        event.type !== "tap" ||
-        event.beat <= trace.beat ||
-        event.beat >= end
+        event.type !== "tap"
       ) {
+        continue;
+      }
+
+      const inside =
+        event.beat >
+          start &&
+        event.beat <
+          end;
+      const tooCloseBefore =
+        event.beat <
+          start &&
+        event.beat >
+          start -
+            preTraceRecovery;
+      const tooCloseAfter =
+        event.beat >=
+          end &&
+        event.beat <
+          end +
+            postTraceRecovery;
+
+      if (
+        inside &&
+        event.allowDuringTrace !==
+          true
+      ) {
+        warnings.push({
+          kind:
+            "trace-overlap",
+          index: eventIndex,
+          beat: event.beat,
+          traceBeat: start,
+          traceEnd: end,
+          reason:
+            `Tap en beat ${event.beat} cae dentro de TRACE ${start}–${end}; marca allowDuringTrace sólo si el multitouch es intencional.`
+        });
         continue;
       }
 
       if (
-        event.allowDuringTrace ===
+        (
+          tooCloseBefore ||
+          tooCloseAfter
+        ) &&
+        event.allowTraceRecovery !==
           true
       ) {
-        continue;
+        warnings.push({
+          kind:
+            tooCloseBefore
+              ? "trace-setup"
+              : "trace-escape",
+          index: eventIndex,
+          beat: event.beat,
+          traceBeat: start,
+          traceEnd: end,
+          reason:
+            tooCloseBefore
+              ? `Tap en beat ${event.beat} deja menos de ${preTraceRecovery} beats para preparar TRACE en ${start}.`
+              : `Tap en beat ${event.beat} llega antes de recuperar ${postTraceRecovery} beats tras TRACE ${start}–${end}.`
+        });
       }
+    }
 
+    const nextTrace =
+      events.find(
+        (event) =>
+          event.type ===
+            "slide" &&
+          event !== trace &&
+          event.beat >= end
+      );
+
+    if (
+      nextTrace &&
+      nextTrace.beat <
+        end +
+          postTraceRecovery
+    ) {
       warnings.push({
         kind:
-          "trace-overlap",
-        index: eventIndex,
-        beat: event.beat,
-        traceBeat:
-          trace.beat,
+          "trace-to-trace",
+        index:
+          events.indexOf(
+            nextTrace
+          ),
+        beat:
+          nextTrace.beat,
+        traceBeat: start,
         traceEnd: end,
         reason:
-          `Tap en beat ${event.beat} cae dentro de TRACE ${trace.beat}–${end}; marca allowDuringTrace sólo si el multitouch es intencional.`
+          `TRACE en ${nextTrace.beat} comienza sin ${postTraceRecovery} beats de recuperación tras TRACE ${start}–${end}.`
       });
     }
   }
 
-  // Window density catches accidental "map every sound" authoring.
   const windowBeats =
     timing.beatsPerBar;
   const densityLimit =
-    chart.difficulty ===
-      "advanced"
-      ? 7
-      : 6;
+    Math.max(
+      1,
+      Number(
+        feel.maxEventsPerBar ??
+        (
+          advanced
+            ? 7
+            : 6
+        )
+      )
+    );
 
   for (
     let start = 0;
@@ -1635,7 +1878,8 @@ export function auditChartFlow(
       ).length;
 
     if (
-      count > densityLimit
+      count >
+      densityLimit
     ) {
       warnings.push({
         kind:
@@ -1647,7 +1891,15 @@ export function auditChartFlow(
     }
   }
 
-  // Each musical section should normally contain one breathing gap.
+  const minRecovery =
+    Math.max(
+      0,
+      Number(
+        feel.minRecoveryBeats ??
+        1
+      )
+    );
+
   if (
     song.audio.mode ===
       "procedural" &&
@@ -1739,7 +1991,7 @@ export function auditChartFlow(
       if (
         beats.length >= 4 &&
         longestGap <
-          1
+          minRecovery
       ) {
         warnings.push({
           kind:
@@ -1747,7 +1999,7 @@ export function auditChartFlow(
           beat:
             range.start,
           reason:
-            `${range.name}: no hay hueco de recuperación ≥ 1 beat (máx. ${longestGap.toFixed(2)}).`
+            `${range.name}: no hay hueco de recuperación ≥ ${minRecovery} beat(s) (máx. ${longestGap.toFixed(2)}).`
         });
       }
     }
@@ -1756,6 +2008,12 @@ export function auditChartFlow(
   return {
     ok:
       warnings.length === 0,
+    metrics: {
+      preTraceRecovery,
+      postTraceRecovery,
+      densityLimit,
+      minRecovery
+    },
     warnings
   };
 }
