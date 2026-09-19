@@ -391,6 +391,7 @@ export function validateGameSong(
 
   validateMusicFeel(song);
   validateLevelPhases(song);
+  validateSongEvents(song);
 
   if (
     !Array.isArray(
@@ -438,6 +439,117 @@ export function validateGameSong(
     throw new Error(
       "defaultChart no existe en charts[]."
     );
+  }
+}
+
+function validateSongEvents(
+  song
+) {
+  const events =
+    song.songEvents;
+
+  if (events === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(events)) {
+    throw new Error(
+      "songEvents debe ser array."
+    );
+  }
+
+  const steps =
+    song.timing.stepsPerBeat;
+
+  events.forEach(
+    (
+      event,
+      index
+    ) => {
+      if (
+        !event ||
+        typeof event !== "object"
+      ) {
+        throw new Error(
+          `songEvents[${index}] inválido.`
+        );
+      }
+
+      requireString(
+        event.type,
+        `songEvents[${index}].type`
+      );
+
+      if (
+        !Number.isFinite(event.beat) ||
+        event.beat < 0 ||
+        event.beat >=
+          song.timing.beats
+      ) {
+        throw new Error(
+          `songEvents[${index}].beat fuera de rango.`
+        );
+      }
+
+      if (
+        Math.abs(
+          event.beat * steps -
+          Math.round(
+            event.beat * steps
+          )
+        ) > 1e-6
+      ) {
+        throw new Error(
+          `songEvents[${index}].beat debe caer en el grid.`
+        );
+      }
+
+      if (
+        event.strength !== undefined &&
+        (
+          !Number.isFinite(event.strength) ||
+          event.strength < 0 ||
+          event.strength > 2
+        )
+      ) {
+        throw new Error(
+          `songEvents[${index}].strength debe estar entre 0 y 2.`
+        );
+      }
+
+      if (
+        event.mood !== undefined
+      ) {
+        requireString(
+          event.mood,
+          `songEvents[${index}].mood`
+        );
+      }
+
+      if (
+        event.label !== undefined
+      ) {
+        requireString(
+          event.label,
+          `songEvents[${index}].label`
+        );
+      }
+    }
+  );
+
+  for (
+    let index = 1;
+    index < events.length;
+    index += 1
+  ) {
+    if (
+      events[index].beat <
+      events[index - 1].beat
+    ) {
+      throw new Error(
+        "songEvents debe estar ordenado por beat."
+      );
+    }
   }
 }
 
