@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#080b12">
-  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.55" type="image/svg+xml">
+  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.56" type="image/svg+xml">
   <title>Aura Farm — Build the Beat</title>
-  <link rel="stylesheet" href="./styles.css?v=0.55">
+  <link rel="stylesheet" href="./styles.css?v=0.56">
 </head>
 <body>
   <main class="app" data-machine="forge">
@@ -59,11 +59,11 @@
       <div class="menu-shell">
         <header class="menu-top">
           <div class="menu-brand">
-            <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.55" alt=""></div>
+            <div class="brand-mark" aria-hidden="true"><img src="./assets/ui/aura-mark.svg?v=0.56" alt=""></div>
             <span><strong>AURA FARM</strong><small>BUILD THE BEAT</small></span>
           </div>
           <div class="menu-top-actions">
-            <span id="menuVersion" class="menu-version" aria-label="Versión del juego">v0.55</span>
+            <span id="menuVersion" class="menu-version" aria-label="Versión del juego">v0.56</span>
             <button id="menuSettingsButton" class="menu-icon-button" type="button" aria-label="Abrir ajustes">⚙</button>
           </div>
         </header>
@@ -74,7 +74,7 @@
             <i class="menu-reactor-halo"></i>
             <i class="menu-reactor-ring ring-a"></i>
             <i class="menu-reactor-ring ring-b"></i>
-            <span class="menu-reactor-core"><img src="./assets/ui/aura-mark.svg?v=0.55" alt=""></span>
+            <span class="menu-reactor-core"><img src="./assets/ui/aura-mark.svg?v=0.56" alt=""></span>
             <b class="menu-reactor-petal petal-a"></b>
             <b class="menu-reactor-petal petal-b"></b>
             <b class="menu-reactor-petal petal-c"></b>
@@ -172,6 +172,17 @@
               <span>OFFSET <strong id="calibrationValue">0ms</strong></span>
               <button id="calibrationPlus" type="button">+15</button>
               <button id="autoCalibration" type="button">AUTO</button>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <div>
+              <strong>FEEDBACK</strong>
+              <small>Haptics es opcional. SYNC avanzado añade diagnóstico al final de la run sin cambiar la ventana válida.</small>
+            </div>
+            <div class="feedback-settings">
+              <button id="hapticsToggle" type="button" aria-pressed="true">HAPTICS · ON</button>
+              <button id="advancedTimingToggle" type="button" aria-pressed="false">SYNC AVANZADO · OFF</button>
             </div>
           </section>
 
@@ -290,6 +301,7 @@
           <span>SYNC ±45ms</span>
           <strong id="summarySync">—</strong>
           <small id="summaryTimingBias">SIN MUESTRAS</small>
+          <small id="summaryTimingDetails" class="summary-timing-details" hidden></small>
           <span>RESONANCE</span>
           <strong id="summaryResonance">50 · PEAK 50</strong>
           <small id="summaryBossPath">CORE PATH · —</small>
@@ -309,6 +321,6 @@
     </section>
   </main>
 
-  <script type="module" src="./src/main.js?v=0.55"></script>
+  <script type="module" src="./src/main.js?v=0.56"></script>
 </body>
 </html>
