@@ -5476,8 +5476,18 @@ button { font: inherit; }
   line-height: 1.45 !important;
 }
 
+.summary-evidence {
+  grid-column: 1 / -1;
+  padding: 7px 0 1px;
+  border-top: 1px solid rgba(var(--machine-accent),.14);
+  color: rgba(220,247,255,.74) !important;
+  font-weight: 900 !important;
+  letter-spacing: .03em;
+  line-height: 1.45 !important;
+}
 
-/* v0.59–v0.60 — replay as a controlled mechanical experiment */
+
+/* v0.59–v0.61 — replay as a controlled mechanical experiment */
 .summary-comparison {
   margin: 0;
   padding: 8px 10px;

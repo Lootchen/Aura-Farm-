@@ -1,17 +1,24 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.60";
+} from "./song.js?v=0.61";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.60";
+} from "./music.js?v=0.61";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.60";
+} from "./audio-file.js?v=0.61";
+import {
+  BUILD_SYNERGIES,
+  DRAFT_MODULES,
+  draftSynergyHints,
+  moduleMaxLevelFor,
+  pickDraftChoices
+} from "./draft.js?v=0.61";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -40,6 +47,7 @@ const summaryDailyButton = document.querySelector("#summaryDailyButton");
 const summaryShareButton = document.querySelector("#summaryShareButton");
 const summaryRetrySeedButton = document.querySelector("#summaryRetrySeedButton");
 const summaryExperiment = document.querySelector("#summaryExperiment");
+const summaryEvidence = document.querySelector("#summaryEvidence");
 const summaryComparison = document.querySelector("#summaryComparison");
 const summaryMenuButton = document.querySelector("#summaryMenuButton");
 const leftButton = document.querySelector("#leftButton");
@@ -110,7 +118,7 @@ const advancedTimingToggle = document.querySelector("#advancedTimingToggle");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.60";
+const GAME_VERSION = "0.61";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -124,9 +132,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.60";
+  "./assets/world/glasshouse-far.svg?v=0.61";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.60";
+  "./assets/world/growth-bays.svg?v=0.61";
 
 function drawWorldAsset(
   image,
@@ -977,6 +985,98 @@ function recordLifetimeMetric(key, amount = 1) {
   );
 }
 
+function recordCausalEvidence(
+  id,
+  text,
+  {
+    weight = 1,
+    beat = clock?.beat ?? null
+  } = {}
+) {
+  if (
+    !runStats?.causalEvidence ||
+    !id ||
+    !text
+  ) {
+    return;
+  }
+
+  const beatValue =
+    Number.isFinite(
+      Number(beat)
+    )
+      ? Number(
+          Number(beat)
+            .toFixed(3)
+        )
+      : null;
+  const existing =
+    runStats.causalEvidence.find(
+      (item) => item.id === id
+    );
+
+  if (existing) {
+    existing.count += 1;
+    existing.text = text;
+    existing.weight =
+      Math.max(
+        existing.weight,
+        Number(weight) || 1
+      );
+    existing.lastBeat =
+      beatValue;
+    return;
+  }
+
+  runStats.causalEvidence.push({
+    id,
+    text,
+    weight:
+      Number(weight) || 1,
+    count: 1,
+    firstBeat:
+      beatValue,
+    lastBeat:
+      beatValue
+  });
+}
+
+function causalEvidenceSummary(
+  limit = 2
+) {
+  return [
+    ...(
+      runStats?.causalEvidence ??
+      []
+    )
+  ]
+    .sort(
+      (a, b) =>
+        b.weight - a.weight ||
+        b.count - a.count ||
+        Number(
+          a.firstBeat ??
+          Infinity
+        ) -
+          Number(
+            b.firstBeat ??
+            Infinity
+          )
+    )
+    .slice(
+      0,
+      Math.max(
+        0,
+        limit
+      )
+    )
+    .map(
+      (item) => ({
+        ...item
+      })
+    );
+}
+
 function newRunStats() {
   return {
     startedAt: performance.now(),
@@ -991,6 +1091,7 @@ function newRunStats() {
     resonanceEvents: [],
     chainSources: {},
     aimedChains: 0,
+    causalEvidence: [],
     peakProjectiles: 0,
     peakFragments: 0,
     peakExplosions: 0,
@@ -3340,211 +3441,65 @@ const runMods = {
   comboShieldCharges: 0
 };
 
-const UPGRADES = [
-  {
-    id: "twin-shot",
-    family: "shot",
-    kind: "multiplication",
-    icon: "Ⅱ",
-    title: "Gemela",
-    effect: "+1 ORB",
-    desc: "Cada PERFECT dispara una bola extra.",
-    apply: () => {
-      runMods.twinShots += 1;
-    }
+const UPGRADE_APPLY = {
+  "twin-shot": () => {
+    runMods.twinShots += 1;
   },
-  {
-    id: "ricochet",
-    family: "collision",
-    kind: "rule",
-    icon: "↗",
-    title: "Rebote",
-    effect: "+1 REBOTE",
-    desc: "Tus proyectiles sobreviven a otra pared.",
-    apply: () => {
-      runMods.ricochetBounces += 1;
-    }
+  ricochet: () => {
+    runMods.ricochetBounces += 1;
   },
-  {
-    id: "pierce",
-    family: "collision",
-    kind: "rule",
-    icon: "➞",
-    title: "Perfora",
-    effect: "+1 BLANCO",
-    desc: "Atraviesa una nota y sigue volando.",
-    apply: () => {
-      runMods.pierceHits += 1;
-    }
+  pierce: () => {
+    runMods.pierceHits += 1;
   },
-  {
-    id: "fragments",
-    family: "explosion",
-    kind: "multiplication",
-    icon: "✣",
-    title: "Astillas",
-    effect: "+FRAGMENTOS",
-    desc: "Las explosiones escupen nuevas bolas.",
-    apply: () => {
-      runMods.fragmentCount += runMods.fragmentCount === 0 ? 3 : 1;
-    }
+  fragments: () => {
+    runMods.fragmentCount +=
+      runMods.fragmentCount === 0
+        ? 3
+        : 1;
   },
-  {
-    id: "bumper",
-    family: "arena",
-    kind: "topology",
-    icon: "◉",
-    title: "Bumper",
-    effect: "+OBSTÁCULO",
-    desc: "Añade un reflector físico al tablero.",
-    available: () => runMods.bumperCount < BUMPER_LAYOUT.length,
-    apply: () => {
-      runMods.bumperCount = Math.min(
+  bumper: () => {
+    runMods.bumperCount =
+      Math.min(
         BUMPER_LAYOUT.length,
         runMods.bumperCount + 1
       );
-    }
   },
-  {
-    id: "nova",
-    family: "slide",
-    kind: "conversion",
-    icon: "✹",
-    title: "Nova",
-    effect: "+2 POWER",
-    desc: "Cada Slide termina en una salva mayor.",
-    apply: () => {
-      runMods.slideNova += 1;
-    }
+  nova: () => {
+    runMods.slideNova += 1;
   },
-  {
-    id: "mirror-slide",
-    family: "slide",
-    kind: "multiplication",
-    icon: "◇",
-    title: "Espejo",
-    effect: "DOBLE GARRA",
-    desc: "Un Slide también dispara desde la otra garra.",
-    apply: () => {
-      runMods.slideMirror += 1;
-    }
+  "mirror-slide": () => {
+    runMods.slideMirror += 1;
   },
-  {
-    id: "chain-relay",
-    family: "chain",
-    kind: "conversion",
-    icon: "↯",
-    title: "Relevo",
-    effect: "CHAIN → ORB",
-    desc: "Cada CHAIN continúa con un nuevo proyectil.",
-    apply: () => {
-      runMods.chainRelay += 1;
-    }
+  "chain-relay": () => {
+    runMods.chainRelay += 1;
   },
-  {
-    id: "shockwave",
-    family: "explosion",
-    kind: "conversion",
-    icon: "◎",
-    title: "Shock",
-    effect: "POWER AOE",
-    desc: "Las explosiones Power barren notas normales y rompen escudos cercanos.",
-    apply: () => {
-      runMods.shockwave += 1;
-    }
+  shockwave: () => {
+    runMods.shockwave += 1;
   },
-  {
-    id: "fusion",
-    family: "collision",
-    kind: "conversion",
-    icon: "✦",
-    title: "Fusión",
-    effect: "ORB × ORB",
-    desc: "Choques entre proyectiles detonan como Power.",
-    apply: () => {
-      runMods.fusionBlast += 1;
-    }
+  fusion: () => {
+    runMods.fusionBlast += 1;
   },
-  {
-    id: "wall-charge",
-    family: "wall",
-    kind: "conversion",
-    icon: "⬡",
-    title: "Carga",
-    effect: "PARED → POWER",
-    desc: "Los impactos de pared detonan como Power.",
-    available: () => runMods.wallCharge === 0,
-    apply: () => {
-      runMods.wallCharge = 1;
-    }
+  "wall-charge": () => {
+    runMods.wallCharge = 1;
   },
-  {
-    id: "bumper-split",
-    family: "arena",
-    kind: "multiplication",
-    icon: "⋔",
-    title: "Duplicador",
-    effect: "BUMPER ×2",
-    desc: "El primer rebote en bumper duplica la bola.",
-    available: () =>
-      runMods.bumperCount > 0 &&
-      runMods.bumperSplit === 0,
-    apply: () => {
-      runMods.bumperSplit = 1;
-    }
+  "bumper-split": () => {
+    runMods.bumperSplit = 1;
   },
-  {
-    id: "combo-shield",
-    family: "defense",
-    kind: "defense",
-    icon: "▱",
-    title: "Shield",
-    effect: "SALVA 1",
-    desc: "El próximo MISS no rompe tu combo.",
-    apply: () => {
-      runMods.comboShieldCharges += 1;
-    }
+  "combo-shield": () => {
+    runMods.comboShieldCharges += 1;
   }
-]
+};
 
-const BUILD_SYNERGIES = [
-  {
-    id: "pinball-engine",
-    title: "PINBALL",
-    requires: ["bumper", "bumper-split", "ricochet"],
-    desc: "Bumper + duplicación + rebotes."
-  },
-  {
-    id: "wallstorm",
-    title: "WALLSTORM",
-    requires: ["ricochet", "wall-charge", "shockwave"],
-    desc: "Las paredes alimentan detonaciones AOE."
-  },
-  {
-    id: "chain-reactor",
-    title: "CHAIN REACTOR",
-    requires: ["chain-relay", "fragments", "fusion"],
-    desc: "Las cadenas generan materia para nuevas colisiones."
-  },
-  {
-    id: "twin-nova",
-    title: "TWIN NOVA",
-    requires: ["nova", "mirror-slide"],
-    desc: "Los Slides cierran con salvas simétricas."
-  },
-  {
-    id: "needle-storm",
-    title: "NEEDLE STORM",
-    requires: ["twin-shot", "pierce", "fragments"],
-    desc: "Más proyectiles que atraviesan y se multiplican."
-  },
-  {
-    id: "core-breaker",
-    title: "CORE BREAKER",
-    requires: ["pierce", "fusion", "shockwave"],
-    desc: "Build orientada a abrir y castigar objetivos duros."
-  }
-];
+const UPGRADES =
+  DRAFT_MODULES.map(
+    (definition) => ({
+      ...definition,
+      apply:
+        UPGRADE_APPLY[
+          definition.id
+        ]
+    })
+  );
 
 let announcedSynergies = new Set();
 let lastOfferRoles =
@@ -3557,14 +3512,10 @@ function upgradeById(id) {
 }
 
 function moduleMaxLevel(upgrade) {
-  if (!upgrade) return MODULE_MAX_LEVEL;
-
-  return [
-    "wall-charge",
-    "bumper-split"
-  ].includes(upgrade.id)
-    ? 1
-    : MODULE_MAX_LEVEL;
+  return moduleMaxLevelFor(
+    upgrade,
+    MODULE_MAX_LEVEL
+  );
 }
 
 function moduleLevel(id) {
@@ -3634,52 +3585,21 @@ function hasActiveSynergy(id) {
   );
 }
 
-function simulatedActiveIdsForUpgrade(
+function synergyHintsForUpgrade(
   upgrade
 ) {
-  const ids =
-    [...activeModuleIds];
-
-  if (
-    ids.includes(upgrade.id) ||
-    reserveModuleIds.includes(
-      upgrade.id
-    )
-  ) {
-    return ids;
-  }
-
-  if (
-    ids.length <
-    ACTIVE_MODULE_LIMIT
-  ) {
-    ids.push(upgrade.id);
-  }
-
-  return ids;
-}
-
-function synergyHintsForUpgrade(upgrade) {
-  const current =
-    new Set(
-      activeBuildSynergies()
-        .map(
-          (synergy) => synergy.id
-        )
-    );
-  const simulated =
-    new Set(
-      simulatedActiveIdsForUpgrade(
-        upgrade
-      )
-    );
-
-  return BUILD_SYNERGIES.filter(
-    (synergy) =>
-      !current.has(synergy.id) &&
-      synergy.requires.every(
-        (id) => simulated.has(id)
-      )
+  return draftSynergyHints(
+    upgrade,
+    {
+      synergies:
+        BUILD_SYNERGIES,
+      activeIds:
+        activeModuleIds,
+      reserveIds:
+        reserveModuleIds,
+      activeLimit:
+        ACTIVE_MODULE_LIMIT
+    }
   );
 }
 
@@ -4770,7 +4690,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.60",
+      "../songs/index.json?v=0.61",
       import.meta.url
     );
 
@@ -5086,7 +5006,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.60`,
+      `../songs/${entry.file}?v=0.61`,
       import.meta.url
     );
 
@@ -5992,6 +5912,18 @@ function activateTraceWorldRewrite() {
   if (runStats?.phaseWorld) {
     runStats.phaseWorld.traceRewrites += 1;
   }
+
+  recordCausalEvidence(
+    `trace-world:${world.mode}`,
+    world.mode === "split"
+      ? "TRACE → FRACTURE ABIERTA"
+      : world.mode === "conduit"
+        ? "TRACE → SURGE SOBRECARGADO"
+        : "TRACE → TOPOLOGÍA REESCRITA",
+    {
+      weight: 52
+    }
+  );
 
   return world.mode;
 }
@@ -7177,6 +7109,16 @@ function resolveTapHit(note, side, songTime) {
         .resolved += 1;
     }
 
+    recordCausalEvidence(
+      "echo-resolve",
+      echoCharge.pierceBonus
+        ? "ECHO → TAP → POWER PERFORANTE"
+        : "ECHO → TAP → POWER",
+      {
+        weight: 85
+      }
+    );
+
     clock.triggerInteractiveCue(
       "shieldBreak",
       {
@@ -8015,6 +7957,14 @@ function armShieldEcho(
       1;
   }
 
+  recordCausalEvidence(
+    "echo-arm",
+    "SHIELD ROTO → ECHO ARMADO",
+    {
+      weight: 55
+    }
+  );
+
   return charge;
 }
 
@@ -8349,6 +8299,13 @@ function resolveProjectileCollisions() {
           ) {
             runStats.aimedChains +=
               1;
+            recordCausalEvidence(
+              "aim-chain",
+              "MICRO-AIM → CHAIN",
+              {
+                weight: 65
+              }
+            );
           }
         }
 
@@ -8742,6 +8699,14 @@ function bossArmorOverload(
       .armorOverloads += 1;
   }
 
+  recordCausalEvidence(
+    "armor-overload",
+    "POWER + SHOCK → OVERLOAD ×2 ARMOR",
+    {
+      weight: 100
+    }
+  );
+
   createExplosion(
     target.x,
     target.y,
@@ -8884,6 +8849,14 @@ function resolveBossCollisions(songTime) {
             .bossExam
             .armorPierces += 1;
         }
+
+        recordCausalEvidence(
+          "armor-pierce",
+          "PERFORA → ARMOR → MATERIA SIGUE",
+          {
+            weight: 92
+          }
+        );
 
         const speed =
           Math.hypot(
@@ -9128,6 +9101,45 @@ function resolveBossCollisions(songTime) {
         runStats.bossRouteDamage +=
           routeBonus;
       }
+
+      if (banked) {
+        const surface =
+          {
+            wall: "PARED",
+            bumper: "BUMPER",
+            membrane:
+              "FRACTURE"
+          }[
+            projectile
+              .lastRicochetKind
+          ] ?? "REBOTE";
+
+        recordCausalEvidence(
+          "bank",
+          `${surface} → APERTURA → BANK +2`,
+          {
+            weight: 96
+          }
+        );
+      } else {
+        recordCausalEvidence(
+          "route",
+          "APERTURA → ROUTE +1",
+          {
+            weight: 70
+          }
+        );
+      }
+    }
+
+    if (resonanceBonus > 0) {
+      recordCausalEvidence(
+        "resonance-core",
+        "RESONANCE → CORE +1",
+        {
+          weight: 75
+        }
+      );
     }
 
     active.delete(projectile.key);
@@ -16015,184 +16027,31 @@ function resetWaveState() {
   flippers.right.aimBias = 0;
 }
 
-function shuffledUpgrades(items) {
-  const copy =
-    [...items];
-
-  for (
-    let i = copy.length - 1;
-    i > 0;
-    i -= 1
-  ) {
-    const j =
-      Math.floor(
-        runRandom() *
-        (i + 1)
-      );
-    [copy[i], copy[j]] =
-      [copy[j], copy[i]];
-  }
-
-  return copy;
-}
-
 function pickUpgradeChoices() {
+  const result =
+    pickDraftChoices({
+      modules:
+        UPGRADES,
+      synergies:
+        BUILD_SYNERGIES,
+      random:
+        runRandom,
+      levelFor:
+        moduleLevel,
+      activeIds:
+        activeModuleIds,
+      reserveIds:
+        reserveModuleIds,
+      activeLimit:
+        ACTIVE_MODULE_LIMIT,
+      defaultMaxLevel:
+        MODULE_MAX_LEVEL
+    });
+
   lastOfferRoles =
-    new Map();
+    result.roles;
 
-  const pool =
-    shuffledUpgrades(
-      UPGRADES.filter(
-        (upgrade) =>
-          moduleLevel(upgrade.id) <
-            moduleMaxLevel(upgrade) &&
-          (
-            !upgrade.available ||
-            upgrade.available()
-          )
-      )
-    );
-  const choices = [];
-  const usedFamilies =
-    new Set();
-  const ownedFamilies =
-    new Set(
-      activeModuleIds
-        .map(
-          (id) =>
-            upgradeById(id)?.family
-        )
-        .filter(Boolean)
-    );
-
-  const add = (
-    upgrade,
-    {
-      allowFamilyRepeat = false,
-      role = "variety"
-    } = {}
-  ) => {
-    if (
-      !upgrade ||
-      choices.includes(upgrade)
-    ) {
-      return false;
-    }
-
-    if (
-      !allowFamilyRepeat &&
-      usedFamilies.has(
-        upgrade.family
-      )
-    ) {
-      return false;
-    }
-
-    choices.push(upgrade);
-    usedFamilies.add(
-      upgrade.family
-    );
-    lastOfferRoles.set(
-      upgrade.id,
-      role
-    );
-    return true;
-  };
-
-  // Slot 1: if the player is one module away from a synergy,
-  // offer one way to complete it. This makes builds steerable,
-  // without guaranteeing the same build every run.
-  const finishers =
-    pool.filter(
-      (upgrade) =>
-        synergyHintsForUpgrade(
-          upgrade
-        ).length > 0
-    );
-
-  if (finishers.length > 0) {
-    add(
-      finishers[0],
-      {
-        role: "synergy"
-      }
-    );
-  }
-
-  // Slot 2: reinforce a family already being built.
-  if (
-    activeModuleIds.length > 0 &&
-    choices.length < 2
-  ) {
-    const continuation =
-      pool.find(
-        (upgrade) =>
-          ownedFamilies.has(
-            upgrade.family
-          ) &&
-          !choices.includes(
-            upgrade
-          )
-      );
-
-    add(
-      continuation,
-      {
-        allowFamilyRepeat:
-          choices.length === 0,
-        role: "continuation"
-      }
-    );
-  }
-
-  // Slot 3: keep one door open to a new family.
-  if (choices.length < 3) {
-    const discovery =
-      pool.find(
-        (upgrade) =>
-          !ownedFamilies.has(
-            upgrade.family
-          ) &&
-          !choices.includes(
-            upgrade
-          ) &&
-          !usedFamilies.has(
-            upgrade.family
-          )
-      );
-
-    add(
-      discovery,
-      {
-        role: "discovery"
-      }
-    );
-  }
-
-  // Fill remaining slots with distinct families when possible.
-  for (const upgrade of pool) {
-    if (choices.length >= 3) break;
-    add(
-      upgrade,
-      {
-        role: "variety"
-      }
-    );
-  }
-
-  // Small pools can force a repeated family.
-  for (const upgrade of pool) {
-    if (choices.length >= 3) break;
-    add(
-      upgrade,
-      {
-        allowFamilyRepeat: true,
-        role: "fallback"
-      }
-    );
-  }
-
-  return choices;
+  return result.choices;
 }
 
 const MODULE_PREVIEW_COLORS = {
@@ -17004,7 +16863,7 @@ function drawModulePreview(
       },
       {
         x:
-          width * 0.60,
+          width * 0.61,
         y:
           height * 0.24
       }
@@ -19506,6 +19365,28 @@ function completeRun() {
         "family-chain";
       summaryBuild.append(chip);
     }
+  }
+
+  const causalSummary =
+    causalEvidenceSummary();
+
+  if (runStats) {
+    runStats.causalSummary =
+      causalSummary;
+  }
+
+  if (summaryEvidence) {
+    summaryEvidence.hidden =
+      causalSummary.length === 0;
+    summaryEvidence.textContent =
+      causalSummary.length > 0
+        ? `CAUSA → EFECTO · ${causalSummary
+            .map(
+              (item) =>
+                `${item.text}${item.count > 1 ? ` ×${item.count}` : ""}`
+            )
+            .join(" · ")}`
+        : "";
   }
 
   const experiment =

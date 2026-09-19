@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.60  
+Current baseline: v0.61  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -219,13 +219,22 @@ Only after P0–P5 are validated:
 - [x] No currency or permanent damage tree introduced.
 - [ ] Playtest whether players use MISMO SEED to test a hypothesis rather than simply retry score.
 
-### v0.60 — current
+### v0.60 — completed implementation pass
 - [x] Harden AURA CORE armor collision state so same-frame projectile overlap cannot re-break a node or chain extra OVERLOAD from stale geometry.
 - [x] Attribute Core source damage, score and hit messaging to effective damage actually removed instead of nominal overkill.
 - [x] Keep reserve modules out of Core laws while preserving properties already embodied in launched matter.
 - [x] MISMO SEED now compares the immediately previous run on the same song/seed/mode and reports build delta plus physical evidence (CORE, BANK, PERFORA, OVERLOAD, ECHO, aim, Resonance or Sync).
 - [x] Store same-seed comparison evidence in run telemetry without adding currency, permanent stats or new content.
 - [ ] Playtest whether the comparison line causes players to change one law at a time instead of optimizing score blindly.
+
+### v0.61 — current
+- [x] End summary surfaces at most two telemetry-derived CAUSA → EFECTO moments instead of adding an in-run tutorial layer.
+- [x] Causal evidence covers TRACE world rewrites, Shield→ECHO→Power, deliberate micro-aim CHAIN, Perfora armor traversal, Shock OVERLOAD, route/BANK and Resonance Core bonus.
+- [x] Draft selection moved behind a pure shared selector so runtime offers and automated audits use the same rules.
+- [x] Draft rules now carry explicit max-level / active-prerequisite metadata instead of hidden availability closures.
+- [x] Add `tools/audit-drafts.mjs` to sweep deterministic seeds and report offer coverage, role pressure, unique final builds and dominant-build share.
+- [ ] Playtest whether CAUSA → EFECTO evidence matches what players themselves say caused the outcome.
+- [ ] Use the automated draft audit as a regression gate before changing module catalog or synergy rules.
 
 ## Kill criteria
 
