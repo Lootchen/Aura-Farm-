@@ -19918,13 +19918,19 @@ async function startRun(
   runMode = mode;
   runPaused = false;
   pausePanel.hidden = true;
+  const hasSeedOverride =
+    seedOverride !== null &&
+    seedOverride !== undefined &&
+    Number.isFinite(
+      Number(seedOverride)
+    );
   const requestedSeed =
-    Number(seedOverride);
+    hasSeedOverride
+      ? Number(seedOverride)
+      : null;
 
   seedRunRng(
-    Number.isFinite(
-      requestedSeed
-    )
+    hasSeedOverride
       ? requestedSeed
       : mode === "daily"
         ? hashString(
@@ -19966,6 +19972,8 @@ async function startRun(
   renderBuildVisibility();
   runStats = newRunStats();
   runStats.retryOfSeed =
+    retryOfSeed !== null &&
+    retryOfSeed !== undefined &&
     Number.isFinite(
       Number(retryOfSeed)
     )
