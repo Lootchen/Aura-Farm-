@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.55  
+Current baseline: v0.56  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -86,11 +86,11 @@ Do not add a large song/content batch until:
 - [x] Raw calibrated Tap timing error is recorded.
 - [x] Run summary exposes center-rate / average timing bias.
 - [x] Detect persistent early/late bias after 20+ taps and suggest a compensating calibration offset when |mean bias| >= 25 ms.
-- [ ] Separate “valid hit” accessibility window from advanced Sync mastery.
-- [ ] Add optional advanced timing breakdown, not permanent judgement clutter.
+- [x] Keep valid-hit accessibility independent from Sync mastery: the ±160 ms Tap window is unchanged while ±45 ms center / timing diagnostics affect mastery feedback and Resonance, not hit validity.
+- [x] Add opt-in SYNC AVANZADO summary: EARLY/CENTER/LATE, timing p95, frame p05 FPS, slow-frame rate and browser event-dispatch p95.
 - [ ] Validate Bluetooth / speaker / wired audio paths on representative mobile devices.
 - [ ] TRACE finger-occlusion test on small screens.
-- [ ] Haptics remain informative, never mandatory.
+- [x] Haptics are fully optional via a persistent setting; gameplay logic never depends on vibration support.
 
 ## P5 — Readability / audio density budget
 
@@ -99,7 +99,8 @@ Do not add a large song/content batch until:
 - [x] At high density, fade secondary trails and explosion particles before touching incoming notes / TRACE.
 - [x] Limit non-semantic physical impact voice rate while Tap / Shield / CHAIN / Power cues bypass the drop budget.
 - [x] Keep note silhouettes, receivers and TRACE rails outside the adaptive visual degradation path.
-- [ ] Profile FPS and input latency during worst-case build combinations.
+- [x] Instrument real frame-time/FPS under runtime density and browser event-dispatch delay for Tap/TRACE; correlate slow frames with high physical load.
+- [ ] Run worst-case-build benchmarks on representative mobile hardware; browser dispatch is a proxy and does not replace end-to-end touch/audio latency measurement.
 - [x] Add Chart Lab perceptual-load lane: per-bar score combines event density, TRACE occupancy, Shield pressure, CHAIN/physical potential and BPM.
 
 ## P6 — Meta progression and replay
@@ -172,12 +173,22 @@ Only after P0–P5 are validated:
 - [ ] Playtest whether the membrane is perceived as a strategic obstacle instead of visual noise.
 - [ ] Tune route aperture width after mobile playtest.
 
-### v0.55 — current
+### v0.55 — completed implementation pass
 - [x] Chart Lab perceptual LOAD audit.
 - [x] LOAD lane visualizes per-bar pressure without turning estimated load into schema failure.
 - [x] Validation panel reports LOAD average/peak and only warns at very high estimated pressure.
 - [x] Daily share card / native share fallback.
 - [x] Deterministic Daily now forces BLOOM without overwriting the player's normal selected-song preference.
+
+### v0.56 — current
+- [x] Haptics can be disabled persistently.
+- [x] SYNC AVANZADO is opt-in and leaves the normal HUD clean.
+- [x] Run diagnostics expose EARLY/CENTER/LATE and p95 timing error.
+- [x] Raw frame-time telemetry preserves the existing physics delta clamp.
+- [x] Slow frames are correlated with physical-density pressure.
+- [x] Tap and TRACE record browser event-dispatch delay as a diagnostic proxy.
+- [x] Share fallback only reports success after an actual copy path succeeds.
+- [ ] Validate frame/input metrics on representative phones and Bluetooth/audio paths.
 
 ## Kill criteria
 
