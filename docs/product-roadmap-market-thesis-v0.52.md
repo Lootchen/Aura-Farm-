@@ -1,7 +1,7 @@
 # Aura Farm — Product Roadmap / Market Thesis Execution
 
 Status owner: prototype branch `main`  
-Current baseline: v0.56  
+Current baseline: v0.57  
 North star: **every correct beat becomes physical matter; the build changes the laws of that matter; the song changes the problem those laws must solve.**
 
 This roadmap exists to protect the product thesis from feature creep. A box is only checked when the mechanic is implemented and can be evaluated in play, not when it merely exists in documentation.
@@ -47,7 +47,7 @@ Do not add a large song/content batch until:
 ### Module audit
 - [x] Classify every module as **rule mutation**, **topology**, **conversion**, **multiplication**, **defense**, or **pure quantity**.
 - [x] Preserve simple level-1 mutations; current v0.52 audit keeps existing rule-changing level-1 modules intact.
-- [x] First higher-level mutation pass: Astillas LV2 gains ricochet / LV3 turns resonant fragments into Power; Relevo LV2 gains ricochet / LV3 turns Bloom relays into Power. Continue auditing the remaining modules.
+- [x] Higher-level mutation passes: Astillas/Relevo plus v0.57 Rebote and Perfora. Rebote LV2 makes the first wall bounce Resonant / LV3 also adds Perfora; Perfora LV2 stops Shield from consuming pierce / LV3 makes armed ECHO returns perforating. Remaining modules stay simple until a rule change is demonstrably legible.
 - [x] Make card text describe the next actual outcome through `moduleLevelEffect`; future mutation pass must keep this contract.
 
 ### Draft quality
@@ -70,7 +70,7 @@ Do not add a large song/content batch until:
 - [x] SURGE replaces the blocker with a crossing conduit that adds projectile persistence; TRACE overcharges it.
 - [x] BLOOM now authors `phase-world` events at FRACTURE beat 128 and SURGE beat 160 alongside phase world metadata.
 - [x] TRACE rewrites phase topology for 8 beats: opens FRACTURE membrane or overcharges SURGE conduit.
-- [ ] Shield-like mechanics expand the pattern “past physical action changes a future rhythmic obligation”.
+- [x] Shield ECHO expands “past physical action changes a future rhythmic obligation”: authored early Shield breaks arm an existing future Tap; resolving it returns Power matter.
 
 ## P3 — Boss as build exam
 
@@ -180,7 +180,7 @@ Only after P0–P5 are validated:
 - [x] Daily share card / native share fallback.
 - [x] Deterministic Daily now forces BLOOM without overwriting the player's normal selected-song preference.
 
-### v0.56 — current
+### v0.56 — completed implementation pass
 - [x] Haptics can be disabled persistently.
 - [x] SYNC AVANZADO is opt-in and leaves the normal HUD clean.
 - [x] Run diagnostics expose EARLY/CENTER/LATE and p95 timing error.
@@ -189,6 +189,16 @@ Only after P0–P5 are validated:
 - [x] Tap and TRACE record browser event-dispatch delay as a diagnostic proxy.
 - [x] Share fallback only reports success after an actual copy path succeeds.
 - [ ] Validate frame/input metrics on representative phones and Bluetooth/audio paths.
+
+### v0.57 — current
+- [x] Add authored Shield ECHO links without adding chart events or input types.
+- [x] Early physical Shield break arms a future existing Tap; late break keeps normal Shield behavior.
+- [x] ECHO target is visually marked and resolves into a distinct Power return.
+- [x] ECHO schema validates target beat/side/grid and rejects ambiguous or Shield targets.
+- [x] Chart Lab LOAD includes authored ECHO pressure.
+- [x] Rebote LV2/LV3 mutate the first bounce into Resonant / Resonant+Perfora matter.
+- [x] Perfora LV2 preserves pierce through Shield; LV3 passes a perforating mutation into ECHO return.
+- [ ] Playtest whether players can verbally connect Shield break → future ECHO without tutorial text.
 
 ## Kill criteria
 
