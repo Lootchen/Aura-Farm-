@@ -105,8 +105,8 @@ Do not add a large song/content batch until:
 ## P6 — Meta progression and replay
 
 - [ ] Progression is horizontal: new chassis / rule families / mutators / song-levels, not permanent damage inflation.
-- [ ] Daily remains deterministic and fair: same song, seed and offers.
-- [ ] Create compact shareable Daily result: rank, Sync, CHAIN, build, Core result.
+- [x] Daily is deterministic at the product level: fixed BLOOM song + date seed; offer shuffles use the seeded RNG while player choices can intentionally branch later drafts.
+- [x] Create compact shareable result with native Web Share / clipboard fallback: date, song, Flow Rank, Sync, CHAIN, Resonance, Core, build and seed.
 - [ ] Track “next-run intent” during playtests: players should want to try another mechanical hypothesis.
 - [ ] Avoid currencies / trees unless they unlock decisions, not stat grind.
 
@@ -176,8 +176,8 @@ Only after P0–P5 are validated:
 - [x] Chart Lab perceptual LOAD audit.
 - [x] LOAD lane visualizes per-bar pressure without turning estimated load into schema failure.
 - [x] Validation panel reports LOAD average/peak and only warns at very high estimated pressure.
-- [ ] Daily share card / native share fallback.
-- [ ] Verify deterministic Daily includes the same song as well as seed/offers.
+- [x] Daily share card / native share fallback.
+- [x] Deterministic Daily now forces BLOOM without overwriting the player's normal selected-song preference.
 
 ## Kill criteria
 
