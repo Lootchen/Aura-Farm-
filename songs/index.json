@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "defaultSong": "glasshouse-circuit",
+  "defaultSong": "bloom-overdrive",
   "songs": [
     {
       "id": "glasshouse-circuit",
@@ -17,6 +17,14 @@
       "title": "NEON GERMINATION",
       "bpm": 126,
       "tag": "ELECTRIC BLOOM"
+    },
+    {
+      "id": "bloom-overdrive",
+      "file": "bloom-overdrive.json",
+      "trackNumber": 3,
+      "title": "BLOOM OVERDRIVE",
+      "bpm": 154,
+      "tag": "FLAGSHIP · BIO BREAKBEAT"
     }
   ]
 }
