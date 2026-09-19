@@ -5882,10 +5882,16 @@ function resolveTapHit(note, side, songTime) {
   awardScore(JUDGEMENTS.perfect.points * multiplier);
   hitCount += 1;
 
+  const inputTime =
+    Number.isFinite(
+      flippers[side].startTime
+    )
+      ? flippers[side].startTime
+      : songTime;
   const deltaMs =
     Math.round(
       (
-        songTime -
+        inputTime -
         note.targetTime
       ) * 1000
     );
