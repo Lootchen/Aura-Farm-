@@ -446,6 +446,9 @@ let bossState = {
 
 let screenShake = 0;
 let musicSectionPulse = 0;
+let songEventBloom = 0;
+let triggeredSongEvents =
+  new Set();
 let impactVeil = 0;
 let operatorPulse = 0;
 let operatorMood = "idle";
@@ -8674,6 +8677,135 @@ function updateEvents(dt, songTime) {
   }
 }
 
+function processSongEvents() {
+  if (
+    !running ||
+    clock.songTime < 0 ||
+    !Array.isArray(
+      SONG?.songEvents
+    )
+  ) {
+    return;
+  }
+
+  const beat =
+    clock.beat;
+
+  SONG.songEvents.forEach(
+    (
+      event,
+      index
+    ) => {
+      if (
+        event.beat <
+          ACT_START_BEAT ||
+        event.beat >=
+          ACT_END_BEAT ||
+        event.beat >
+          beat + 0.0001 ||
+        triggeredSongEvents.has(
+          index
+        )
+      ) {
+        return;
+      }
+
+      triggeredSongEvents.add(
+        index
+      );
+
+      const strength =
+        clamp(
+          Number(
+            event.strength ??
+            1
+          ),
+          0,
+          2
+        );
+
+      switch (event.type) {
+        case "world-pulse":
+          musicSectionPulse =
+            Math.max(
+              musicSectionPulse,
+              0.65 * strength
+            );
+          songEventBloom =
+            Math.max(
+              songEventBloom,
+              0.45 * strength
+            );
+          setOperatorMood(
+            event.mood ??
+              "flow",
+            0.42 +
+              0.16 * strength
+          );
+          break;
+
+        case "reactor-bloom":
+          musicSectionPulse =
+            Math.max(
+              musicSectionPulse,
+              0.82 * strength
+            );
+          songEventBloom =
+            Math.max(
+              songEventBloom,
+              0.78 * strength
+            );
+          bumpFeedback(
+            0.45 * strength,
+            0.018 * strength
+          );
+          setOperatorMood(
+            event.mood ??
+              "flow",
+            0.52 +
+              0.18 * strength
+          );
+          break;
+
+        case "core-warning":
+          musicSectionPulse =
+            Math.max(
+              musicSectionPulse,
+              1
+            );
+          songEventBloom =
+            Math.max(
+              songEventBloom,
+              strength
+            );
+          bumpFeedback(
+            1.2 * strength,
+            0.028 * strength
+          );
+          setOperatorMood(
+            event.mood ??
+              "boss",
+            0.78 +
+              0.16 * strength
+          );
+          break;
+
+        case "auri":
+          setOperatorMood(
+            event.mood ??
+              "flow",
+            0.46 +
+              0.20 * strength
+          );
+          break;
+
+        default:
+          break;
+      }
+    }
+  );
+}
+
 function updateEffects(dt) {
   for (const explosion of explosions) {
     explosion.life += dt;
@@ -8719,6 +8851,12 @@ function updateEffects(dt) {
       0,
       musicSectionPulse -
         dt * 1.35
+    );
+  songEventBloom =
+    Math.max(
+      0,
+      songEventBloom -
+        dt * 1.55
     );
 
   if (
@@ -9073,7 +9211,8 @@ function drawPresentationAtmosphere(
           musicResponse.sectionPulse *
             0.28
         ) +
-      musicSectionPulse * 0.36,
+      musicSectionPulse * 0.36 +
+      songEventBloom * 0.24,
       0,
       1
     );
@@ -9405,7 +9544,8 @@ function drawGlasshouseDepth(
       musicResponse.aura * 0.16 +
       musicResponse.sectionEnergy *
         0.20 +
-      musicSectionPulse * 0.14,
+      musicSectionPulse * 0.14 +
+      songEventBloom * 0.10,
       0,
       1
     );
@@ -15133,6 +15273,9 @@ async function beginAct() {
     );
 
   resetWaveState();
+  triggeredSongEvents =
+    new Set();
+  songEventBloom = 0;
 
   bossState = {
     active:
@@ -15569,6 +15712,7 @@ function frame(now) {
   resolveProjectileCollisions();
   updateEffects(dt);
   updateLiveHud(songTime);
+  processSongEvents();
   render(songTime);
 
   if (
