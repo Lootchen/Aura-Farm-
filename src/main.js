@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.47";
+} from "./song.js?v=0.48";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.47";
+} from "./music.js?v=0.48";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.47";
+} from "./audio-file.js?v=0.48";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -94,7 +94,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.47";
+const GAME_VERSION = "0.48";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -108,9 +108,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.47";
+  "./assets/world/glasshouse-far.svg?v=0.48";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.47";
+  "./assets/world/growth-bays.svg?v=0.48";
 
 function drawWorldAsset(
   image,
@@ -139,6 +139,8 @@ let BPM = 110;
 let LOOP_BEATS = 68;
 let COUNT_IN_BEATS = 4;
 let STEPS_PER_BEAT = 2;
+let ACT_START_BEAT = 0;
+let ACT_END_BEAT = 68;
 let CHART = [];
 let SONG = null;
 let songSourceUrl = null;
@@ -215,20 +217,111 @@ const ACTS = [
   { name: "AURA CORE", cue: "ROMPE LA ARMADURA", intensity: 1 }
 ];
 
+function currentLevelPhase() {
+  const phases =
+    SONG?.levelPhases;
+
+  if (
+    Array.isArray(phases) &&
+    phases.length > 0
+  ) {
+    return (
+      phases[
+        Math.min(
+          phases.length - 1,
+          Math.max(
+            0,
+            wave - 1
+          )
+        )
+      ] ??
+      phases[0]
+    );
+  }
+
+  return {
+    id:
+      `act-${wave}`,
+    name:
+      ACTS[
+        clamp(
+          Math.round(wave),
+          1,
+          RUN_ACTS
+        )
+      ]?.name ??
+      `ACTO ${wave}`,
+    cue:
+      ACTS[
+        clamp(
+          Math.round(wave),
+          1,
+          RUN_ACTS
+        )
+      ]?.cue ??
+      "",
+    intensity:
+      ACTS[
+        clamp(
+          Math.round(wave),
+          1,
+          RUN_ACTS
+        )
+      ]?.intensity ??
+      0.5,
+    startBeat: 0,
+    endBeat:
+      LOOP_BEATS
+  };
+}
+
 function currentActMeta() {
-  return ACTS[
-    clamp(
-      Math.round(wave),
-      1,
-      RUN_ACTS
-    )
-  ] ?? ACTS[1];
+  const fallback =
+    ACTS[
+      clamp(
+        Math.round(wave),
+        1,
+        RUN_ACTS
+      )
+    ] ??
+    ACTS[1];
+  const phase =
+    currentLevelPhase();
+
+  return {
+    ...fallback,
+    name:
+      phase.name ??
+      fallback.name,
+    cue:
+      phase.cue ??
+      fallback.cue,
+    intensity:
+      Number.isFinite(
+        phase.intensity
+      )
+        ? phase.intensity
+        : fallback.intensity
+  };
 }
 
 function runTargetActs() {
-  return runMode === "practice"
-    ? 1
-    : RUN_ACTS;
+  if (
+    runMode ===
+      "practice"
+  ) {
+    return 1;
+  }
+
+  return (
+    Array.isArray(
+      SONG?.levelPhases
+    ) &&
+    SONG.levelPhases.length >
+      0
+      ? SONG.levelPhases.length
+      : RUN_ACTS
+  );
 }
 const PROFILE_KEY = "aura-farm-profile-v1";
 const METRICS_KEY = "aura-farm-metrics-v1";
@@ -538,6 +631,8 @@ class RhythmClock {
   constructor() {
     this.context = null;
     this.startAt = 0;
+    this.segmentStartBeat = 0;
+    this.segmentEndBeat = 0;
     this.nextStep = 0;
     this.timer = null;
     this.noiseBuffer = null;
@@ -673,26 +768,27 @@ class RhythmClock {
       this.context.destination
     );
 
+    const beatDuration =
+      60 / BPM;
     const offsetSeconds =
       Number(
         SONG.timing.offsetMs ??
         0
       ) /
       1000;
-    const idealStart =
-      this.startAt -
-      offsetSeconds;
-    const safeStart =
-      Math.max(
-        this.context.currentTime +
-          0.02,
-        idealStart
-      );
+    const desiredOffset =
+      offsetSeconds +
+      this.segmentStartBeat *
+        beatDuration;
+    const startTime =
+      desiredOffset >= 0
+        ? this.startAt
+        : this.startAt -
+          desiredOffset;
     const fileOffset =
       Math.max(
         0,
-        safeStart -
-          idealStart
+        desiredOffset
       );
 
     if (
@@ -700,12 +796,16 @@ class RhythmClock {
       this.fileBuffer.duration
     ) {
       throw new Error(
-        "El offset deja el audio fuera de su duración."
+        "El tramo del nivel comienza fuera de la duración del audio."
       );
     }
 
     source.start(
-      safeStart,
+      Math.max(
+        startTime,
+        this.context.currentTime +
+          0.008
+      ),
       fileOffset
     );
 
@@ -1038,7 +1138,10 @@ class RhythmClock {
       grid;
     const time =
       this.startAt +
-      targetBeat *
+      (
+        targetBeat -
+        this.segmentStartBeat
+      ) *
         (60 / BPM);
 
     return {
@@ -1489,8 +1592,12 @@ class RhythmClock {
     );
   }
 
-  async start() {
-    this.context ??= new AudioContext();
+  async start(
+    startBeat = 0,
+    endBeat = LOOP_BEATS
+  ) {
+    this.context ??=
+      new AudioContext();
     await this.context.resume();
     this.ensureMixGraph();
     this.applyRunMix(0.08);
@@ -1501,24 +1608,63 @@ class RhythmClock {
     );
 
     if (!this.noiseBuffer) {
-      const length = Math.floor(this.context.sampleRate * 0.12);
-      this.noiseBuffer = this.context.createBuffer(1, length, this.context.sampleRate);
-      const data = this.noiseBuffer.getChannelData(0);
+      const length =
+        Math.floor(
+          this.context.sampleRate *
+          0.12
+        );
+      this.noiseBuffer =
+        this.context.createBuffer(
+          1,
+          length,
+          this.context.sampleRate
+        );
+      const data =
+        this.noiseBuffer
+          .getChannelData(0);
 
-      for (let i = 0; i < length; i += 1) {
-        data[i] = Math.random() * 2 - 1;
+      for (
+        let index = 0;
+        index < length;
+        index += 1
+      ) {
+        data[index] =
+          Math.random() * 2 -
+          1;
       }
     }
 
-    const beatDuration = 60 / BPM;
+    const beatDuration =
+      60 / BPM;
+
+    this.segmentStartBeat =
+      Math.max(
+        0,
+        Number(startBeat) ||
+        0
+      );
+    this.segmentEndBeat =
+      Math.max(
+        this.segmentStartBeat,
+        Number(endBeat) ||
+        LOOP_BEATS
+      );
+
+    // startAt is the moment the first playable beat of THIS phase occurs.
+    // songTime remains phase-local; beat is exposed as absolute song beat.
     this.startAt =
       this.context.currentTime +
       0.10 +
-      COUNT_IN_BEATS * beatDuration;
+      COUNT_IN_BEATS *
+        beatDuration;
 
     this.nextStep =
-      -COUNT_IN_BEATS *
-      STEPS_PER_BEAT;
+      Math.round(
+        this.segmentStartBeat *
+        STEPS_PER_BEAT
+      ) -
+      COUNT_IN_BEATS *
+        STEPS_PER_BEAT;
     this.lastScheduledSection =
       null;
 
@@ -1533,7 +1679,11 @@ class RhythmClock {
     }
 
     this.schedule();
-    this.timer = window.setInterval(() => this.schedule(), 25);
+    this.timer =
+      window.setInterval(
+        () => this.schedule(),
+        25
+      );
   }
 
   stopScheduler() {
@@ -1548,7 +1698,8 @@ class RhythmClock {
 
     if (
       this.context &&
-      this.context.state === "running"
+      this.context.state ===
+        "running"
     ) {
       await this.context.suspend();
     }
@@ -1569,46 +1720,95 @@ class RhythmClock {
   }
 
   get songTime() {
-    if (!this.context) return -COUNT_IN_BEATS * (60 / BPM);
-    return this.context.currentTime - this.startAt;
+    if (!this.context) {
+      return (
+        -COUNT_IN_BEATS *
+        (60 / BPM)
+      );
+    }
+
+    return (
+      this.context.currentTime -
+      this.startAt
+    );
   }
 
   get beat() {
-    return this.songTime / (60 / BPM);
+    return (
+      this.segmentStartBeat +
+      this.songTime /
+        (60 / BPM)
+    );
   }
 
   schedule() {
     if (!this.context) return;
 
-    const beatDuration = 60 / BPM;
-    const horizon = this.context.currentTime + 0.14;
+    const beatDuration =
+      60 / BPM;
+    const horizon =
+      this.context.currentTime +
+      0.14;
 
-    while (
-      this.startAt +
-        (
-          this.nextStep /
-          STEPS_PER_BEAT
-        ) *
-          beatDuration <
-      horizon
-    ) {
+    while (true) {
       const beat =
         this.nextStep /
         STEPS_PER_BEAT;
-      const time = this.startAt + beat * beatDuration;
+      const relativeBeat =
+        beat -
+        this.segmentStartBeat;
+      const time =
+        this.startAt +
+        relativeBeat *
+          beatDuration;
 
-      if (time >= this.context.currentTime) {
-        if (beat < 0) {
-          if (Number.isInteger(beat)) this.scheduleCountIn(time, beat);
+      if (time >= horizon) {
+        break;
+      }
+
+      if (
+        time >=
+        this.context.currentTime
+      ) {
+        if (
+          beat <
+          this.segmentStartBeat
+        ) {
+          const countBeat =
+            relativeBeat;
+
+          if (
+            Number.isInteger(
+              countBeat
+            )
+          ) {
+            this.scheduleCountIn(
+              time,
+              countBeat
+            );
+          }
         } else if (
+          beat <
+            this.segmentEndBeat &&
           SONG?.audio?.mode ===
             "procedural"
         ) {
-          this.scheduleGroove(time, beat);
+          this.scheduleGroove(
+            time,
+            beat
+          );
         }
       }
 
       this.nextStep += 1;
+
+      if (
+        beat >
+        this.segmentEndBeat +
+          1
+      ) {
+        break;
+      }
     }
   }
 
@@ -3568,7 +3768,13 @@ function beatToSeconds(beat) {
 }
 
 function loopDuration() {
-  return beatToSeconds(LOOP_BEATS);
+  return beatToSeconds(
+    Math.max(
+      0,
+      ACT_END_BEAT -
+      ACT_START_BEAT
+    )
+  );
 }
 
 function stemMidiNearBeat(
@@ -3870,7 +4076,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.47",
+      "../songs/index.json?v=0.48",
       import.meta.url
     );
 
@@ -4072,7 +4278,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.47`,
+      `../songs/${entry.file}?v=0.48`,
       import.meta.url
     );
 
@@ -4107,6 +4313,11 @@ async function ensureChartLoaded() {
     song.timing.countInBeats;
   STEPS_PER_BEAT =
     song.timing.stepsPerBeat;
+  ACT_START_BEAT = 0;
+  ACT_END_BEAT =
+    song.levelPhases?.[0]
+      ?.endBeat ??
+    LOOP_BEATS;
 
   CHART =
     chart.events.map(
@@ -4396,117 +4607,208 @@ function eventSongTime(eventTimestamp) {
   return clock.songTime - processingDelayMs / 1000 + calibrationOffsetMs / 1000;
 }
 
-function spawnReady(songTime) {
-  const duration = loopDuration();
-  const currentLoop = songTime < 0 ? 0 : Math.floor(songTime / duration);
-  if (currentLoop > 0) return;
-  const loops = [0];
+function spawnReady(
+  songTime
+) {
+  const duration =
+    loopDuration();
 
-  for (const loop of loops) {
-    CHART.forEach((event, index) => {
+  if (
+    songTime >
+    duration + 0.5
+  ) {
+    return;
+  }
+
+  CHART.forEach(
+    (
+      event,
+      index
+    ) => {
       if (
-        Number(event.minAct || 1) >
+        event.beat <
+          ACT_START_BEAT ||
+        event.beat >=
+          ACT_END_BEAT
+      ) {
+        return;
+      }
+
+      if (
+        Number(
+          event.minAct ||
+          1
+        ) >
         wave
       ) {
         return;
       }
 
-      const key = `${loop}:${index}`;
+      const key =
+        `${wave}:${index}`;
 
-      if (active.has(key) || resolved.has(key)) return;
+      if (
+        active.has(key) ||
+        resolved.has(key)
+      ) {
+        return;
+      }
 
-      const targetTime = loop * duration + beatToSeconds(event.beat);
+      const targetTime =
+        beatToSeconds(
+          event.beat -
+          ACT_START_BEAT
+        );
       let lead = 0;
-      let expireAt = targetTime + 1;
+      let expireAt =
+        targetTime + 1;
 
-      if (event.type === "tap") {
-        const path = routeFor(event.side, event.route);
-        lead = path.length / NOTE_SPEED;
-        expireAt = targetTime + TAP_MISS_WINDOW + 0.22;
-      } else if (event.type === "slide") {
-        lead = SLIDE.leadSeconds;
-        expireAt = targetTime + beatToSeconds(event.durationBeats) + 0.35;
+      if (
+        event.type ===
+          "tap"
+      ) {
+        const path =
+          routeFor(
+            event.side,
+            event.route
+          );
+
+        lead =
+          path.length /
+          NOTE_SPEED;
+        expireAt =
+          targetTime +
+          TAP_MISS_WINDOW +
+          0.22;
+      } else if (
+        event.type ===
+          "slide"
+      ) {
+        lead =
+          SLIDE.leadSeconds;
+        expireAt =
+          targetTime +
+          beatToSeconds(
+            event.durationBeats
+          ) +
+          0.35;
       }
 
-      if (songTime > expireAt) return;
-      if (targetTime - songTime > lead + 0.04) return;
+      if (
+        songTime >
+        expireAt
+      ) {
+        return;
+      }
 
-      if (event.type === "tap") {
-        const path = routeFor(event.side, event.route);
+      if (
+        targetTime -
+          songTime >
+        lead + 0.04
+      ) {
+        return;
+      }
 
-        active.set(key, {
+      if (
+        event.type ===
+          "tap"
+      ) {
+        const path =
+          routeFor(
+            event.side,
+            event.route
+          );
+
+        active.set(
           key,
-          loop,
-          ...event,
-          targetTime,
-          path,
-          pathDistance: 0,
-          launched: false,
-          x: path.points[0].x,
-          y: path.points[0].y,
-          prevX: path.points[0].x,
-          prevY: path.points[0].y,
-          vx: 0,
-          vy: 0,
-          radiusScale:
-            clamp(
-              0.95 +
-                eventMusicEnergy(
-                  event
-                ) *
-                  0.10,
-              0.95,
-              1.05
-            ),
-          shieldIntact:
-            Boolean(
-              event.shield
-            ),
-          shieldBreakAt:
-            -Infinity,
-          shieldBreakSongTime:
-            null,
-          shieldLateGrace:
-            false
-        });
+          {
+            key,
+            loop: 0,
+            ...event,
+            targetTime,
+            path,
+            pathDistance: 0,
+            launched: false,
+            x:
+              path.points[0].x,
+            y:
+              path.points[0].y,
+            prevX:
+              path.points[0].x,
+            prevY:
+              path.points[0].y,
+            vx: 0,
+            vy: 0,
+            radiusScale:
+              clamp(
+                0.95 +
+                  eventMusicEnergy(
+                    event
+                  ) *
+                    0.10,
+                0.95,
+                1.05
+              ),
+            shieldIntact:
+              Boolean(
+                event.shield
+              ),
+            shieldBreakAt:
+              -Infinity,
+            shieldBreakSongTime:
+              null,
+            shieldLateGrace:
+              false
+          }
+        );
       }
 
-      if (event.type === "slide") {
-        const path = routeFor(event.side, event.route);
+      if (
+        event.type ===
+          "slide"
+      ) {
+        const path =
+          routeFor(
+            event.side,
+            event.route
+          );
 
-        active.set(key, {
+        active.set(
           key,
-          loop,
-          ...event,
-          targetTime,
-          endTime: targetTime + beatToSeconds(event.durationBeats),
-          path,
-          mode: "trace",
-          started: false,
-          goodTime: 0,
-          trackingTime: 0,
-          lastGoodTime: -Infinity,
-          startDelta: null,
-          lastErrorPx: Infinity,
-          playerVector: null,
-          traceHeld: false,
-          tracePointerId: null,
-          traceArmed: false,
-          traceArmedAt: null,
-          traceCaptureMode: null
-        });
+          {
+            key,
+            loop: 0,
+            ...event,
+            targetTime,
+            endTime:
+              targetTime +
+              beatToSeconds(
+                event.durationBeats
+              ),
+            path,
+            mode: "trace",
+            started: false,
+            goodTime: 0,
+            trackingTime: 0,
+            lastGoodTime:
+              -Infinity,
+            startDelta: null,
+            lastErrorPx:
+              Infinity,
+            playerVector: null,
+            traceHeld: false,
+            tracePointerId:
+              null,
+            traceArmed: false,
+            traceArmedAt:
+              null,
+            traceCaptureMode:
+              null
+          }
+        );
       }
-
-    });
-  }
-
-  for (const key of [...resolved]) {
-    const loop = Number(key.split(":")[0]);
-
-    if (loop < currentLoop - 1) {
-      resolved.delete(key);
     }
-  }
+  );
 }
 
 function flipperPhase(side, songTime) {
@@ -8451,20 +8753,35 @@ function updateLiveHud(songTime) {
   if (!chartLoaded) return;
 
   const beat =
-    songTime /
-    (60 / BPM);
+    clock.beat;
   const frame =
     songFrameAtBeat(
-      Math.max(0, beat)
+      clamp(
+        beat,
+        0,
+        Math.max(
+          0,
+          LOOP_BEATS -
+          1 /
+            Math.max(
+              1,
+              STEPS_PER_BEAT
+            )
+        )
+      )
     );
   const section =
     frame.section;
   const progress =
     clamp(
-      beat /
+      (
+        beat -
+        ACT_START_BEAT
+      ) /
         Math.max(
           1,
-          LOOP_BEATS
+          ACT_END_BEAT -
+          ACT_START_BEAT
         ),
       0,
       1
@@ -8623,10 +8940,18 @@ function musicReactivePalette(
 
 function worldMusicResponse() {
   const beat =
-    Math.max(
+    clamp(
+      clock.beat,
       0,
-      clock.songTime /
-        beatToSeconds(1)
+      Math.max(
+        0,
+        LOOP_BEATS -
+        1 /
+          Math.max(
+            1,
+            STEPS_PER_BEAT
+          )
+      )
     );
   const grid =
     Math.max(
@@ -12464,8 +12789,11 @@ function drawCountIn(songTime) {
 
 function drawDebug(songTime) {
   const loopBeat =
-    ((clock.beat % LOOP_BEATS) + LOOP_BEATS) %
-    LOOP_BEATS;
+    clamp(
+      clock.beat,
+      0,
+      LOOP_BEATS
+    );
 
   const lines = [
     `SLICE v${GAME_VERSION} · ${chartName} · BPM ${BPM} · beat ${loopBeat.toFixed(2)}`,
@@ -14771,6 +15099,20 @@ function renderUpgradeChoices() {
 
 
 async function beginAct() {
+  const phase =
+    currentLevelPhase();
+
+  ACT_START_BEAT =
+    Number(
+      phase.startBeat ??
+      0
+    );
+  ACT_END_BEAT =
+    Number(
+      phase.endBeat ??
+      LOOP_BEATS
+    );
+
   resetWaveState();
 
   bossState = {
@@ -14835,7 +15177,10 @@ async function beginAct() {
     "triangle"
   );
 
-  await clock.start();
+  await clock.start(
+    ACT_START_BEAT,
+    ACT_END_BEAT
+  );
 
   runPaused = false;
   pausePanel.hidden = true;
@@ -15207,7 +15552,10 @@ function frame(now) {
   updateLiveHud(songTime);
   render(songTime);
 
-  if (clock.beat >= LOOP_BEATS) {
+  if (
+    clock.beat >=
+    ACT_END_BEAT
+  ) {
     if (wave >= runTargetActs()) {
       completeRun();
     } else {
@@ -15316,8 +15664,10 @@ function activeTraceSlideCandidate(songTime) {
         songTime - event.targetTime;
 
       return (
-        delta >= -SLIDE.startEarly &&
-        delta <= SLIDE.startLate
+        delta >=
+          -SLIDE.leadSeconds &&
+        delta <=
+          SLIDE.startLate
       );
     })
     .sort(
