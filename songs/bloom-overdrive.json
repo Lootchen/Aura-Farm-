@@ -3912,5 +3912,94 @@
         }
       ]
     }
+  ],
+  "songEvents": [
+    {
+      "beat": 4,
+      "type": "world-pulse",
+      "strength": 0.55,
+      "label": "IGNITION LOCK"
+    },
+    {
+      "beat": 24,
+      "type": "reactor-bloom",
+      "strength": 0.68,
+      "label": "IGNITION BLOOM"
+    },
+    {
+      "beat": 36,
+      "type": "world-pulse",
+      "strength": 0.64,
+      "label": "PRESSURE DROP"
+    },
+    {
+      "beat": 56,
+      "type": "reactor-bloom",
+      "strength": 0.78,
+      "label": "PRESSURE OPEN"
+    },
+    {
+      "beat": 68,
+      "type": "world-pulse",
+      "strength": 0.72,
+      "label": "GERMINATE LEAD"
+    },
+    {
+      "beat": 88,
+      "type": "reactor-bloom",
+      "strength": 0.86,
+      "label": "GERMINATE BLOOM"
+    },
+    {
+      "beat": 100,
+      "type": "world-pulse",
+      "strength": 0.82,
+      "label": "CIRCUIT LOCK"
+    },
+    {
+      "beat": 120,
+      "type": "reactor-bloom",
+      "strength": 0.94,
+      "label": "CIRCUIT OPEN"
+    },
+    {
+      "beat": 136,
+      "type": "auri",
+      "strength": 0.62,
+      "mood": "focus",
+      "label": "FRACTURE SPACE"
+    },
+    {
+      "beat": 152,
+      "type": "world-pulse",
+      "strength": 0.72,
+      "label": "FRACTURE RETURN"
+    },
+    {
+      "beat": 164,
+      "type": "world-pulse",
+      "strength": 0.98,
+      "label": "SURGE DROP"
+    },
+    {
+      "beat": 184,
+      "type": "reactor-bloom",
+      "strength": 1.08,
+      "label": "SURGE BLOOM"
+    },
+    {
+      "beat": 196,
+      "type": "core-warning",
+      "strength": 1.1,
+      "mood": "boss",
+      "label": "CORE ONLINE"
+    },
+    {
+      "beat": 216,
+      "type": "reactor-bloom",
+      "strength": 1.25,
+      "mood": "boss",
+      "label": "FULL BLOOM"
+    }
   ]
 }
