@@ -5369,3 +5369,73 @@ button { font: inherit; }
     padding-block: 7px;
   }
 }
+
+
+/* v0.52 — Resonance soft stake + causal boss readout */
+.hud-resonance {
+  width: 100%;
+  margin-top: 3px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px;
+}
+
+.hud-resonance > span {
+  font:
+    900 .40rem/1
+    ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .06em;
+  color: rgba(255,255,255,.48);
+}
+
+.hud-resonance > span strong {
+  display: inline;
+  margin: 0;
+  font-size: .44rem;
+  color: rgb(var(--machine-secondary));
+}
+
+.hud-resonance > i {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+}
+
+.hud-resonance > i > b {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 50%;
+  border-radius: inherit;
+  background: rgb(var(--machine-secondary));
+  box-shadow:
+    0 0 7px
+    rgba(var(--machine-secondary),.38);
+  transition:
+    width .11s linear,
+    background .16s ease;
+}
+
+.app[data-resonance="bloom"]
+.hud-resonance > i > b {
+  background: #fff1a9;
+  box-shadow:
+    0 0 9px rgba(255,241,169,.52);
+}
+
+.app[data-resonance="unstable"]
+.hud-resonance > i > b {
+  background: #ff7184;
+  box-shadow:
+    0 0 7px rgba(255,113,132,.32);
+}
+
+.summary-sync > span:nth-of-type(2) {
+  margin-top: 5px;
+}
+
+#summaryBossPath {
+  color: rgba(255,241,169,.58);
+}
