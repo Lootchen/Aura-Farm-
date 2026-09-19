@@ -2372,7 +2372,12 @@
             "energy": 0.7999999999999999,
             "phrase": "germinate-release"
           },
-          "shield": true
+          "shield": true,
+          "shieldEcho": {
+            "targetBeat": 77,
+            "targetSide": "left",
+            "minLeadBeats": 0.35
+          }
         },
         {
           "type": "tap",
@@ -2894,7 +2899,12 @@
             "energy": 0.9299999999999999,
             "phrase": "fracture-release"
           },
-          "shield": true
+          "shield": true,
+          "shieldEcho": {
+            "targetBeat": 141,
+            "targetSide": "left",
+            "minLeadBeats": 0.35
+          }
         },
         {
           "type": "tap",
@@ -2992,7 +3002,12 @@
             "energy": 0.96,
             "phrase": "fracture-drive"
           },
-          "shield": true
+          "shield": true,
+          "shieldEcho": {
+            "targetBeat": 153,
+            "targetSide": "right",
+            "minLeadBeats": 0.35
+          }
         },
         {
           "type": "tap",
@@ -3254,7 +3269,12 @@
             "phrase": "surge-rush"
           },
           "shield": true,
-          "chainGroup": "surge-rush-chain"
+          "chainGroup": "surge-rush-chain",
+          "shieldEcho": {
+            "targetBeat": 175,
+            "targetSide": "left",
+            "minLeadBeats": 0.35
+          }
         },
         {
           "type": "tap",
@@ -3881,7 +3901,12 @@
             "phrase": "core-crown"
           },
           "shield": true,
-          "chainGroup": "core-crown-chain"
+          "chainGroup": "core-crown-chain",
+          "shieldEcho": {
+            "targetBeat": 220.5,
+            "targetSide": "right",
+            "minLeadBeats": 0.35
+          }
         },
         {
           "type": "tap",
