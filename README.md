@@ -58,10 +58,10 @@ Track 03 is the new reference/benchmark song.
 - 56 bars;
 - about 87.27 seconds of authored music;
 - 7 phases / 8 bars per phase;
-- 124 gameplay events;
-- 110 Tap;
-- 14 TRACE;
-- 17 Shield;
+- 147 gameplay events;
+- 134 Tap;
+- 13 TRACE;
+- 22 Shield;
 - 5 CHAIN phrases.
 
 Its style target is bio-industrial breakbeat/electro rather than generic synthwave:
@@ -103,6 +103,31 @@ This lets one song remain harmonically/structurally coherent across an entire ru
 Chart Lab renders `levelPhases` as labeled vertical regions on the timeline and includes the phase count in song metadata.
 
 This makes the level structure visible while charting instead of hiding it in package data.
+
+### Authored song events
+
+Song packages can now define sparse `songEvents` separately from gameplay notes.
+
+BLOOM OVERDRIVE currently authors 14 structural events such as:
+
+- world pulse;
+- reactor bloom;
+- AURI mood cue;
+- Core warning.
+
+These are consumed on exact song beats and displayed as markers in Chart Lab. Ordinary beat response remains subtle; song events are reserved for structural moments.
+
+### Dynamic visual pre-roll
+
+Incoming Tap routes take roughly 2.46–2.52 seconds to traverse at the current 275 px/s note speed.
+
+At 154 BPM, a 2-beat count-in is only about 0.78 seconds. v0.48 therefore separates:
+
+- **visual pre-roll** — calculated from actual Tap/TRACE lead requirements (~2.64 s for BLOOM);
+- **audible count-in** — only the final 2 beats.
+
+Notes can enter naturally from the top without forcing a long seven-click countdown between phases.
+
 
 ## v0.47 — Music Feel System / Flow-safe charting
 
@@ -173,7 +198,7 @@ Track 02 has been recomposed for less constant pressure:
 - the final CROWN phrase leaves room for the long TRACE before the closing hits;
 - three accidental Tap-inside-TRACE demands were removed.
 
-The chart changed from 51 to **48 events**.
+The earlier NEON pass reduced the chart from 51 to 48 events. v0.48 then removed six zero-escape post-TRACE taps, leaving **42 events**.
 
 Current audit:
 
