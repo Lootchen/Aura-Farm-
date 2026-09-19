@@ -1,22 +1,23 @@
 import {
   auditChartAlignment,
   auditChartFlow,
+  auditChartPerceptualLoad,
   loadGameSong,
   loadSongRegistry,
   songFrameFromData,
   validateGameChart,
   validateGameSong
-} from "./song.js?v=0.48";
+} from "./song.js?v=0.55";
 import {
   midiToHz
-} from "./music.js?v=0.48";
+} from "./music.js?v=0.55";
 import {
   analyzeAudioSteps,
   buildWaveformPeaks,
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.48";
+} from "./audio-file.js?v=0.55";
 
 const $ = (selector) =>
   document.querySelector(selector);
@@ -95,7 +96,8 @@ const LAYOUT = {
   ruler: 42,
   music: 54,
   tap: 72,
-  trace: 90
+  trace: 90,
+  load: 48
 };
 
 const Y = {
@@ -104,7 +106,8 @@ const Y = {
   left: 96,
   right: 168,
   trace: 240,
-  end: 330
+  load: 330,
+  end: 378
 };
 
 const COLORS = {
@@ -130,6 +133,7 @@ let invalidEventIndexes = new Set();
 let flowWarningIndexes = new Set();
 let validationErrors = [];
 let flowWarnings = [];
+let perceptualReport = null;
 let playheadBeat = 0;
 let audioContext = null;
 let playbackTimer = null;
@@ -1118,6 +1122,7 @@ function validateNow() {
     new Set();
   validationErrors = [];
   flowWarnings = [];
+  perceptualReport = null;
 
   try {
     validateGameSong(song);
@@ -1133,6 +1138,11 @@ function validateNow() {
       );
     const flow =
       auditChartFlow(
+        song,
+        chart
+      );
+    perceptualReport =
+      auditChartPerceptualLoad(
         song,
         chart
       );
@@ -1167,6 +1177,14 @@ function validateNow() {
       );
     }
 
+    const loadItems = [
+      `<div class="validation-item load-summary">LOAD · AVG ${perceptualReport.average}/100 · PEAK ${perceptualReport.peak}/100</div>`,
+      ...perceptualReport.warnings.map(
+        (item) =>
+          `<div class="validation-item load-warning">LOAD · ${escapeHtml(item.reason)}</div>`
+      )
+    ];
+
     syncCount.textContent =
       `${report.checked - report.errors.length}/${report.checked}`;
 
@@ -1195,7 +1213,8 @@ function validateNow() {
           ...flowWarnings.map(
             (item) =>
               `<div class="validation-item flow-warning">FLOW · ${escapeHtml(item.reason)}</div>`
-          )
+          ),
+          ...loadItems
         ].join("");
     } else if (
       report.mode ===
@@ -1217,7 +1236,8 @@ function validateNow() {
           ...flowWarnings.map(
             (item) =>
               `<div class="validation-item flow-warning">FLOW · ${escapeHtml(item.reason)}</div>`
-          )
+          ),
+          ...loadItems
         ].join("");
     } else {
       validationBadge.dataset.state =
@@ -1232,7 +1252,8 @@ function validateNow() {
           ...flowWarnings.map(
             (item) =>
               `<div class="validation-item flow-warning">FLOW · ${escapeHtml(item.reason)}</div>`
-          )
+          ),
+          ...loadItems
         ].join("");
 
       if (
@@ -1429,7 +1450,8 @@ function drawGrid() {
     [Y.music, LAYOUT.music, "rgba(255,255,255,.010)"],
     [Y.left, LAYOUT.tap, "rgba(110,215,255,.020)"],
     [Y.right, LAYOUT.tap, "rgba(216,139,255,.020)"],
-    [Y.trace, LAYOUT.trace, "rgba(255,255,255,.012)"]
+    [Y.trace, LAYOUT.trace, "rgba(255,255,255,.012)"],
+    [Y.load, LAYOUT.load, "rgba(255,196,92,.012)"]
   ];
 
   for (
@@ -2077,6 +2099,84 @@ function drawSongEvents() {
   ctx.restore();
 }
 
+function drawPerceptualLoadLane() {
+  if (!song || !chart) return;
+
+  const report =
+    perceptualReport ??
+    auditChartPerceptualLoad(
+      song,
+      chart
+    );
+
+  for (const bar of report.bars) {
+    const x =
+      bar.startBeat *
+      pxPerBeat;
+    const width =
+      Math.max(
+        2,
+        (
+          bar.endBeat -
+          bar.startBeat
+        ) *
+          pxPerBeat
+      );
+    const ratio =
+      Math.min(
+        1,
+        bar.score / 100
+      );
+    const height =
+      Math.max(
+        2,
+        ratio *
+          (LAYOUT.load - 10)
+      );
+    const color =
+      bar.score >= 88
+        ? "255,105,132"
+        : bar.score >= 68
+          ? "255,196,92"
+          : "94,226,215";
+
+    ctx.fillStyle =
+      "rgba(" + color + ",.10)";
+    ctx.fillRect(
+      x + 1,
+      Y.load + 2,
+      Math.max(1, width - 2),
+      LAYOUT.load - 4
+    );
+
+    ctx.fillStyle =
+      "rgba(" + color + ",.58)";
+    ctx.fillRect(
+      x + 2,
+      Y.load +
+        LAYOUT.load -
+        4 -
+        height,
+      Math.max(1, width - 4),
+      height
+    );
+
+    if (pxPerBeat >= 52) {
+      ctx.fillStyle =
+        "rgba(255,255,255,.58)";
+      ctx.font =
+        "800 8px ui-monospace, monospace";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(
+        String(bar.score),
+        x + 5,
+        Y.load + 5
+      );
+    }
+  }
+}
+
 function renderTimeline() {
   if (!song || !chart) {
     return;
@@ -2085,6 +2185,7 @@ function renderTimeline() {
   drawGrid();
   drawMusicLane();
   drawSongEvents();
+  drawPerceptualLoadLane();
 
   chart.events.forEach(
     (event, index) => {
@@ -3963,7 +4064,7 @@ async function loadSongById(
   try {
     const url =
       new URL(
-        `../songs/${entry.file}?v=0.48`,
+        `../songs/${entry.file}?v=0.55`,
         import.meta.url
       );
     const loaded =
@@ -4040,7 +4141,7 @@ async function boot() {
   try {
     const registryUrl =
       new URL(
-        "../songs/index.json?v=0.48",
+        "../songs/index.json?v=0.55",
         import.meta.url
       );
     registry =
