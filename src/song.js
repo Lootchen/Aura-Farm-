@@ -1788,6 +1788,199 @@ export function auditChartAlignment(
 }
 
 
+export function auditChartPerceptualLoad(
+  song,
+  chart
+) {
+  const timing = song.timing;
+  const feel = song.chartFeel ?? {};
+  const events = [...chart.events].sort(
+    (a, b) => a.beat - b.beat
+  );
+  const densityLimit = Math.max(
+    1,
+    Number(
+      feel.maxEventsPerBar ??
+      (chart.difficulty === "advanced" ? 7 : 6)
+    )
+  );
+  const beatsPerBar =
+    Math.max(1, Number(timing.beatsPerBar) || 4);
+  const tempoFactor =
+    Math.min(
+      1.22,
+      Math.max(
+        0.78,
+        Number(timing.bpm || 120) / 150
+      )
+    );
+  const bars = [];
+  const warnings = [];
+
+  for (
+    let start = 0;
+    start < timing.beats;
+    start += beatsPerBar
+  ) {
+    const end =
+      Math.min(
+        timing.beats,
+        start + beatsPerBar
+      );
+    const span =
+      Math.max(0.001, end - start);
+    const starts =
+      events.filter(
+        (event) =>
+          event.beat >= start &&
+          event.beat < end
+      );
+    const taps =
+      starts.filter(
+        (event) => event.type === "tap"
+      );
+    const shields =
+      taps.filter(
+        (event) => event.shield
+      );
+    const chained =
+      taps.filter(
+        (event) => Boolean(event.chainGroup)
+      );
+    const slides =
+      events.filter(
+        (event) =>
+          event.type === "slide" &&
+          event.beat < end &&
+          event.beat +
+            Number(event.durationBeats || 0) >
+            start
+      );
+
+    let traceBeats = 0;
+    for (const slide of slides) {
+      const slideEnd =
+        slide.beat +
+        Number(slide.durationBeats || 0);
+      traceBeats +=
+        Math.max(
+          0,
+          Math.min(end, slideEnd) -
+            Math.max(start, slide.beat)
+        );
+    }
+
+    const density =
+      Math.min(
+        1.35,
+        starts.length / densityLimit
+      );
+    const traceOccupancy =
+      Math.min(
+        1,
+        traceBeats / span
+      );
+    const shieldPressure =
+      Math.min(
+        1,
+        shields.length / 2
+      );
+    const physicalPotential =
+      Math.min(
+        1.25,
+        (
+          taps.length * 0.65 +
+          shields.length * 0.50 +
+          chained.length * 0.45 +
+          starts.filter(
+            (event) => event.type === "slide"
+          ).length * 1.20
+        ) / 6
+      );
+    const raw =
+      (
+        density * 0.38 +
+        traceOccupancy * 0.30 +
+        shieldPressure * 0.14 +
+        physicalPotential * 0.18
+      ) * tempoFactor;
+    const score =
+      Math.min(
+        120,
+        Math.round(raw * 100)
+      );
+    const state =
+      score >= 92
+        ? "high"
+        : score >= 68
+          ? "elevated"
+          : "stable";
+    const bar = {
+      index:
+        Math.floor(start / beatsPerBar),
+      startBeat: start,
+      endBeat: end,
+      score,
+      state,
+      components: {
+        events: starts.length,
+        density,
+        traceOccupancy,
+        shields: shields.length,
+        shieldPressure,
+        chainMarked: chained.length,
+        physicalPotential
+      }
+    };
+
+    bars.push(bar);
+
+    if (score >= 88) {
+      warnings.push({
+        kind: "perceptual-load",
+        beat: start,
+        bar: bar.index + 1,
+        score,
+        reason:
+          "Compás " +
+          (bar.index + 1) +
+          ": LOAD " +
+          score +
+          "/100; revisa densidad, TRACE, Shield y presión física combinada."
+      });
+    }
+  }
+
+  const peak =
+    bars.reduce(
+      (value, bar) =>
+        Math.max(value, bar.score),
+      0
+    );
+  const average =
+    bars.length > 0
+      ? Math.round(
+          bars.reduce(
+            (sum, bar) => sum + bar.score,
+            0
+          ) / bars.length
+        )
+      : 0;
+
+  return {
+    ok: warnings.length === 0,
+    peak,
+    average,
+    bars,
+    warnings,
+    metrics: {
+      densityLimit,
+      tempoFactor
+    }
+  };
+}
+
+
 export function auditChartFlow(
   song,
   chart
