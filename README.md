@@ -1,4 +1,4 @@
-# Aura Farm — Vertical Slice v0.47
+# Aura Farm — Vertical Slice v0.48
 
 **BUILD THE BEAT.**
 
@@ -7,6 +7,102 @@ Aura Farm is a mobile-first rhythm-action roguelite built around one physical tr
 > rhythm object → claw contact → projectile → persistent interaction → build mutation
 
 v0.32 consolidates the prototype around a single Slide language, a more game-like front menu, tighter four-slot build scaling, and a cleaner prototype audio mix while preserving the music-driven chart work from v0.31.
+
+## v0.48 — Song = Level / Flagship Benchmark
+
+v0.48 changes the production model around the music.
+
+### Research conclusion
+
+Aura Farm now treats a song as the authored level rather than a short loop that is restarted identically for every act.
+
+This direction is based on a common pattern in successful rhythm-action production:
+
+- music defines the intensity graph;
+- gameplay phrases are authored against musical phrases rather than every transient;
+- demanding gestures require readable setup and escape;
+- level events and visual changes are tied to musical time;
+- high tempo increases energy, but recovery still has to be deliberately composed.
+
+### levelPhases
+
+Song Package v1 now supports optional contiguous `levelPhases`.
+
+Each phase owns a different absolute range of the same song:
+
+```json
+{
+  "id": "pressure",
+  "name": "PRESSURE",
+  "startBeat": 32,
+  "endBeat": 64,
+  "intensity": 0.38
+}
+```
+
+During a run:
+
+1. Act 1 plays phase 1.
+2. Module Bay opens after the phase cadence.
+3. Act 2 starts the next song range.
+4. The process continues through the final phase/boss.
+
+Legacy songs without `levelPhases` keep the previous whole-song-per-act behavior.
+
+### BLOOM OVERDRIVE
+
+Track 03 is the new reference/benchmark song.
+
+- 154 BPM;
+- 224 beats;
+- 56 bars;
+- about 87.27 seconds of authored music;
+- 7 phases / 8 bars per phase;
+- 124 gameplay events;
+- 110 Tap;
+- 14 TRACE;
+- 17 Shield;
+- 5 CHAIN phrases.
+
+Its style target is bio-industrial breakbeat/electro rather than generic synthwave:
+
+- mechanical breakbeat percussion;
+- phone-readable harmonic bass;
+- crystalline dual-oscillator lead;
+- airy/detuned Aura layer;
+- increasing machine density;
+- deliberate FRACTURE/breathing section before the final surge.
+
+### TRACE setup and escape
+
+Chart flow validation now measures more than strict overlap.
+
+For BLOOM OVERDRIVE Standard:
+
+- at least 0.75 beat of setup before TRACE;
+- no required Tap inside TRACE;
+- at least 1 full beat of recovery after TRACE;
+- no accidental TRACE-to-TRACE collision.
+
+The runtime also fixes an input inconsistency from previous builds: if the incoming TRACE head is visibly on screen and the player touches it, it can now be captured. Previously the head could be visible before the internal early-start window opened.
+
+### Segment-aware rhythm clock
+
+The RhythmClock now accepts an absolute `startBeat/endBeat` range.
+
+- procedural scheduling uses absolute song beats;
+- gameplay event timing remains local to the current phase;
+- UI/world reactions read the absolute musical frame;
+- file-backed songs seek to the appropriate phase offset after count-in;
+- quantized cues compensate for the phase offset.
+
+This lets one song remain harmonically/structurally coherent across an entire run.
+
+### Chart Lab
+
+Chart Lab renders `levelPhases` as labeled vertical regions on the timeline and includes the phase count in song metadata.
+
+This makes the level structure visible while charting instead of hiding it in package data.
 
 ## v0.47 — Music Feel System / Flow-safe charting
 
