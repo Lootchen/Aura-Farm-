@@ -65,7 +65,14 @@
       "cue": "RESPIRA · ROMPE",
       "intensity": 0.54,
       "startBeat": 128,
-      "endBeat": 160
+      "endBeat": 160,
+      "world": {
+        "mode": "split",
+        "x": 270,
+        "yMin": 260,
+        "yMax": 620,
+        "traceRewriteBeats": 8
+      }
     },
     {
       "id": "surge",
@@ -73,7 +80,14 @@
       "cue": "ACELERA LA MÁQUINA",
       "intensity": 0.84,
       "startBeat": 160,
-      "endBeat": 192
+      "endBeat": 192,
+      "world": {
+        "mode": "conduit",
+        "x": 270,
+        "yMin": 260,
+        "yMax": 620,
+        "traceRewriteBeats": 8
+      }
     },
     {
       "id": "bloomcore",
@@ -3977,6 +3991,13 @@
       "label": "CIRCUIT OPEN"
     },
     {
+      "beat": 128,
+      "type": "phase-world",
+      "mode": "split",
+      "strength": 0.82,
+      "label": "FRACTURE MEMBRANE"
+    },
+    {
       "beat": 136,
       "type": "auri",
       "strength": 0.62,
@@ -3988,6 +4009,13 @@
       "type": "world-pulse",
       "strength": 0.72,
       "label": "FRACTURE RETURN"
+    },
+    {
+      "beat": 160,
+      "type": "phase-world",
+      "mode": "conduit",
+      "strength": 1,
+      "label": "SURGE CONDUIT"
     },
     {
       "beat": 164,
