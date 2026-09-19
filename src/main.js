@@ -207,7 +207,6 @@ const BUMPER_LAYOUT = [
 ];
 
 const RUN_ACTS = 7;
-const FINAL_ACT = RUN_ACTS;
 const BOSS_MAX_HEALTH = 18;
 const ACTIVE_MODULE_LIMIT = 4;
 const RESERVE_MODULE_LIMIT = 4;
