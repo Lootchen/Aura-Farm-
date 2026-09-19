@@ -2136,7 +2136,7 @@ function drawPerceptualLoadLane() {
     const color =
       bar.score >= 88
         ? "255,105,132"
-        : bar.score >= 68
+        : bar.score >= 55
           ? "255,196,92"
           : "94,226,215";
 
