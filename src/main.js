@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.51";
+} from "./song.js?v=0.52";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.51";
+} from "./music.js?v=0.52";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.51";
+} from "./audio-file.js?v=0.52";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -48,6 +48,8 @@ const trackProgressEl = document.querySelector("#trackProgress");
 const topbarEl = document.querySelector(".topbar");
 const actEl = document.querySelector("#act");
 const lastHitEl = document.querySelector("#lastHit");
+const resonanceValueEl = document.querySelector("#resonanceValue");
+const resonanceBarEl = document.querySelector("#resonanceBar");
 const upgradePanel = document.querySelector("#upgradePanel");
 const upgradeTitle = document.querySelector("#upgradeTitle");
 const upgradeCards = document.querySelector("#upgradeCards");
@@ -86,6 +88,8 @@ const summaryMisses = document.querySelector("#summaryMisses");
 const summaryBoss = document.querySelector("#summaryBoss");
 const summarySync = document.querySelector("#summarySync");
 const summaryTimingBias = document.querySelector("#summaryTimingBias");
+const summaryResonance = document.querySelector("#summaryResonance");
+const summaryBossPath = document.querySelector("#summaryBossPath");
 const summaryBuild = document.querySelector("#summaryBuild");
 const summaryUnlock = document.querySelector("#summaryUnlock");
 const calibrationMinus = document.querySelector("#calibrationMinus");
@@ -99,7 +103,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.51";
+const GAME_VERSION = "0.52";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -113,9 +117,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.51";
+  "./assets/world/glasshouse-far.svg?v=0.52";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.51";
+  "./assets/world/growth-bays.svg?v=0.52";
 
 function drawWorldAsset(
   image,
@@ -161,6 +165,9 @@ const PATH_SAMPLES = 160;
 const POST_HIT_SPEED = 455;
 const AIM_MAX_RADIANS = 0.15;
 const SYNC_CENTER_MS = 45;
+const RESONANCE_MAX = 100;
+const RESONANCE_START = 50;
+const RESONANCE_BLOOM_THRESHOLD = 75;
 
 const TAP_MISS_WINDOW = 0.160;
 const SHIELD_LATE_BREAK_THRESHOLD = 0.42;
@@ -635,6 +642,7 @@ let bossState = {
   maxHealth: BOSS_MAX_HEALTH,
   broken: false,
   damage: 0,
+  damageSources: {},
   hitFlash: 0,
   shieldFlash: 0,
   armor: [false, false, false],
@@ -825,6 +833,9 @@ function newRunStats() {
     traceSuccess: 0,
     timingSamples: [],
     aimSamples: [],
+    resonanceEvents: [],
+    chainSources: {},
+    aimedChains: 0,
     chosenUpgrades: [],
     firstChainMs: null
   };
@@ -2968,6 +2979,9 @@ let missCount = 0;
 let chainCount = 0;
 let collisionCount = 0;
 let wallExplosionCount = 0;
+let resonance = RESONANCE_START;
+let peakResonance = RESONANCE_START;
+let minResonance = RESONANCE_START;
 let lastDeltaMs = null;
 let lastJudgement = "—";
 let lastFrame = performance.now();
@@ -2980,6 +2994,134 @@ let lastInputType = "—";
 let showDebug = false;
 let wave = 1;
 let awaitingUpgrade = false;
+
+function resonanceTier() {
+  if (
+    resonance >=
+    RESONANCE_BLOOM_THRESHOLD
+  ) {
+    return "bloom";
+  }
+
+  if (resonance < 25) {
+    return "unstable";
+  }
+
+  return "stable";
+}
+
+function renderResonanceHud() {
+  if (resonanceValueEl) {
+    resonanceValueEl.textContent =
+      String(
+        Math.round(resonance)
+      );
+  }
+
+  if (resonanceBarEl) {
+    resonanceBarEl.style.width =
+      `${clamp(
+        resonance /
+          RESONANCE_MAX,
+        0,
+        1
+      ) * 100}%`;
+  }
+
+  app.dataset.resonance =
+    resonanceTier();
+}
+
+function adjustResonance(
+  amount,
+  reason = "system"
+) {
+  const before =
+    resonance;
+
+  resonance =
+    clamp(
+      resonance + amount,
+      0,
+      RESONANCE_MAX
+    );
+  peakResonance =
+    Math.max(
+      peakResonance,
+      resonance
+    );
+  minResonance =
+    Math.min(
+      minResonance,
+      resonance
+    );
+
+  if (
+    runStats &&
+    resonance !== before
+  ) {
+    runStats.resonanceEvents.push({
+      beat:
+        Number.isFinite(
+          clock?.beat
+        )
+          ? Number(
+              clock.beat.toFixed(3)
+            )
+          : 0,
+      reason,
+      delta:
+        resonance - before,
+      value: resonance
+    });
+  }
+
+  renderResonanceHud();
+  return resonance - before;
+}
+
+function recordSource(
+  bucket,
+  source,
+  amount = 1
+) {
+  if (!bucket) return;
+
+  const key =
+    source ||
+    "direct";
+
+  bucket[key] =
+    Number(
+      bucket[key] || 0
+    ) +
+    amount;
+}
+
+function projectileSourceLabel(
+  source
+) {
+  const labels = {
+    tap: "DIRECT",
+    twin: "TWIN",
+    trace: "TRACE",
+    chain: "CHAIN",
+    wall: "WALL",
+    fusion: "FUSION",
+    fragment: "FRAGMENT",
+    bumper: "BUMPER",
+    collision: "COLLISION",
+    direct: "DIRECT"
+  };
+
+  return (
+    labels[source] ??
+    String(
+      source ||
+      "DIRECT"
+    ).toUpperCase()
+  );
+}
 
 const runMods = {
   twinShots: 0,
@@ -4372,7 +4514,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.51",
+      "../songs/index.json?v=0.52",
       import.meta.url
     );
 
@@ -4647,7 +4789,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.51`,
+      `../songs/${entry.file}?v=0.52`,
       import.meta.url
     );
 
@@ -5795,7 +5937,10 @@ function configureLaunchedProjectile(
     radiusScale = 1,
     fragment = false,
     inheritMods = true,
-    bonusRicochets = 0
+    bonusRicochets = 0,
+    source = "tap",
+    resonant = false,
+    aimIntent = 0
   } = {}
 ) {
   note.launched = true;
@@ -5809,6 +5954,15 @@ function configureLaunchedProjectile(
   note.power = power;
   note.radiusScale = radiusScale;
   note.fragment = fragment;
+  note.source = source;
+  note.resonant =
+    Boolean(resonant);
+  note.aimIntent =
+    clamp(
+      Number(aimIntent) || 0,
+      -1,
+      1
+    );
   note.ricochetsLeft =
     (
       inheritMods
@@ -5834,7 +5988,10 @@ function spawnLaunchedProjectile({
   fragment = false,
   speed = POST_HIT_SPEED,
   inheritMods = true,
-  bonusRicochets = 0
+  bonusRicochets = 0,
+  source = "tap",
+  resonant = false,
+  aimIntent = 0
 }) {
   const key =
     `fx:${performance.now().toFixed(3)}:${Math.random().toString(36).slice(2)}`;
@@ -5853,7 +6010,16 @@ function spawnLaunchedProjectile({
     vy: 0,
     power,
     radiusScale,
-    fragment
+    fragment,
+    source,
+    resonant:
+      Boolean(resonant),
+    aimIntent:
+      clamp(
+        Number(aimIntent) || 0,
+        -1,
+        1
+      )
   };
 
   configureLaunchedProjectile(
@@ -5865,7 +6031,10 @@ function spawnLaunchedProjectile({
       radiusScale,
       fragment,
       inheritMods,
-      bonusRicochets
+      bonusRicochets,
+      source,
+      resonant,
+      aimIntent
     }
   );
 
@@ -5915,6 +6084,26 @@ function resolveTapHit(note, side, songTime) {
     );
   }
 
+  const absDeltaMs =
+    Math.abs(deltaMs);
+  adjustResonance(
+    absDeltaMs <=
+      SYNC_CENTER_MS
+      ? 4
+      : absDeltaMs <= 90
+        ? 2
+        : 1,
+    absDeltaMs <=
+      SYNC_CENTER_MS
+      ? "tap-center"
+      : "tap"
+  );
+  const resonantMatter =
+    absDeltaMs <=
+      SYNC_CENTER_MS &&
+    resonance >=
+      RESONANCE_BLOOM_THRESHOLD;
+
   const segment = flipperSegment(side, songTime);
   const baseAngle =
     Math.atan2(
@@ -5930,7 +6119,14 @@ function resolveTapHit(note, side, songTime) {
   configureLaunchedProjectile(
     note,
     angles[0],
-    { inheritMods: true }
+    {
+      inheritMods: true,
+      source: "tap",
+      resonant:
+        resonantMatter,
+      aimIntent:
+        aimBias
+    }
   );
 
   for (let index = 1; index < angles.length; index += 1) {
@@ -5940,7 +6136,12 @@ function resolveTapHit(note, side, songTime) {
       angle: angles[index],
       side,
       symbol: "•",
-      inheritMods: true
+      inheritMods: true,
+      source: "twin",
+      resonant:
+        resonantMatter,
+      aimIntent:
+        aimBias
     });
   }
 
@@ -6057,6 +6258,14 @@ function failEvent(event, label = "MISS") {
   }
 
   missCount += 1;
+  adjustResonance(
+    protectedCombo
+      ? -5
+      : -12,
+    protectedCombo
+      ? "shielded-miss"
+      : "miss"
+  );
   lastDeltaMs = null;
   lastJudgement = label;
 
@@ -6144,7 +6353,10 @@ function createExplosion(
   scale = 1,
   {
     emitFragments = true,
-    side = "neutral"
+    side = "neutral",
+    source = "explosion",
+    resonant = false,
+    aimIntent = 0
   } = {}
 ) {
   const shockRadius =
@@ -6261,7 +6473,13 @@ function createExplosion(
         radiusScale: 0.48,
         fragment: true,
         speed: POST_HIT_SPEED * 0.72,
-        inheritMods: false
+        inheritMods: false,
+        source:
+          source === "explosion"
+            ? "fragment"
+            : source,
+        resonant,
+        aimIntent
       });
     }
   }
@@ -6821,7 +7039,14 @@ function resolveProjectileCollisions() {
               speed:
                 POST_HIT_SPEED *
                 0.86,
-              inheritMods: false
+              inheritMods: false,
+              source: "chain",
+              resonant:
+                Boolean(
+                  projectile.resonant
+                ),
+              aimIntent:
+                projectile.aimIntent
             });
           }
         }
@@ -6845,6 +7070,29 @@ function resolveProjectileCollisions() {
         resolved.add(other.key);
         chainCount += 1;
         recordLifetimeMetric("totalChains", 1);
+        adjustResonance(
+          2,
+          "chain"
+        );
+
+        if (runStats) {
+          recordSource(
+            runStats.chainSources,
+            projectile.source,
+            1
+          );
+
+          if (
+            Math.abs(
+              Number(
+                projectile.aimIntent || 0
+              )
+            ) >= 0.45
+          ) {
+            runStats.aimedChains +=
+              1;
+          }
+        }
 
         if (
           runStats &&
@@ -6935,7 +7183,34 @@ function resolveProjectileCollisions() {
           emitFragments:
             !projectile.fragment &&
             !other.fragment,
-          side: projectile.side
+          side: projectile.side,
+          source:
+            fusion
+              ? "fusion"
+              : chain
+                ? "chain"
+                : projectile.source ??
+                  "collision",
+          resonant:
+            Boolean(
+              projectile.resonant ||
+              other.resonant
+            ),
+          aimIntent:
+            Math.abs(
+              Number(
+                projectile.aimIntent ||
+                0
+              )
+            ) >=
+            Math.abs(
+              Number(
+                other.aimIntent ||
+                0
+              )
+            )
+              ? projectile.aimIntent
+              : other.aimIntent
         }
       );
 
@@ -6961,7 +7236,14 @@ function resolveProjectileCollisions() {
             symbol: "↯",
             radiusScale: 0.72,
             speed: POST_HIT_SPEED * 0.86,
-            inheritMods: false
+            inheritMods: false,
+            source: "chain",
+            resonant:
+              Boolean(
+                projectile.resonant
+              ),
+            aimIntent:
+              projectile.aimIntent
           });
         }
       }
@@ -7065,6 +7347,42 @@ function reflectProjectileFromCircle(
     projectile.x;
   projectile.prevY =
     projectile.y;
+}
+
+function bossDamageSource(
+  projectile
+) {
+  if (
+    projectile?.source
+  ) {
+    return projectile.source;
+  }
+
+  return projectile?.power
+    ? "power"
+    : "direct";
+}
+
+function dominantBossPath() {
+  const entries =
+    Object.entries(
+      bossState.damageSources ??
+      {}
+    ).sort(
+      (a, b) =>
+        b[1] - a[1]
+    );
+
+  if (entries.length === 0) {
+    return "SIN DAÑO AL CORE";
+  }
+
+  const [
+    source,
+    damage
+  ] = entries[0];
+
+  return `${projectileSourceLabel(source)} · ${damage} DMG`;
 }
 
 function resolveBossCollisions(songTime) {
@@ -7210,10 +7528,29 @@ function resolveBossCollisions(songTime) {
       continue;
     }
 
+    const resonanceBonus =
+      projectile.resonant &&
+      resonance >=
+        RESONANCE_BLOOM_THRESHOLD
+        ? 1
+        : 0;
     const damage =
-      projectile.power
-        ? 3
-        : 1;
+      (
+        projectile.power
+          ? 3
+          : 1
+      ) +
+      resonanceBonus;
+    const damageSource =
+      bossDamageSource(
+        projectile
+      );
+
+    recordSource(
+      bossState.damageSources,
+      damageSource,
+      damage
+    );
 
     active.delete(projectile.key);
     bossState.health =
@@ -7244,9 +7581,15 @@ function resolveBossCollisions(songTime) {
     );
 
     showMessage(
-      `CORE -${damage}`,
-      "#ffdf85",
-      320
+      resonanceBonus > 0
+        ? `CORE -${damage} · RESONANT`
+        : `CORE -${damage}`,
+      resonanceBonus > 0
+        ? "#fff1a9"
+        : "#ffdf85",
+      resonanceBonus > 0
+        ? 460
+        : 320
     );
     setOperatorMood(
       "boss",
@@ -7441,7 +7784,14 @@ function resolveBumperCollisions() {
                 projectile.vx,
                 projectile.vy
               ),
-            inheritMods: false
+            inheritMods: false,
+            source: "bumper",
+            resonant:
+              Boolean(
+                projectile.resonant
+              ),
+            aimIntent:
+              projectile.aimIntent
           });
 
         child.bumperSplitUsed = true;
@@ -7706,7 +8056,18 @@ function updateTap(note, dt, songTime) {
           : 1,
         {
           emitFragments: !note.fragment,
-          side: note.side
+          side: note.side,
+          source:
+            runMods.wallCharge > 0
+              ? "wall"
+              : note.source ??
+                "collision",
+          resonant:
+            Boolean(
+              note.resonant
+            ),
+          aimIntent:
+            note.aimIntent
         }
       );
     }
@@ -8131,7 +8492,11 @@ function spawnSlideProjectile(event) {
       speed: POWER_ORB_SPEED,
       inheritMods: true,
       bonusRicochets:
-        POWER_ORB_BONUS_RICOCHETS
+        POWER_ORB_BONUS_RICOCHETS,
+      source: "trace",
+      resonant:
+        resonance >=
+        RESONANCE_BLOOM_THRESHOLD
     });
   }
 
@@ -8182,7 +8547,11 @@ function spawnSlideProjectile(event) {
           POWER_ORB_SPEED,
         inheritMods: true,
         bonusRicochets:
-          POWER_ORB_BONUS_RICOCHETS
+          POWER_ORB_BONUS_RICOCHETS,
+        source: "trace",
+        resonant:
+          resonance >=
+          RESONANCE_BLOOM_THRESHOLD
       });
     }
   }
@@ -8219,6 +8588,10 @@ function finishSlide(event) {
   recordLifetimeMetric(
     "traceSuccess",
     1
+  );
+  adjustResonance(
+    7,
+    "trace"
   );
 
   combo += 1;
@@ -9499,6 +9872,8 @@ function updateHud() {
     lastDeltaMs === null
       ? lastJudgement
       : `${lastJudgement} ${lastDeltaMs >= 0 ? "+" : ""}${lastDeltaMs}ms`;
+
+  renderResonanceHud();
 }
 
 let lastHudSection = "";
@@ -13602,8 +13977,8 @@ function drawDebug(songTime) {
     `hits ${hitCount} miss ${missCount} chain ${chainCount} choque ${collisionCount} pared ${wallExplosionCount}`,
     `song ${SONG?.id ?? "loading"} · sync ${songAlignmentReport?.checked ?? 0}/${CHART.length}`,
     `input ${lastInputType} · offset ${calibrationOffsetMs >= 0 ? "+" : ""}${calibrationOffsetMs}ms`,
-    `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)}`,
-    `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0}`
+    `FPS ${fps.toFixed(0)} · multi x${comboMultiplier(combo)} · RES ${Math.round(resonance)}`,
+    `mode ${runMode} seed ${runSeed} · SLIDE ${runStats?.traceSuccess ?? 0}/${runStats?.traceAttempts ?? 0} · aimCHAIN ${runStats?.aimedChains ?? 0}`
   ];
 
   ctx.fillStyle = "rgba(0,0,0,.52)";
@@ -15943,6 +16318,7 @@ async function beginAct() {
     maxHealth: BOSS_MAX_HEALTH,
     broken: false,
     damage: 0,
+    damageSources: {},
     hitFlash: 0,
     shieldFlash: 0,
     armor: [false, false, false],
@@ -16303,6 +16679,16 @@ function completeRun() {
     runStats.chainCount = chainCount;
     runStats.bossDamage =
       completedBossDamage;
+    runStats.finalResonance =
+      resonance;
+    runStats.peakResonance =
+      peakResonance;
+    runStats.minResonance =
+      minResonance;
+    runStats.bossDamageSources =
+      {
+        ...bossState.damageSources
+      };
   }
 
   const timing =
@@ -16369,6 +16755,18 @@ function completeRun() {
       summaryTimingBias.textContent =
         `${bias} AVG · ${timing.meanAbsMs}ms ERROR · ${direction}`;
     }
+  }
+
+  if (summaryResonance) {
+    summaryResonance.textContent =
+      `${Math.round(resonance)} · PEAK ${Math.round(peakResonance)}`;
+  }
+
+  if (summaryBossPath) {
+    summaryBossPath.textContent =
+      practice
+        ? "CORE PATH · —"
+        : `CORE PATH · ${dominantBossPath()}`;
   }
 
   summaryTitle.textContent =
@@ -17079,6 +17477,12 @@ async function startRun(mode = "standard") {
   chainCount = 0;
   collisionCount = 0;
   wallExplosionCount = 0;
+  resonance =
+    RESONANCE_START;
+  peakResonance =
+    RESONANCE_START;
+  minResonance =
+    RESONANCE_START;
   wave = 1;
   awaitingUpgrade = false;
   buildHistory = [];
@@ -17103,6 +17507,7 @@ async function startRun(mode = "standard") {
     maxHealth: BOSS_MAX_HEALTH,
     broken: false,
     damage: 0,
+    damageSources: {},
     hitFlash: 0,
     shieldFlash: 0,
     armor: [false, false, false],
