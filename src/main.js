@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.56";
+} from "./song.js?v=0.57";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.56";
+} from "./music.js?v=0.57";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.56";
+} from "./audio-file.js?v=0.57";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -107,7 +107,7 @@ const advancedTimingToggle = document.querySelector("#advancedTimingToggle");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.56";
+const GAME_VERSION = "0.57";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -121,9 +121,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.56";
+  "./assets/world/glasshouse-far.svg?v=0.57";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.56";
+  "./assets/world/growth-bays.svg?v=0.57";
 
 function drawWorldAsset(
   image,
@@ -770,6 +770,8 @@ let shieldGuideUntil = -Infinity;
 let phaseWorldState = {
   traceRewriteUntilBeat: -Infinity
 };
+let shieldEchoState =
+  new Map();
 
 function bumpFeedback(
   shake = 0,
@@ -1004,6 +1006,11 @@ function newRunStats() {
     },
     bossRoutedHits: 0,
     bossRouteDamage: 0,
+    shieldEcho: {
+      armed: 0,
+      resolved: 0,
+      missed: 0
+    },
     upgradeOffers: [],
     chosenUpgrades: [],
     firstChainMs: null
@@ -3289,6 +3296,7 @@ function projectileSourceLabel(
     fusion: "FUSION",
     fragment: "FRAGMENT",
     bumper: "BUMPER",
+    echo: "ECHO",
     collision: "COLLISION",
     direct: "DIRECT"
   };
@@ -3549,6 +3557,14 @@ function moduleLevel(id) {
   return Number(
     moduleInventory.get(id) || 0
   );
+}
+
+function activeModuleLevel(id) {
+  return activeModuleIds.includes(
+    id
+  )
+    ? moduleLevel(id)
+    : 0;
 }
 
 function activeBuildCounts() {
@@ -4023,9 +4039,25 @@ function moduleLevelEffect(
     case "twin-shot":
       return `${1 + level} ORBS POR PERFECT`;
     case "ricochet":
-      return `${level} REBOTE${level === 1 ? "" : "S"} POR PROYECTIL`;
+      if (level === 1) {
+        return "1 REBOTE POR PROYECTIL";
+      }
+
+      if (level === 2) {
+        return "2 REBOTES · 1º→RESONANT";
+      }
+
+      return "3 REBOTES · 1º→RESONANT+PERFORA";
     case "pierce":
-      return `ATRAVIESA ${level} BLANCO${level === 1 ? "" : "S"}`;
+      if (level === 1) {
+        return "ATRAVIESA 1 BLANCO";
+      }
+
+      if (level === 2) {
+        return "2 BLANCOS · SHIELD NO CONSUME";
+      }
+
+      return "3 BLANCOS · ECHO SALE PERFORANTE";
     case "fragments":
       if (level === 1) {
         return "3 FRAGMENTOS POR EXPLOSIÓN";
@@ -4724,7 +4756,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.56",
+      "../songs/index.json?v=0.57",
       import.meta.url
     );
 
@@ -5040,7 +5072,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.56`,
+      `../songs/${entry.file}?v=0.57`,
       import.meta.url
     );
 
@@ -5744,7 +5776,12 @@ function spawnReady(
             shieldBreakSongTime:
               null,
             shieldLateGrace:
-              false
+              false,
+            echoCharge:
+              shieldEchoState.get(
+                key
+              ) ??
+              null
           }
         );
       }
@@ -6801,6 +6838,7 @@ function configureLaunchedProjectile(
     fragment = false,
     inheritMods = true,
     bonusRicochets = 0,
+    bonusPierces = 0,
     source = "tap",
     resonant = false,
     aimIntent = 0
@@ -6810,6 +6848,8 @@ function configureLaunchedProjectile(
   note.launchedAt =
     performance.now();
   note.ricochetAt = -Infinity;
+  note.ricochetMutationUsed =
+    false;
   note.prevX = note.x;
   note.prevY = note.y;
   note.vx = Math.cos(angle) * speed;
@@ -6837,7 +6877,15 @@ function configureLaunchedProjectile(
       bonusRicochets
     );
   note.piercesLeft =
-    inheritMods ? runMods.pierceHits : 0;
+    (
+      inheritMods
+        ? runMods.pierceHits
+        : 0
+    ) +
+    Math.max(
+      0,
+      bonusPierces
+    );
 }
 
 function spawnLaunchedProjectile({
@@ -6852,6 +6900,7 @@ function spawnLaunchedProjectile({
   speed = POST_HIT_SPEED,
   inheritMods = true,
   bonusRicochets = 0,
+  bonusPierces = 0,
   source = "tap",
   resonant = false,
   aimIntent = 0
@@ -6895,6 +6944,7 @@ function spawnLaunchedProjectile({
       fragment,
       inheritMods,
       bonusRicochets,
+      bonusPierces,
       source,
       resonant,
       aimIntent
@@ -7024,6 +7074,71 @@ function resolveTapHit(note, side, songTime) {
     });
   }
 
+  const echoCharge =
+    note.echoCharge ??
+    null;
+
+  if (echoCharge) {
+    const echoAngle =
+      baseAngle +
+      (
+        side === "left"
+          ? 0.11
+          : -0.11
+      );
+
+    spawnLaunchedProjectile({
+      x: note.x,
+      y: note.y,
+      angle:
+        echoAngle,
+      side,
+      symbol: "◆",
+      power: true,
+      radiusScale: 0.86,
+      speed:
+        POST_HIT_SPEED *
+        0.90,
+      inheritMods: false,
+      bonusRicochets: 1,
+      bonusPierces:
+        Number(
+          echoCharge
+            .pierceBonus ||
+          0
+        ),
+      source: "echo",
+      resonant: true,
+      aimIntent:
+        aimBias
+    });
+
+    adjustResonance(
+      4,
+      "shield-echo"
+    );
+    shieldEchoState.delete(
+      note.key
+    );
+
+    if (runStats?.shieldEcho) {
+      runStats
+        .shieldEcho
+        .resolved += 1;
+    }
+
+    clock.triggerInteractiveCue(
+      "shieldBreak",
+      {
+        strength: 1.12
+      }
+    );
+    impactSound(
+      "power",
+      0.92
+    );
+  }
+
   resolved.add(note.key);
   flippers[side].hitThisSwing = true;
 
@@ -7080,14 +7195,18 @@ function resolveTapHit(note, side, songTime) {
         )
       : "";
   const hitLabel =
-    `${shotCount > 1 ? `PERFECT · ×${shotCount}` : "PERFECT"}${aimArrow ? ` · ${aimArrow}` : ""}`;
+    echoCharge
+      ? `ECHO PERFECT · POWER${echoCharge.pierceBonus ? " · PERFORA" : ""}`
+      : `${shotCount > 1 ? `PERFECT · ×${shotCount}` : "PERFECT"}${aimArrow ? ` · ${aimArrow}` : ""}`;
 
   showMessage(
     hitLabel,
     JUDGEMENTS.perfect.color,
-    shotCount > 1 || aimArrow
-      ? 480
-      : 360
+    echoCharge
+      ? 620
+      : shotCount > 1 || aimArrow
+        ? 480
+        : 360
   );
   hitSound(
     side,
@@ -7124,6 +7243,23 @@ function resolveTapHit(note, side, songTime) {
 }
 
 function failEvent(event, label = "MISS") {
+  const echoLost =
+    Boolean(
+      event.echoCharge
+    );
+
+  if (echoLost) {
+    shieldEchoState.delete(
+      event.key
+    );
+
+    if (runStats?.shieldEcho) {
+      runStats
+        .shieldEcho
+        .missed += 1;
+    }
+  }
+
   const protectedCombo =
     combo > 0 && runMods.comboShieldCharges > 0;
 
@@ -7160,10 +7296,15 @@ function failEvent(event, label = "MISS") {
     protectedCombo ? 0.035 : 0.07
   );
 
+  const missLabel =
+    echoLost
+      ? "ECHO MISS"
+      : label;
+
   showMessage(
     protectedCombo
-      ? `${label} · ESCUDO`
-      : label,
+      ? `${missLabel} · ESCUDO`
+      : missLabel,
     protectedCombo ? "#9edcff" : "#ff7184",
     protectedCombo ? 480 : 360
   );
@@ -7687,6 +7828,146 @@ function drawShieldBreakEcho(
   context.restore();
 }
 
+function shieldEchoTarget(
+  note
+) {
+  const echo =
+    note?.shieldEcho;
+
+  if (!echo) {
+    return null;
+  }
+
+  const targetIndex =
+    CHART.findIndex(
+      (event) =>
+        event.type === "tap" &&
+        event.beat ===
+          echo.targetBeat &&
+        (
+          !echo.targetSide ||
+          event.side ===
+            echo.targetSide
+        )
+    );
+
+  if (targetIndex < 0) {
+    return null;
+  }
+
+  return {
+    key:
+      `${wave}:${targetIndex}`,
+    event:
+      CHART[targetIndex],
+    index:
+      targetIndex
+  };
+}
+
+function armShieldEcho(
+  note,
+  projectile,
+  source
+) {
+  const echo =
+    note?.shieldEcho;
+
+  if (!echo) {
+    return null;
+  }
+
+  const leadBeats =
+    (
+      note.targetTime -
+      clock.songTime
+    ) /
+    beatToSeconds(1);
+  const minLeadBeats =
+    Math.max(
+      0,
+      Number(
+        echo.minLeadBeats ??
+        0.35
+      ) || 0
+    );
+
+  if (
+    leadBeats <
+    minLeadBeats
+  ) {
+    return null;
+  }
+
+  const target =
+    shieldEchoTarget(
+      note
+    );
+
+  if (!target) {
+    return null;
+  }
+
+  const existing =
+    shieldEchoState.get(
+      target.key
+    );
+
+  if (existing) {
+    return existing;
+  }
+
+  const pierceBonus =
+    activeModuleLevel(
+      "pierce"
+    ) >= 3 &&
+    Number(
+      projectile?.piercesLeft ||
+      0
+    ) > 0
+      ? 1
+      : 0;
+  const charge = {
+    sourceBeat:
+      note.beat,
+    targetBeat:
+      echo.targetBeat,
+    source,
+    armedAtBeat:
+      Number(
+        (
+          clock.beat ?? 0
+        ).toFixed(3)
+      ),
+    pierceBonus
+  };
+
+  shieldEchoState.set(
+    target.key,
+    charge
+  );
+
+  const activeTarget =
+    active.get(
+      target.key
+    );
+
+  if (
+    activeTarget &&
+    !activeTarget.launched
+  ) {
+    activeTarget.echoCharge =
+      charge;
+  }
+
+  if (runStats?.shieldEcho) {
+    runStats.shieldEcho.armed +=
+      1;
+  }
+
+  return charge;
+}
+
 function breakNoteShield(
   note,
   projectile,
@@ -7715,6 +7996,13 @@ function breakNoteShield(
     timeToBeat >=
       -TAP_MISS_WINDOW;
 
+  const echoCharge =
+    armShieldEcho(
+      note,
+      projectile,
+      source
+    );
+
   if (chain) {
     chainCount += 1;
     recordLifetimeMetric(
@@ -7740,13 +8028,19 @@ function breakNoteShield(
   );
 
   showMessage(
-    chain
-      ? "CHAIN · ESCUDO ROTO"
-      : source === "SHOCK"
-        ? "SHOCK · ESCUDO"
-        : note.shieldLateGrace
-          ? "ESCUDO ROTO · ¡AHORA!"
-          : "ESCUDO ROTO",
+    echoCharge
+      ? (
+          chain
+            ? "CHAIN · ECHO ARMADO"
+            : "ESCUDO ROTO · ECHO ARMADO"
+        )
+      : chain
+        ? "CHAIN · ESCUDO ROTO"
+        : source === "SHOCK"
+          ? "SHOCK · ESCUDO"
+          : note.shieldLateGrace
+            ? "ESCUDO ROTO · ¡AHORA!"
+            : "ESCUDO ROTO",
     chain
       ? "#ffe985"
       : "#bfeaff",
@@ -7884,7 +8178,15 @@ function resolveProjectileCollisions() {
         );
 
         if (pierces) {
-          projectile.piercesLeft -= 1;
+          if (
+            activeModuleLevel(
+              "pierce"
+            ) < 2
+          ) {
+            projectile.piercesLeft -=
+              1;
+          }
+
           projectile.shieldPassKeys ??=
             new Set();
           projectile.shieldPassKeys.add(
@@ -9022,6 +9324,41 @@ function updateTap(note, dt, songTime) {
         note.prevY = note.y;
         note.ricochetAt =
           performance.now();
+
+        const ricochetLevel =
+          activeModuleLevel(
+            "ricochet"
+          );
+
+        if (
+          ricochetLevel >= 2 &&
+          !note
+            .ricochetMutationUsed
+        ) {
+          note
+            .ricochetMutationUsed =
+              true;
+          note.resonant =
+            true;
+
+          if (
+            ricochetLevel >= 3
+          ) {
+            note.piercesLeft =
+              Number(
+                note.piercesLeft ||
+                0
+              ) +
+              1;
+          }
+
+          impactSound(
+            ricochetLevel >= 3
+              ? "power"
+              : "bumper",
+            0.72
+          );
+        }
 
         bumpFeedback(
           0.9,
@@ -14093,6 +14430,65 @@ function drawTap(note) {
   }
 
   if (
+    !note.launched &&
+    note.echoCharge
+  ) {
+    const echoPulse =
+      0.5 +
+      0.5 *
+        Math.sin(
+          performance.now() /
+          150
+        );
+
+    ctx.save();
+    ctx.shadowBlur =
+      8 +
+      echoPulse * 5;
+    ctx.shadowColor =
+      "#fff1a9";
+    ctx.strokeStyle =
+      `rgba(255,241,169,${0.52 + echoPulse * 0.24})`;
+    ctx.lineWidth = 2.3;
+    ctx.setLineDash(
+      [4, 5]
+    );
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius + 11,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle =
+      "#fff1a9";
+    ctx.beginPath();
+    ctx.moveTo(
+      0,
+      -radius - 17
+    );
+    ctx.lineTo(
+      4,
+      -radius - 13
+    );
+    ctx.lineTo(
+      0,
+      -radius - 9
+    );
+    ctx.lineTo(
+      -4,
+      -radius - 13
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  if (
     !profile.tutorialSeen &&
     note.shieldIntact &&
     note.beat === 14
@@ -14248,6 +14644,26 @@ function drawTap(note) {
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  if (
+    note.launched &&
+    note.resonant &&
+    !note.power
+  ) {
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle =
+      "rgba(255,241,169,.58)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      radius + 3,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
   }
 
   if (
@@ -15222,6 +15638,8 @@ function resetWaveState() {
     traceRewriteUntilBeat:
       -Infinity
   };
+  shieldEchoState =
+    new Map();
   for (const side of ["left", "right"]) {
     slideControl[side].held = false;
     slideControl[side].x = 0;
@@ -16681,8 +17099,14 @@ function drawModulePreview(
         );
         drawPreviewLabel(
           context,
-          "REBOTE",
-          familyColor,
+          previewLevel >= 3
+            ? "REBOTE · +PERFORA"
+            : previewLevel >= 2
+              ? "REBOTE · RESONANT"
+              : "REBOTE",
+          previewLevel >= 2
+            ? "#fff1a9"
+            : familyColor,
           1 -
             clamp(
               q - .62,
@@ -16767,7 +17191,11 @@ function drawModulePreview(
       ) {
         drawPreviewLabel(
           context,
-          "CHAIN · PERFORA",
+          previewLevel >= 3
+            ? "ECHO · PERFORA"
+            : previewLevel >= 2
+              ? "SHIELD · NO CONSUME"
+              : "CHAIN · PERFORA",
           "#ffe56d",
           1,
           24
