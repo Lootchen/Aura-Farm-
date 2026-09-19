@@ -5607,7 +5607,7 @@ function phaseWorldRewriteActive(
   beat = clock?.beat ?? 0
 ) {
   return (
-    Number(beat) <=
+    Number(beat) <
     phaseWorldState
       .traceRewriteUntilBeat
   );
