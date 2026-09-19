@@ -5442,3 +5442,36 @@ button { font: inherit; }
 
 
 /* v0.53 — readability budget is runtime-driven; incoming notes/TRACE keep full priority. */
+
+
+/* v0.56 — optional mastery diagnostics + accessibility feedback */
+.feedback-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.feedback-settings button {
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(255,255,255,.13) !important;
+  background: rgba(255,255,255,.045) !important;
+  color: rgba(255,255,255,.68) !important;
+  font: 900 .48rem/1 ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+.feedback-settings button[data-state="on"] {
+  border-color: rgba(var(--machine-secondary),.36) !important;
+  background: rgba(var(--machine-secondary),.09) !important;
+  color: rgb(var(--machine-secondary)) !important;
+}
+
+.summary-timing-details {
+  grid-column: 1 / -1;
+  padding: 6px 0 2px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  color: rgba(255,255,255,.52) !important;
+  line-height: 1.45 !important;
+}
