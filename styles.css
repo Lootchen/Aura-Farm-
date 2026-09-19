@@ -5329,3 +5329,43 @@ button { font: inherit; }
 .run-card small {
   letter-spacing: .06em;
 }
+
+
+/* v0.51 — agency + mastery experiment */
+.summary-sync {
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 4px 10px;
+  border: 1px solid rgba(var(--machine-secondary),.16);
+  border-radius: 12px;
+  background: rgba(var(--machine-secondary),.045);
+}
+
+.summary-sync > span {
+  justify-self: start;
+  color: rgba(255,255,255,.48);
+  font: 900 .54rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .10em;
+}
+
+.summary-sync > strong {
+  justify-self: end;
+  color: rgb(var(--machine-secondary));
+  font-size: 1rem;
+}
+
+.summary-sync > small {
+  grid-column: 1 / -1;
+  justify-self: start;
+  color: rgba(255,255,255,.42);
+  font: 800 .48rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .035em;
+}
+
+@media (max-height: 720px) {
+  .summary-sync {
+    padding-block: 7px;
+  }
+}
