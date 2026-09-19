@@ -375,7 +375,7 @@ const profile = loadLocalJson(
     runsCompleted: 0,
     bestScore: 0,
     selectedMachine: "forge",
-    selectedSongId: "glasshouse-circuit",
+    selectedSongId: "bloom-overdrive",
     calibrationOffsetMs: 0,
     dailyBest: {},
     tutorialSeen: false,
