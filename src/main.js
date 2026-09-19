@@ -749,7 +749,7 @@ function resonanceBloomThreshold() {
   return Number(
     machineRules()
       .resonanceThreshold ??
-    resonanceBloomThreshold()
+    RESONANCE_BLOOM_THRESHOLD
   );
 }
 
@@ -3062,6 +3062,14 @@ let collisionCount = 0;
 let wallExplosionCount = 0;
 let impactVoiceTimes = [];
 let impactVoicesDropped = 0;
+let readabilityState = {
+  projectiles: 0,
+  fragments: 0,
+  explosions: 0,
+  flashes: 0,
+  weighted: 0,
+  pressure: 0
+};
 let resonance = RESONANCE_START;
 let peakResonance = RESONANCE_START;
 let minResonance = RESONANCE_START;
@@ -5555,7 +5563,7 @@ function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
   oscillator.stop(now + duration + 0.01);
 }
 
-function readabilityBudget() {
+function updateReadabilityBudget() {
   let projectiles = 0;
   let fragments = 0;
 
@@ -5590,6 +5598,17 @@ function readabilityBudget() {
       1
     );
 
+  readabilityState = {
+    projectiles,
+    fragments,
+    explosions:
+      explosionCount,
+    flashes:
+      flashCount,
+    weighted,
+    pressure
+  };
+
   if (runStats) {
     runStats.peakProjectiles =
       Math.max(
@@ -5613,16 +5632,11 @@ function readabilityBudget() {
       );
   }
 
-  return {
-    projectiles,
-    fragments,
-    explosions:
-      explosionCount,
-    flashes:
-      flashCount,
-    weighted,
-    pressure
-  };
+  return readabilityState;
+}
+
+function readabilityBudget() {
+  return readabilityState;
 }
 
 function impactVoiceAllowed(
@@ -10099,7 +10113,7 @@ function processSongEvents() {
 }
 
 function updateEffects(dt) {
-  readabilityBudget();
+  updateReadabilityBudget();
 
   if (runStats) {
     runStats.impactVoicesDropped =
@@ -17135,7 +17149,9 @@ function completeRun() {
     runStats.impactVoicesDropped =
       impactVoicesDropped;
     runStats.density =
-      readabilityBudget();
+      {
+        ...updateReadabilityBudget()
+      };
   }
 
   const timing =
@@ -17199,8 +17215,23 @@ function completeRun() {
             ? "TEMPRANO"
             : "TARDE";
 
+      const enoughSamples =
+        timing.count >= 20;
+      const suggestedOffset =
+        Math.round(
+          calibrationOffsetMs -
+          timing.meanMs
+        );
+      const suggestion =
+        enoughSamples &&
+        Math.abs(
+          timing.meanMs
+        ) >= 25
+          ? ` · PRUEBA OFFSET ${suggestedOffset >= 0 ? "+" : ""}${suggestedOffset}ms`
+          : "";
+
       summaryTimingBias.textContent =
-        `${bias} AVG · ${timing.meanAbsMs}ms ERROR · ${direction}`;
+        `${bias} AVG · ${timing.meanAbsMs}ms ERROR · ${direction}${suggestion}`;
     }
   }
 
@@ -17926,6 +17957,14 @@ async function startRun(mode = "standard") {
   wallExplosionCount = 0;
   impactVoiceTimes = [];
   impactVoicesDropped = 0;
+  readabilityState = {
+    projectiles: 0,
+    fragments: 0,
+    explosions: 0,
+    flashes: 0,
+    weighted: 0,
+    pressure: 0
+  };
   resonance =
     machineStartResonance();
   peakResonance =
