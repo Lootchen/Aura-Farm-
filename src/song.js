@@ -389,6 +389,8 @@ export function validateGameSong(
     );
   }
 
+  validateMusicFeel(song);
+
   if (
     !Array.isArray(
       song.charts
@@ -435,6 +437,225 @@ export function validateGameSong(
     throw new Error(
       "defaultChart no existe en charts[]."
     );
+  }
+}
+
+function validateMusicFeel(
+  song
+) {
+  const feel =
+    song.musicFeel;
+
+  if (!feel) {
+    return;
+  }
+
+  if (
+    feel.motif !== undefined
+  ) {
+    if (
+      !Array.isArray(
+        feel.motif
+      ) ||
+      feel.motif.length < 2 ||
+      feel.motif.length > 12 ||
+      feel.motif.some(
+        (value) =>
+          !Number.isFinite(value) ||
+          value < -24 ||
+          value > 36
+      )
+    ) {
+      throw new Error(
+        "musicFeel.motif debe ser un array de 2..12 intervalos MIDI (-24..36)."
+      );
+    }
+  }
+
+  if (
+    feel.sectionCues !==
+      undefined
+  ) {
+    if (
+      !feel.sectionCues ||
+      typeof feel.sectionCues !==
+        "object" ||
+      Array.isArray(
+        feel.sectionCues
+      )
+    ) {
+      throw new Error(
+        "musicFeel.sectionCues debe ser objeto."
+      );
+    }
+
+    for (
+      const [name, cue] of
+      Object.entries(
+        feel.sectionCues
+      )
+    ) {
+      requireString(
+        name,
+        "musicFeel.sectionCues key"
+      );
+
+      if (
+        !cue ||
+        !Array.isArray(
+          cue.intervals
+        ) ||
+        cue.intervals.length < 1 ||
+        cue.intervals.length > 6 ||
+        cue.intervals.some(
+          (value) =>
+            !Number.isFinite(value) ||
+            value < -24 ||
+            value > 36
+        )
+      ) {
+        throw new Error(
+          `musicFeel.sectionCues.${name}.intervals inválido.`
+        );
+      }
+
+      if (
+        cue.gain !== undefined &&
+        (
+          !Number.isFinite(
+            cue.gain
+          ) ||
+          cue.gain < 0 ||
+          cue.gain > 1.5
+        )
+      ) {
+        throw new Error(
+          `musicFeel.sectionCues.${name}.gain debe estar entre 0 y 1.5.`
+        );
+      }
+    }
+  }
+
+  if (
+    feel.actArrangements !==
+      undefined
+  ) {
+    if (
+      !Array.isArray(
+        feel.actArrangements
+      ) ||
+      feel.actArrangements.length <
+        1 ||
+      feel.actArrangements.length >
+        12
+    ) {
+      throw new Error(
+        "musicFeel.actArrangements debe tener 1..12 entradas."
+      );
+    }
+
+    for (
+      const [
+        index,
+        arrangement
+      ] of
+      feel.actArrangements.entries()
+    ) {
+      if (
+        !arrangement ||
+        typeof arrangement !==
+          "object"
+      ) {
+        throw new Error(
+          `musicFeel.actArrangements[${index}] inválido.`
+        );
+      }
+
+      for (
+        const key of [
+          "drums",
+          "bass",
+          "harmony",
+          "lead",
+          "aura",
+          "brightness",
+          "drive"
+        ]
+      ) {
+        if (
+          arrangement[key] !==
+            undefined &&
+          (
+            !Number.isFinite(
+              arrangement[key]
+            ) ||
+            arrangement[key] < 0 ||
+            arrangement[key] > 1.5
+          )
+        ) {
+          throw new Error(
+            `musicFeel.actArrangements[${index}].${key} debe estar entre 0 y 1.5.`
+          );
+        }
+      }
+    }
+  }
+
+  if (
+    feel.interactiveCues !==
+      undefined
+  ) {
+    if (
+      !feel.interactiveCues ||
+      typeof feel.interactiveCues !==
+        "object" ||
+      Array.isArray(
+        feel.interactiveCues
+      )
+    ) {
+      throw new Error(
+        "musicFeel.interactiveCues debe ser objeto."
+      );
+    }
+
+    for (
+      const [name, cue] of
+      Object.entries(
+        feel.interactiveCues
+      )
+    ) {
+      requireString(
+        name,
+        "interactive cue name"
+      );
+
+      if (
+        !cue ||
+        !Array.isArray(
+          cue.intervals
+        ) ||
+        cue.intervals.length < 1
+      ) {
+        throw new Error(
+          `musicFeel.interactiveCues.${name}.intervals es obligatorio.`
+        );
+      }
+
+      if (
+        cue.quantize !== undefined &&
+        ![
+          "step",
+          "beat",
+          "bar"
+        ].includes(
+          cue.quantize
+        )
+      ) {
+        throw new Error(
+          `musicFeel.interactiveCues.${name}.quantize inválido.`
+        );
+      }
+    }
   }
 }
 
@@ -1315,5 +1536,225 @@ export function auditChartAlignment(
       errors.length,
     warnings,
     errors
+  };
+}
+
+
+export function auditChartFlow(
+  song,
+  chart
+) {
+  const warnings = [];
+  const timing =
+    song.timing;
+  const events =
+    [...chart.events]
+      .sort(
+        (a, b) =>
+          a.beat - b.beat
+      );
+
+  // TRACE occupies a continuous gesture. Standard charts should not
+  // accidentally ask for Tap during that gesture unless explicitly authored.
+  for (
+    const [
+      traceIndex,
+      trace
+    ] of
+    events.entries()
+  ) {
+    if (
+      trace.type !== "slide"
+    ) {
+      continue;
+    }
+
+    const end =
+      trace.beat +
+      trace.durationBeats;
+
+    for (
+      const [
+        eventIndex,
+        event
+      ] of
+      events.entries()
+    ) {
+      if (
+        event.type !== "tap" ||
+        event.beat <= trace.beat ||
+        event.beat >= end
+      ) {
+        continue;
+      }
+
+      if (
+        event.allowDuringTrace ===
+          true
+      ) {
+        continue;
+      }
+
+      warnings.push({
+        kind:
+          "trace-overlap",
+        index: eventIndex,
+        beat: event.beat,
+        traceBeat:
+          trace.beat,
+        traceEnd: end,
+        reason:
+          `Tap en beat ${event.beat} cae dentro de TRACE ${trace.beat}–${end}; marca allowDuringTrace sólo si el multitouch es intencional.`
+      });
+    }
+  }
+
+  // Window density catches accidental "map every sound" authoring.
+  const windowBeats =
+    timing.beatsPerBar;
+  const densityLimit =
+    chart.difficulty ===
+      "advanced"
+      ? 7
+      : 6;
+
+  for (
+    let start = 0;
+    start <
+      timing.beats;
+    start +=
+      timing.beatsPerBar
+  ) {
+    const count =
+      events.filter(
+        (event) =>
+          event.beat >= start &&
+          event.beat <
+            start + windowBeats
+      ).length;
+
+    if (
+      count > densityLimit
+    ) {
+      warnings.push({
+        kind:
+          "density",
+        beat: start,
+        reason:
+          `Compás ${Math.floor(start / timing.beatsPerBar) + 1}: ${count} eventos en ${windowBeats} beats; revisa overmapping/flow.`
+      });
+    }
+  }
+
+  // Each musical section should normally contain one breathing gap.
+  if (
+    song.audio.mode ===
+      "procedural" &&
+    song.composition?.bars
+  ) {
+    const ranges = [];
+    let current = null;
+
+    for (
+      const [
+        barIndex,
+        bar
+      ] of
+      song.composition.bars.entries()
+    ) {
+      const start =
+        barIndex *
+        timing.beatsPerBar;
+      const end =
+        start +
+        timing.beatsPerBar;
+
+      if (
+        !current ||
+        current.name !==
+          bar.section
+      ) {
+        if (current) {
+          ranges.push(
+            current
+          );
+        }
+
+        current = {
+          name: bar.section,
+          start,
+          end
+        };
+      } else {
+        current.end = end;
+      }
+    }
+
+    if (current) {
+      ranges.push(current);
+    }
+
+    for (
+      const range of
+      ranges
+    ) {
+      const beats =
+        events
+          .filter(
+            (event) =>
+              event.beat >=
+                range.start &&
+              event.beat <
+                range.end
+          )
+          .map(
+            (event) =>
+              event.beat
+          )
+          .sort(
+            (a, b) => a - b
+          );
+
+      const points = [
+        range.start,
+        ...beats,
+        range.end
+      ];
+      let longestGap = 0;
+
+      for (
+        let index = 1;
+        index < points.length;
+        index += 1
+      ) {
+        longestGap =
+          Math.max(
+            longestGap,
+            points[index] -
+              points[index - 1]
+          );
+      }
+
+      if (
+        beats.length >= 4 &&
+        longestGap <
+          1
+      ) {
+        warnings.push({
+          kind:
+            "recovery",
+          beat:
+            range.start,
+          reason:
+            `${range.name}: no hay hueco de recuperación ≥ 1 beat (máx. ${longestGap.toFixed(2)}).`
+        });
+      }
+    }
+  }
+
+  return {
+    ok:
+      warnings.length === 0,
+    warnings
   };
 }
