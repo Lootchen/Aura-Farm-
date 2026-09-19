@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.48";
+} from "./song.js?v=0.49";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.48";
+} from "./music.js?v=0.49";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.48";
+} from "./audio-file.js?v=0.49";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -30,6 +30,8 @@ const menuAuriLine = document.querySelector("#menuAuriLine");
 const menuTrackMeta = document.querySelector("#menuTrackMeta");
 const menuTrackTitle = document.querySelector("#menuTrackTitle");
 const menuTrackDescription = document.querySelector("#menuTrackDescription");
+const menuPhaseSummary = document.querySelector("#menuPhaseSummary");
+const menuPhaseStrip = document.querySelector("#menuPhaseStrip");
 const songPickerItems = document.querySelector("#songPickerItems");
 const menuVersion = document.querySelector("#menuVersion");
 const rerunButton = document.querySelector("#rerunButton");
@@ -94,7 +96,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.48";
+const GAME_VERSION = "0.49";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -108,9 +110,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.48";
+  "./assets/world/glasshouse-far.svg?v=0.49";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.48";
+  "./assets/world/growth-bays.svg?v=0.49";
 
 function drawWorldAsset(
   image,
@@ -4165,7 +4167,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.48",
+      "../songs/index.json?v=0.49",
       import.meta.url
     );
 
@@ -4341,6 +4343,41 @@ function applySongMetadataToUi(
       song.description;
   }
 
+  const phases =
+    Array.isArray(song.levelPhases)
+      ? song.levelPhases
+      : [];
+
+  if (menuPhaseSummary) {
+    menuPhaseSummary.textContent =
+      phases.length > 0
+        ? `${phases.length} FASES · ${phases.at(-1)?.name ?? "CLIMAX"}`
+        : "LOOP CLÁSICO";
+  }
+
+  if (menuPhaseStrip) {
+    menuPhaseStrip.innerHTML = "";
+
+    for (const phase of phases) {
+      const segment =
+        document.createElement("i");
+      const intensity =
+        clamp(
+          Number(phase.intensity) || 0.35,
+          0.12,
+          1
+        );
+
+      segment.style.setProperty(
+        "--phase-energy",
+        intensity.toFixed(2)
+      );
+      segment.title =
+        `${phase.name ?? "FASE"} · ${Math.round(intensity * 100)}% intensidad`;
+      menuPhaseStrip.append(segment);
+    }
+  }
+
   if (summaryTrack) {
     summaryTrack.textContent =
       `TRACK ${trackNumber} · ${song.title}`;
@@ -4367,7 +4404,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.48`,
+      `../songs/${entry.file}?v=0.49`,
       import.meta.url
     );
 
@@ -5019,6 +5056,173 @@ function playTone(frequency, duration = 0.045, volume = 0.05, type = "sine") {
   oscillator.stop(now + duration + 0.01);
 }
 
+function impactProfile() {
+  const configured =
+    SONG?.musicFeel?.impactProfile ?? {};
+
+  return {
+    transientHz: clamp(
+      Number(configured.transientHz) || 2200,
+      700,
+      5200
+    ),
+    transientQ: clamp(
+      Number(configured.transientQ) || 1,
+      0.35,
+      6
+    ),
+    transientGain: clamp(
+      Number(configured.transientGain) || 0.042,
+      0.006,
+      0.12
+    ),
+    resonanceGain: clamp(
+      Number(configured.resonanceGain) || 0.011,
+      0,
+      0.05
+    ),
+    sfxGain: clamp(
+      Number(configured.sfxGain) || 0.82,
+      0.3,
+      1.2
+    ),
+    collisionInterval:
+      Number.isFinite(configured.collisionInterval)
+        ? configured.collisionInterval
+        : 7,
+    shieldInterval:
+      Number.isFinite(configured.shieldInterval)
+        ? configured.shieldInterval
+        : 10,
+    chainInterval:
+      Number.isFinite(configured.chainInterval)
+        ? configured.chainInterval
+        : 12,
+    bumperInterval:
+      Number.isFinite(configured.bumperInterval)
+        ? configured.bumperInterval
+        : 3,
+    tapInterval:
+      Number.isFinite(configured.tapInterval)
+        ? configured.tapInterval
+        : 0,
+    explosionInterval:
+      Number.isFinite(configured.explosionInterval)
+        ? configured.explosionInterval
+        : 0,
+    powerInterval:
+      Number.isFinite(configured.powerInterval)
+        ? configured.powerInterval
+        : -12
+  };
+}
+
+function impactSound(
+  kind = "collision",
+  strength = 1
+) {
+  if (!clock.context) return;
+
+  const profile =
+    impactProfile();
+  const amount =
+    clamp(strength, 0.25, 1.6) *
+    profile.sfxGain;
+  const now =
+    clock.context.currentTime;
+  const frequencyScale = {
+    tap: 1.18,
+    shield: 1.34,
+    chain: 1.48,
+    bumper: 0.88,
+    collision: 1,
+    explosion: 0.72,
+    power: 0.62
+  }[kind] ?? 1;
+
+  if (clock.noiseBuffer) {
+    const source =
+      clock.context.createBufferSource();
+    const filter =
+      clock.context.createBiquadFilter();
+    const gain =
+      clock.context.createGain();
+
+    source.buffer =
+      clock.noiseBuffer;
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(
+      profile.transientHz *
+        frequencyScale,
+      now
+    );
+    filter.Q.value =
+      profile.transientQ;
+
+    gain.gain.setValueAtTime(
+      Math.max(
+        0.0001,
+        profile.transientGain *
+          amount
+      ),
+      now
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      now +
+        (kind === "explosion" ||
+        kind === "power"
+          ? 0.065
+          : 0.038)
+    );
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(
+      clock.sfxBus()
+    );
+
+    source.start(now);
+    source.stop(now + 0.08);
+  }
+
+  const interval =
+    profile[
+      kind === "shield"
+        ? "shieldInterval"
+        : kind === "chain"
+          ? "chainInterval"
+          : kind === "bumper"
+            ? "bumperInterval"
+            : kind === "tap"
+              ? "tapInterval"
+              : kind === "explosion"
+                ? "explosionInterval"
+                : kind === "power"
+                  ? "powerInterval"
+                  : "collisionInterval"
+    ];
+
+  if (
+    profile.resonanceGain > 0
+  ) {
+    playTone(
+      midiToHz(
+        songCueRootMidi() +
+        interval
+      ),
+      kind === "explosion" ||
+      kind === "power"
+        ? 0.052
+        : 0.034,
+      profile.resonanceGain *
+        amount,
+      "sine"
+    );
+  }
+}
+
+
 function hitSound(
   side,
   judgement,
@@ -5033,11 +5237,31 @@ function hitSound(
         )
       : null;
   let frequency =
-    side === "left"
-      ? 480
-      : 540;
+    midiToHz(
+      songCueRootMidi() +
+      (side === "left" ? 0 : 7)
+    );
   let type =
     "triangle";
+
+  if (
+    !music ||
+    music.stem === "drums" ||
+    [
+      "backbeat",
+      "accent",
+      "pulse",
+      "fill"
+    ].includes(music.intent)
+  ) {
+    impactSound(
+      "tap",
+      0.68 +
+        eventMusicEnergy(note) *
+          0.32
+    );
+    return;
+  }
 
   if (music?.stem === "bass") {
     frequency =
@@ -5085,11 +5309,6 @@ function hitSound(
           )
         : 330;
     type = "square";
-  } else if (
-    music?.intent ===
-      "backbeat"
-  ) {
-    frequency = 560;
   }
 
   playTone(
@@ -5113,9 +5332,15 @@ function successTone(frequency = 700) {
   playTone(frequency, 0.07, 0.055, "triangle");
 }
 
-function explosionSound() {
-  playTone(180, 0.05, 0.04, "square");
-  playTone(260, 0.04, 0.025, "triangle");
+function explosionSound(
+  scale = 1
+) {
+  impactSound(
+    "explosion",
+    0.72 +
+      clamp(scale, 0.6, 2.2) *
+        0.22
+  );
 }
 
 function songCueRootMidi() {
@@ -5642,14 +5867,20 @@ function createExplosion(
 
   if (explosions.length > 12) explosions.shift();
 
-  explosionSound();
+  explosionSound(scale);
   bumpFeedback(
     Math.min(5.8, 0.9 + scale * 1.55),
     Math.min(0.13, 0.018 + scale * 0.026)
   );
 
   if (scale > 1.2) {
-    playTone(105, 0.09, 0.045, "sine");
+    impactSound(
+      "power",
+      Math.min(
+        1.4,
+        0.88 + scale * 0.18
+      )
+    );
   }
 
   if (shockRadius > 0) {
@@ -6116,11 +6347,9 @@ function breakNoteShield(
       chain ? 0.10 : 0.065
     );
 
-  playTone(
-    chain ? 820 : 690,
-    0.055,
-    0.045,
-    "triangle"
+  impactSound(
+    chain ? "chain" : "shield",
+    chain ? 1.12 : 0.88
   );
 
   bumpFeedback(
@@ -6137,13 +6366,6 @@ function breakNoteShield(
     projectile?.side ??
       note.side,
     chain ? 0.90 : 0.68
-  );
-
-  playTone(
-    chain ? 1760 : 1520,
-    0.035,
-    chain ? 0.028 : 0.022,
-    "sine"
   );
 
   clock.triggerInteractiveCue(
@@ -6916,7 +7138,7 @@ function resolveBumperCollisions() {
         child.bumperSplitUsed = true;
       }
 
-      playTone(245, 0.04, 0.045, "triangle");
+      impactSound("bumper", 0.72);
       break;
     }
   }
@@ -15239,12 +15461,14 @@ function renderUpgradeChoices() {
     const fitLabel =
       owned > 0
         ? `MEJORA · LV${nextLevel}`
-        : hints.length
-          ? `SINERGIA · ${hints[0].title}`
-          : activeModuleIds.length >=
-              ACTIVE_MODULE_LIMIT
-            ? "RESERVA"
-            : "NUEVO";
+        : activeModuleIds.length >=
+            ACTIVE_MODULE_LIMIT
+          ? "RESERVA"
+          : "NUEVO";
+    const synergyLabel =
+      hints.length > 0
+        ? `COMBINA · ${hints[0].title}`
+        : "";
     const levelStars =
       Array.from(
         {
@@ -15266,7 +15490,7 @@ function renderUpgradeChoices() {
     button.dataset.module =
       upgrade.id;
     button.innerHTML =
-      `<span class="module-head"><span>${fitLabel}</span></span><div class="upgrade-card-art" aria-hidden="true"><i class="upgrade-card-orbit"></i><span class="upgrade-card-icon">${upgrade.icon}</span><small class="upgrade-card-stars">${levelStars}</small></div><div class="upgrade-card-copy"><span class="upgrade-family">${moduleFamilyLabel(upgrade.family)}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span></div><div class="upgrade-preview-strip"><span>ASÍ CAMBIA TU RUN</span><canvas class="module-preview-canvas" width="420" height="150" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas></div>`;
+      `<span class="module-head"><span>${fitLabel}</span>${synergyLabel ? `<em>${synergyLabel}</em>` : ""}</span><div class="upgrade-card-art" aria-hidden="true"><i class="upgrade-card-orbit"></i><span class="upgrade-card-icon">${upgrade.icon}</span><small class="upgrade-card-stars">${levelStars}</small></div><div class="upgrade-card-copy"><span class="upgrade-family">${moduleFamilyLabel(upgrade.family)}</span><strong>${upgrade.title}</strong><span class="upgrade-effect">${upgrade.effect}</span><span class="upgrade-desc">${upgrade.desc}</span></div><div class="upgrade-preview-strip"><span>ASÍ CAMBIA TU RUN</span><canvas class="module-preview-canvas" width="420" height="150" data-module="${upgrade.id}" data-level="${nextLevel}" aria-hidden="true"></canvas></div>`;
 
     button.addEventListener(
       "click",
