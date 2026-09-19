@@ -491,7 +491,11 @@ export function pickDraftChoices({
   }
 
   return {
-    choices,
+    choices:
+      shuffledWithRandom(
+        choices,
+        random
+      ),
     roles
   };
 }

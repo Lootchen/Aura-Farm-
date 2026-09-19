@@ -233,6 +233,8 @@ Only after P0–P5 are validated:
 - [x] Draft selection moved behind a pure shared selector so runtime offers and automated audits use the same rules.
 - [x] Draft rules now carry explicit max-level / active-prerequisite metadata instead of hidden availability closures.
 - [x] Add `tools/audit-drafts.mjs` to sweep deterministic seeds and report offer coverage, role pressure, unique final builds and dominant-build share.
+- [x] Neutralize card-position bias after the audit showed leftmost-pick behavior collapsing onto the synergy/continuation policy; semantic offer roles stay the same, presentation order is seed-deterministic.
+- [x] 2,048-seed regression after the fix: 13/13 modules offered, 0 short offers, 0% fallback; front policy 335 unique builds / 2% top share, discovery 169 / 1%.
 - [ ] Playtest whether CAUSA → EFECTO evidence matches what players themselves say caused the outcome.
 - [ ] Use the automated draft audit as a regression gate before changing module catalog or synergy rules.
 
