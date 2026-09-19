@@ -4914,3 +4914,102 @@ button { font: inherit; }
     font-size: .60rem;
   }
 }
+
+
+/* v0.49 — musical impact mix + clearer module/menu hierarchy */
+.menu-phase-preview {
+  margin-top: 11px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 5px 10px;
+  max-width: 330px;
+}
+
+.menu-phase-preview > span,
+.menu-phase-preview > small {
+  font:
+    900 .43rem/1
+    ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .10em;
+}
+
+.menu-phase-preview > span {
+  color: rgb(var(--machine-secondary));
+}
+
+.menu-phase-preview > small {
+  justify-self: end;
+  color: rgba(255,255,255,.38);
+}
+
+.menu-phase-strip {
+  grid-column: 1 / -1;
+  height: 7px;
+  display: flex;
+  gap: 3px;
+}
+
+.menu-phase-strip > i {
+  flex: 1 1 0;
+  min-width: 5px;
+  border-radius: 999px;
+  background:
+    rgba(var(--machine-secondary),
+      calc(.12 + var(--phase-energy) * .48));
+  box-shadow:
+    0 0
+      calc(2px + var(--phase-energy) * 7px)
+      rgba(var(--machine-secondary),
+        calc(var(--phase-energy) * .11));
+  transform:
+    scaleY(
+      calc(.56 + var(--phase-energy) * .44)
+    );
+  transform-origin: center bottom;
+}
+
+.upgrade-card .module-head {
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.upgrade-card.is-synergy
+.module-head > span {
+  color: rgba(255,255,255,.75);
+  border-color:
+    rgba(var(--accent),.16);
+  background:
+    rgba(5,9,15,.58);
+}
+
+.upgrade-card .module-head > em {
+  min-width: 0;
+  max-width: 62%;
+  overflow: hidden;
+  padding: 5px 8px;
+  border:
+    1px solid rgba(255,229,109,.30);
+  border-radius: 999px;
+  background:
+    rgba(48,38,8,.48);
+  color: #ffe56d;
+  font:
+    900 .44rem/1
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-style: normal;
+  letter-spacing: .045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .menu-phase-preview {
+    max-width: 285px;
+  }
+
+  .upgrade-card .module-head > em {
+    max-width: 58%;
+  }
+}
