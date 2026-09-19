@@ -1,0 +1,3619 @@
+{
+  "schemaVersion": 1,
+  "id": "bloom-overdrive",
+  "title": "BLOOM OVERDRIVE",
+  "artist": "AURA FARM",
+  "trackNumber": 3,
+  "description": "Benchmark musical de Aura Farm: breakbeat bio-industrial, siete fases de una sola canción y chart construido por frase.",
+  "timing": {
+    "mode": "constant",
+    "bpm": 154,
+    "beats": 224,
+    "beatsPerBar": 4,
+    "stepsPerBeat": 4,
+    "countInBeats": 2,
+    "offsetMs": 0
+  },
+  "audio": {
+    "mode": "procedural",
+    "engine": "aura-procedural-v1",
+    "stems": [
+      "drums",
+      "bass",
+      "harmony",
+      "lead",
+      "aura",
+      "boss"
+    ]
+  },
+  "levelPhases": [
+    {
+      "id": "ignition",
+      "name": "IGNITION",
+      "cue": "ENCUENTRA EL PULSO",
+      "intensity": 0.24,
+      "startBeat": 0,
+      "endBeat": 32
+    },
+    {
+      "id": "pressure",
+      "name": "PRESSURE",
+      "cue": "ENTRA EN EL BREAK",
+      "intensity": 0.38,
+      "startBeat": 32,
+      "endBeat": 64
+    },
+    {
+      "id": "germinate",
+      "name": "GERMINATE",
+      "cue": "DIBUJA EL LEAD",
+      "intensity": 0.52,
+      "startBeat": 64,
+      "endBeat": 96
+    },
+    {
+      "id": "circuit",
+      "name": "CIRCUIT",
+      "cue": "MANTÉN EL FLUJO",
+      "intensity": 0.66,
+      "startBeat": 96,
+      "endBeat": 128
+    },
+    {
+      "id": "fracture",
+      "name": "FRACTURE",
+      "cue": "RESPIRA · ROMPE",
+      "intensity": 0.54,
+      "startBeat": 128,
+      "endBeat": 160
+    },
+    {
+      "id": "surge",
+      "name": "SURGE",
+      "cue": "ACELERA LA MÁQUINA",
+      "intensity": 0.84,
+      "startBeat": 160,
+      "endBeat": 192
+    },
+    {
+      "id": "bloomcore",
+      "name": "BLOOMCORE",
+      "cue": "ABRE EL CORE",
+      "intensity": 1,
+      "startBeat": 192,
+      "endBeat": 224
+    }
+  ],
+  "chartFeel": {
+    "tracePreRecoveryBeats": 0.75,
+    "tracePostRecoveryBeats": 1,
+    "minRecoveryBeats": 1,
+    "maxEventsPerBar": 6
+  },
+  "presentation": {
+    "accent": [
+      94,
+      226,
+      215
+    ],
+    "secondary": [
+      255,
+      196,
+      92
+    ],
+    "sections": {
+      "IGNITION": {
+        "energy": 0.24,
+        "pulse": 0.34,
+        "bloom": 0.14
+      },
+      "PRESSURE": {
+        "energy": 0.38,
+        "pulse": 0.52,
+        "bloom": 0.2
+      },
+      "GERMINATE": {
+        "energy": 0.52,
+        "pulse": 0.62,
+        "bloom": 0.36
+      },
+      "CIRCUIT": {
+        "energy": 0.66,
+        "pulse": 0.76,
+        "bloom": 0.42
+      },
+      "FRACTURE": {
+        "energy": 0.54,
+        "pulse": 0.42,
+        "bloom": 0.26
+      },
+      "SURGE": {
+        "energy": 0.84,
+        "pulse": 0.92,
+        "bloom": 0.62
+      },
+      "BLOOMCORE": {
+        "energy": 1,
+        "pulse": 1,
+        "bloom": 0.9
+      }
+    }
+  },
+  "musicFeel": {
+    "motif": [
+      0,
+      3,
+      7,
+      10,
+      12,
+      10,
+      7
+    ],
+    "synthesis": {
+      "leadWave": "triangle",
+      "leadHarmonic": 0.3,
+      "bassHarmonic": 0.34,
+      "auraDetune": 8,
+      "brightness": 1.14
+    },
+    "sectionCues": {
+      "IGNITION": {
+        "intervals": [
+          0,
+          7
+        ],
+        "gain": 0.0048
+      },
+      "PRESSURE": {
+        "intervals": [
+          0,
+          3,
+          7
+        ],
+        "gain": 0.0055
+      },
+      "GERMINATE": {
+        "intervals": [
+          0,
+          7,
+          10
+        ],
+        "gain": 0.006
+      },
+      "CIRCUIT": {
+        "intervals": [
+          0,
+          3,
+          10,
+          12
+        ],
+        "gain": 0.0066
+      },
+      "FRACTURE": {
+        "intervals": [
+          0,
+          5,
+          10
+        ],
+        "gain": 0.0054
+      },
+      "SURGE": {
+        "intervals": [
+          0,
+          7,
+          10,
+          12
+        ],
+        "gain": 0.0074
+      },
+      "BLOOMCORE": {
+        "intervals": [
+          0,
+          3,
+          7,
+          12
+        ],
+        "gain": 0.009,
+        "stem": "boss"
+      }
+    },
+    "interactiveCues": {
+      "shieldBreak": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          7
+        ],
+        "gain": 0.0055,
+        "duckDb": -1.8,
+        "durationBeats": 0.25
+      },
+      "chain": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "gain": 0.0055,
+        "duckDb": -1.6,
+        "durationBeats": 0.32
+      },
+      "flow": {
+        "quantize": "beat",
+        "intervals": [
+          0,
+          7,
+          12
+        ],
+        "gain": 0.0033,
+        "duckDb": -1,
+        "durationBeats": 0.36
+      },
+      "actEnd": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          7,
+          12
+        ],
+        "gain": 0.0058,
+        "duckDb": -1.2,
+        "durationBeats": 0.55
+      },
+      "bossPhase": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          1,
+          7,
+          12
+        ],
+        "gain": 0.0078,
+        "duckDb": -2.4,
+        "durationBeats": 0.52,
+        "stem": "boss"
+      },
+      "bossBreak": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          3,
+          7,
+          12
+        ],
+        "gain": 0.0095,
+        "duckDb": -3,
+        "durationBeats": 0.82,
+        "stem": "boss"
+      }
+    },
+    "actArrangements": [
+      {
+        "drums": 0.88,
+        "bass": 0.9,
+        "harmony": 0.58,
+        "lead": 0.5,
+        "aura": 0.34,
+        "brightness": 0.76,
+        "drive": 0.66
+      },
+      {
+        "drums": 0.94,
+        "bass": 0.94,
+        "harmony": 0.64,
+        "lead": 0.6,
+        "aura": 0.42,
+        "brightness": 0.84,
+        "drive": 0.74
+      },
+      {
+        "drums": 0.98,
+        "bass": 0.98,
+        "harmony": 0.72,
+        "lead": 0.74,
+        "aura": 0.54,
+        "brightness": 0.92,
+        "drive": 0.82
+      },
+      {
+        "drums": 1.02,
+        "bass": 1,
+        "harmony": 0.8,
+        "lead": 0.84,
+        "aura": 0.64,
+        "brightness": 1,
+        "drive": 0.9
+      },
+      {
+        "drums": 0.9,
+        "bass": 0.92,
+        "harmony": 0.72,
+        "lead": 0.7,
+        "aura": 0.6,
+        "brightness": 0.88,
+        "drive": 0.74
+      },
+      {
+        "drums": 1.06,
+        "bass": 1.04,
+        "harmony": 0.92,
+        "lead": 1,
+        "aura": 0.82,
+        "brightness": 1.1,
+        "drive": 1.04
+      },
+      {
+        "drums": 1.1,
+        "bass": 1.06,
+        "harmony": 1,
+        "lead": 1.08,
+        "aura": 1,
+        "brightness": 1.18,
+        "drive": 1.12
+      }
+    ]
+  },
+  "composition": {
+    "drumPatterns": {
+      "seed": {
+        "kick": [
+          0,
+          8
+        ],
+        "snare": [
+          4,
+          12
+        ],
+        "hat": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ]
+      },
+      "breakA": {
+        "kick": [
+          0,
+          6,
+          8,
+          11
+        ],
+        "snare": [
+          4,
+          12
+        ],
+        "hat": [
+          0,
+          2,
+          5,
+          6,
+          8,
+          10,
+          13,
+          14
+        ]
+      },
+      "breakB": {
+        "kick": [
+          0,
+          3,
+          7,
+          8,
+          11,
+          14
+        ],
+        "snare": [
+          4,
+          12
+        ],
+        "hat": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ]
+      },
+      "drive": {
+        "kick": [
+          0,
+          3,
+          6,
+          8,
+          11,
+          14
+        ],
+        "snare": [
+          4,
+          12
+        ],
+        "hat": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14,
+          15
+        ]
+      },
+      "fracture": {
+        "kick": [
+          0,
+          8,
+          14
+        ],
+        "snare": [
+          6,
+          12
+        ],
+        "hat": [
+          2,
+          6,
+          10,
+          14
+        ]
+      },
+      "surge": {
+        "kick": [
+          0,
+          3,
+          6,
+          8,
+          10,
+          13,
+          15
+        ],
+        "snare": [
+          4,
+          12,
+          14
+        ],
+        "hat": [
+          0,
+          1,
+          2,
+          4,
+          6,
+          7,
+          8,
+          10,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "boss": {
+        "kick": [
+          0,
+          3,
+          6,
+          8,
+          10,
+          12,
+          15
+        ],
+        "snare": [
+          4,
+          7,
+          12,
+          14
+        ],
+        "hat": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          6,
+          7,
+          8,
+          9,
+          10,
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    "bassPatterns": {
+      "root": [
+        0,
+        null,
+        null,
+        null,
+        0,
+        null,
+        null,
+        null,
+        7,
+        null,
+        null,
+        null,
+        5,
+        null,
+        null,
+        null
+      ],
+      "pulse": [
+        0,
+        null,
+        null,
+        0,
+        null,
+        null,
+        7,
+        null,
+        5,
+        null,
+        null,
+        7,
+        null,
+        null,
+        10,
+        null
+      ],
+      "breakbeat": [
+        0,
+        null,
+        null,
+        0,
+        null,
+        null,
+        null,
+        7,
+        5,
+        null,
+        null,
+        5,
+        null,
+        null,
+        10,
+        null
+      ],
+      "climb": [
+        0,
+        null,
+        null,
+        null,
+        3,
+        null,
+        null,
+        5,
+        7,
+        null,
+        null,
+        10,
+        null,
+        null,
+        12,
+        null
+      ],
+      "fracture": [
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        7,
+        null,
+        null,
+        null,
+        null,
+        5,
+        null,
+        3,
+        null
+      ],
+      "surge": [
+        0,
+        null,
+        0,
+        null,
+        null,
+        7,
+        null,
+        10,
+        12,
+        null,
+        null,
+        10,
+        null,
+        7,
+        null,
+        5
+      ],
+      "boss": [
+        0,
+        null,
+        0,
+        null,
+        7,
+        null,
+        10,
+        null,
+        12,
+        null,
+        15,
+        null,
+        10,
+        null,
+        7,
+        5
+      ]
+    },
+    "leadPatterns": {
+      "rest": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "motifA": [
+        12,
+        null,
+        null,
+        null,
+        15,
+        null,
+        null,
+        null,
+        19,
+        null,
+        null,
+        null,
+        22,
+        null,
+        null,
+        null
+      ],
+      "motifB": [
+        12,
+        null,
+        null,
+        15,
+        null,
+        null,
+        19,
+        null,
+        22,
+        null,
+        null,
+        19,
+        null,
+        null,
+        15,
+        null
+      ],
+      "traceA": [
+        12,
+        null,
+        15,
+        null,
+        19,
+        null,
+        22,
+        null,
+        24,
+        null,
+        22,
+        null,
+        19,
+        null,
+        15,
+        null
+      ],
+      "call": [
+        19,
+        null,
+        null,
+        22,
+        null,
+        null,
+        24,
+        null,
+        22,
+        null,
+        null,
+        null,
+        19,
+        null,
+        15,
+        null
+      ],
+      "fracture": [
+        24,
+        null,
+        null,
+        null,
+        null,
+        null,
+        19,
+        null,
+        null,
+        null,
+        17,
+        null,
+        null,
+        null,
+        15,
+        null
+      ],
+      "surge": [
+        19,
+        null,
+        22,
+        null,
+        24,
+        null,
+        27,
+        null,
+        29,
+        null,
+        27,
+        null,
+        24,
+        null,
+        22,
+        19
+      ],
+      "crown": [
+        24,
+        null,
+        27,
+        null,
+        29,
+        null,
+        31,
+        null,
+        34,
+        null,
+        31,
+        null,
+        29,
+        null,
+        27,
+        24
+      ]
+    },
+    "auraPatterns": {
+      "rest": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "seed": [
+        null,
+        null,
+        24,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        27,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "answer": [
+        null,
+        null,
+        24,
+        null,
+        null,
+        null,
+        27,
+        null,
+        null,
+        null,
+        29,
+        null,
+        null,
+        null,
+        27,
+        null
+      ],
+      "lift": [
+        24,
+        null,
+        null,
+        null,
+        27,
+        null,
+        null,
+        null,
+        31,
+        null,
+        null,
+        null,
+        29,
+        null,
+        null,
+        null
+      ],
+      "shimmer": [
+        null,
+        31,
+        null,
+        null,
+        null,
+        34,
+        null,
+        null,
+        null,
+        31,
+        null,
+        null,
+        null,
+        36,
+        null,
+        null
+      ],
+      "fracture": [
+        null,
+        null,
+        31,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        29,
+        null,
+        null,
+        null,
+        27,
+        null
+      ],
+      "surge": [
+        null,
+        31,
+        null,
+        34,
+        null,
+        36,
+        null,
+        null,
+        null,
+        38,
+        null,
+        null,
+        null,
+        36,
+        null,
+        34
+      ],
+      "crown": [
+        31,
+        null,
+        34,
+        null,
+        36,
+        null,
+        38,
+        null,
+        41,
+        null,
+        38,
+        null,
+        36,
+        null,
+        34,
+        null
+      ]
+    },
+    "bars": [
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "seed",
+        "bass": "root",
+        "lead": "rest",
+        "aura": "rest",
+        "section": "IGNITION"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "seed",
+        "bass": "root",
+        "lead": "motifA",
+        "aura": "seed",
+        "section": "IGNITION"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakA",
+        "bass": "pulse",
+        "lead": "rest",
+        "aura": "seed",
+        "section": "IGNITION"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "seed",
+        "bass": "root",
+        "lead": "motifA",
+        "aura": "answer",
+        "section": "IGNITION"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakA",
+        "bass": "pulse",
+        "lead": "motifA",
+        "aura": "seed",
+        "section": "IGNITION"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakA",
+        "bass": "pulse",
+        "lead": "motifB",
+        "aura": "answer",
+        "section": "IGNITION"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "breakbeat",
+        "lead": "motifA",
+        "aura": "answer",
+        "section": "IGNITION"
+      },
+      {
+        "root": 52,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakA",
+        "bass": "pulse",
+        "lead": "motifB",
+        "aura": "answer",
+        "section": "IGNITION",
+        "fill": true
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakA",
+        "bass": "pulse",
+        "lead": "motifB",
+        "aura": "answer",
+        "section": "PRESSURE"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "breakbeat",
+        "lead": "call",
+        "aura": "seed",
+        "section": "PRESSURE"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakA",
+        "bass": "pulse",
+        "lead": "motifB",
+        "aura": "answer",
+        "section": "PRESSURE"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "breakbeat",
+        "lead": "traceA",
+        "aura": "lift",
+        "section": "PRESSURE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "breakbeat",
+        "lead": "call",
+        "aura": "answer",
+        "section": "PRESSURE"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "pulse",
+        "lead": "motifB",
+        "aura": "lift",
+        "section": "PRESSURE"
+      },
+      {
+        "root": 52,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "breakbeat",
+        "lead": "traceA",
+        "aura": "answer",
+        "section": "PRESSURE"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "climb",
+        "lead": "call",
+        "aura": "lift",
+        "section": "PRESSURE",
+        "fill": true
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "pulse",
+        "lead": "traceA",
+        "aura": "lift",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "breakbeat",
+        "lead": "motifB",
+        "aura": "answer",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "climb",
+        "lead": "call",
+        "aura": "lift",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "breakbeat",
+        "lead": "traceA",
+        "aura": "shimmer",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 52,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "climb",
+        "lead": "motifB",
+        "aura": "answer",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "pulse",
+        "lead": "call",
+        "aura": "lift",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "breakbeat",
+        "lead": "traceA",
+        "aura": "shimmer",
+        "section": "GERMINATE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "climb",
+        "lead": "call",
+        "aura": "lift",
+        "section": "GERMINATE",
+        "fill": true
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "breakbeat",
+        "lead": "motifB",
+        "aura": "answer",
+        "section": "CIRCUIT"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "climb",
+        "lead": "traceA",
+        "aura": "lift",
+        "section": "CIRCUIT"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "pulse",
+        "lead": "call",
+        "aura": "shimmer",
+        "section": "CIRCUIT"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "climb",
+        "lead": "motifB",
+        "aura": "answer",
+        "section": "CIRCUIT"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "breakbeat",
+        "lead": "traceA",
+        "aura": "lift",
+        "section": "CIRCUIT"
+      },
+      {
+        "root": 52,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "climb",
+        "lead": "call",
+        "aura": "shimmer",
+        "section": "CIRCUIT"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "surge",
+        "lead": "surge",
+        "aura": "surge",
+        "section": "CIRCUIT"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "climb",
+        "lead": "traceA",
+        "aura": "lift",
+        "section": "CIRCUIT",
+        "fill": true
+      },
+      {
+        "root": 41,
+        "chord": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "drums": "fracture",
+        "bass": "fracture",
+        "lead": "fracture",
+        "aura": "fracture",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "drums": "fracture",
+        "bass": "root",
+        "lead": "rest",
+        "aura": "rest",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "drums": "breakA",
+        "bass": "fracture",
+        "lead": "motifA",
+        "aura": "seed",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "drums": "fracture",
+        "bass": "pulse",
+        "lead": "fracture",
+        "aura": "fracture",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 41,
+        "chord": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "drums": "fracture",
+        "bass": "fracture",
+        "lead": "rest",
+        "aura": "rest",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "drums": "breakA",
+        "bass": "root",
+        "lead": "call",
+        "aura": "answer",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "drums": "fracture",
+        "bass": "fracture",
+        "lead": "fracture",
+        "aura": "fracture",
+        "section": "FRACTURE"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "drums": "breakB",
+        "bass": "climb",
+        "lead": "motifB",
+        "aura": "lift",
+        "section": "FRACTURE",
+        "fill": true
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "climb",
+        "lead": "traceA",
+        "aura": "lift",
+        "section": "SURGE"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "surge",
+        "lead": "surge",
+        "aura": "surge",
+        "section": "SURGE"
+      },
+      {
+        "root": 52,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "drive",
+        "bass": "breakbeat",
+        "lead": "motifB",
+        "aura": "shimmer",
+        "section": "SURGE"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "surge",
+        "lead": "surge",
+        "aura": "surge",
+        "section": "SURGE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "breakB",
+        "bass": "climb",
+        "lead": "call",
+        "aura": "lift",
+        "section": "SURGE"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "surge",
+        "lead": "surge",
+        "aura": "surge",
+        "section": "SURGE"
+      },
+      {
+        "root": 43,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "surge",
+        "lead": "traceA",
+        "aura": "surge",
+        "section": "SURGE"
+      },
+      {
+        "root": 52,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "boss",
+        "lead": "surge",
+        "aura": "crown",
+        "section": "SURGE",
+        "fill": true
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "surge",
+        "lead": "surge",
+        "aura": "surge",
+        "section": "BLOOMCORE"
+      },
+      {
+        "root": 48,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "boss",
+        "bass": "boss",
+        "lead": "crown",
+        "aura": "crown",
+        "section": "BLOOMCORE"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "surge",
+        "lead": "traceA",
+        "aura": "surge",
+        "section": "BLOOMCORE"
+      },
+      {
+        "root": 52,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "boss",
+        "bass": "boss",
+        "lead": "crown",
+        "aura": "crown",
+        "section": "BLOOMCORE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "boss",
+        "bass": "boss",
+        "lead": "crown",
+        "aura": "crown",
+        "section": "BLOOMCORE"
+      },
+      {
+        "root": 50,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "surge",
+        "bass": "surge",
+        "lead": "surge",
+        "aura": "surge",
+        "section": "BLOOMCORE"
+      },
+      {
+        "root": 52,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "boss",
+        "bass": "boss",
+        "lead": "crown",
+        "aura": "crown",
+        "section": "BLOOMCORE"
+      },
+      {
+        "root": 45,
+        "chord": [
+          0,
+          3,
+          7
+        ],
+        "drums": "boss",
+        "bass": "boss",
+        "lead": "crown",
+        "aura": "crown",
+        "section": "BLOOMCORE",
+        "fill": true
+      }
+    ]
+  },
+  "defaultChart": "standard",
+  "charts": [
+    {
+      "id": "standard",
+      "name": "Bloom Overdrive · Standard",
+      "difficulty": "standard",
+      "mechanicsVersion": "aura-chart-v1",
+      "events": [
+        {
+          "type": "tap",
+          "beat": 0,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.58,
+            "phrase": "ignition-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 1,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.61,
+            "phrase": "ignition-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 2.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pickup",
+            "energy": 0.62,
+            "phrase": "ignition-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 3.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.6399999999999999,
+            "phrase": "ignition-open"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 5,
+          "side": "left",
+          "route": 1,
+          "durationBeats": 2,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 2,
+              "x": 0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.6599999999999999,
+            "phrase": "ignition-trace-a",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 8,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.63,
+            "phrase": "ignition-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 9.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.6399999999999999,
+            "phrase": "ignition-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 11,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.6699999999999999,
+            "phrase": "ignition-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 13,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.6399999999999999,
+            "phrase": "ignition-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 14.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 0.6799999999999999,
+            "phrase": "ignition-release"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 17,
+          "side": "right",
+          "route": 2,
+          "durationBeats": 3,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": 0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1.5,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 3,
+              "x": -0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.7,
+            "phrase": "ignition-trace-b",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 21,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.6599999999999999,
+            "phrase": "ignition-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 22.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "aura",
+            "intent": "response",
+            "energy": 0.6799999999999999,
+            "phrase": "ignition-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 24,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.7,
+            "phrase": "ignition-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 26,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.6499999999999999,
+            "phrase": "ignition-close"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 28,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.6699999999999999,
+            "phrase": "ignition-close"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 30,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.74,
+            "phrase": "ignition-cadence"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 32,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.645,
+            "phrase": "pressure-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 33,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.675,
+            "phrase": "pressure-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 34.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pickup",
+            "energy": 0.685,
+            "phrase": "pressure-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 35.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.7050000000000001,
+            "phrase": "pressure-open"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 37,
+          "side": "right",
+          "route": 1,
+          "durationBeats": 2,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": 0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 2,
+              "x": -0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "drums",
+            "intent": "phrase",
+            "energy": 0.725,
+            "phrase": "pressure-trace-a",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 40,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.6950000000000001,
+            "phrase": "pressure-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 41.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.7050000000000001,
+            "phrase": "pressure-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 43,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.735,
+            "phrase": "pressure-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 45,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.7050000000000001,
+            "phrase": "pressure-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 46.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 0.745,
+            "phrase": "pressure-release"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 49,
+          "side": "left",
+          "route": 2,
+          "durationBeats": 3,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1.5,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 3,
+              "x": 0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "drums",
+            "intent": "phrase",
+            "energy": 0.765,
+            "phrase": "pressure-trace-b",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 53,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.725,
+            "phrase": "pressure-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 54.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.745,
+            "phrase": "pressure-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 56,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.765,
+            "phrase": "pressure-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 58,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.7150000000000001,
+            "phrase": "pressure-close"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 60,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.735,
+            "phrase": "pressure-close"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 62,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.805,
+            "phrase": "pressure-cadence"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 64,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.71,
+            "phrase": "germinate-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 65,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.74,
+            "phrase": "germinate-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 66.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "pickup",
+            "energy": 0.75,
+            "phrase": "germinate-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 67.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.77,
+            "phrase": "germinate-open"
+          },
+          "shield": true
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 69,
+          "side": "left",
+          "route": 2,
+          "durationBeats": 2,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 2,
+              "x": 0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "drums",
+            "intent": "phrase",
+            "energy": 0.7899999999999999,
+            "phrase": "germinate-trace-a",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 72,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.76,
+            "phrase": "germinate-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 73.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.77,
+            "phrase": "germinate-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 75,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.7999999999999999,
+            "phrase": "germinate-release"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 77,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.77,
+            "phrase": "germinate-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 78.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 0.8099999999999999,
+            "phrase": "germinate-release"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 81,
+          "side": "right",
+          "route": 2,
+          "durationBeats": 3,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": 0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1.5,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 3,
+              "x": -0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "drums",
+            "intent": "phrase",
+            "energy": 0.83,
+            "phrase": "germinate-trace-b",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 85,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.7899999999999999,
+            "phrase": "germinate-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 86.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.8099999999999999,
+            "phrase": "germinate-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 88,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.83,
+            "phrase": "germinate-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 89,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.8099999999999999,
+            "phrase": "germinate-chain"
+          },
+          "chainGroup": "germinate-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 90.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.83,
+            "phrase": "germinate-chain"
+          },
+          "chainGroup": "germinate-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 92,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.85,
+            "phrase": "germinate-chain"
+          },
+          "chainGroup": "germinate-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 94,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.87,
+            "phrase": "germinate-cadence"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 96,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.7749999999999999,
+            "phrase": "circuit-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 97,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.8049999999999999,
+            "phrase": "circuit-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 98.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pickup",
+            "energy": 0.815,
+            "phrase": "circuit-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 99.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.835,
+            "phrase": "circuit-open"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 101,
+          "side": "right",
+          "route": 2,
+          "durationBeats": 2,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": 0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 2,
+              "x": -0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.8549999999999999,
+            "phrase": "circuit-trace-a",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 104,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.825,
+            "phrase": "circuit-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 105.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.835,
+            "phrase": "circuit-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 107,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.8649999999999999,
+            "phrase": "circuit-release"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 109,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.835,
+            "phrase": "circuit-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 110.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 0.8749999999999999,
+            "phrase": "circuit-release"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 113,
+          "side": "left",
+          "route": 2,
+          "durationBeats": 3,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1.5,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 3,
+              "x": 0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.8949999999999999,
+            "phrase": "circuit-trace-b",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 117,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.8549999999999999,
+            "phrase": "circuit-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 118.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.8749999999999999,
+            "phrase": "circuit-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 120,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.8949999999999999,
+            "phrase": "circuit-drive"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 121,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.8749999999999999,
+            "phrase": "circuit-chain"
+          },
+          "chainGroup": "circuit-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 122.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.8949999999999999,
+            "phrase": "circuit-chain"
+          },
+          "chainGroup": "circuit-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 124,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.9149999999999999,
+            "phrase": "circuit-chain"
+          },
+          "chainGroup": "circuit-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 126,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.9349999999999999,
+            "phrase": "circuit-cadence"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 128,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.84,
+            "phrase": "fracture-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 129,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.87,
+            "phrase": "fracture-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 130.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "pickup",
+            "energy": 0.88,
+            "phrase": "fracture-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 131.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.8999999999999999,
+            "phrase": "fracture-open"
+          },
+          "shield": true
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 133,
+          "side": "left",
+          "route": 2,
+          "durationBeats": 2,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 2,
+              "x": 0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "bass",
+            "intent": "phrase",
+            "energy": 0.9199999999999999,
+            "phrase": "fracture-trace-a",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 136,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.89,
+            "phrase": "fracture-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 137.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.8999999999999999,
+            "phrase": "fracture-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 139,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.9299999999999999,
+            "phrase": "fracture-release"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 141,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.8999999999999999,
+            "phrase": "fracture-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 142.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 0.94,
+            "phrase": "fracture-release"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 145,
+          "side": "right",
+          "route": 2,
+          "durationBeats": 3,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": 0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1.5,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 3,
+              "x": -0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "boss",
+            "intent": "phrase",
+            "energy": 0.96,
+            "phrase": "fracture-trace-b",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 149,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.9199999999999999,
+            "phrase": "fracture-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 150.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "aura",
+            "intent": "response",
+            "energy": 0.94,
+            "phrase": "fracture-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 152,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.96,
+            "phrase": "fracture-drive"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 153,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.94,
+            "phrase": "fracture-chain"
+          },
+          "chainGroup": "fracture-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 154.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "aura",
+            "intent": "response",
+            "energy": 0.96,
+            "phrase": "fracture-chain"
+          },
+          "chainGroup": "fracture-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 156,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.98,
+            "phrase": "fracture-chain"
+          },
+          "chainGroup": "fracture-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 158,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 1,
+            "phrase": "fracture-cadence"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 160,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.905,
+            "phrase": "surge-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 161,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.935,
+            "phrase": "surge-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 162.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "pickup",
+            "energy": 0.9450000000000001,
+            "phrase": "surge-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 163.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.9650000000000001,
+            "phrase": "surge-open"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 165,
+          "side": "right",
+          "route": 2,
+          "durationBeats": 2,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": 0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 2,
+              "x": -0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 0.985,
+            "phrase": "surge-trace-a",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 168,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 0.9550000000000001,
+            "phrase": "surge-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 169.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.9650000000000001,
+            "phrase": "surge-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 171,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 0.995,
+            "phrase": "surge-release"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 173,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.9650000000000001,
+            "phrase": "surge-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 174.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 1.0050000000000001,
+            "phrase": "surge-release"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 177,
+          "side": "left",
+          "route": 2,
+          "durationBeats": 3,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1.5,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 3,
+              "x": 0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "aura",
+            "intent": "phrase",
+            "energy": 1.025,
+            "phrase": "surge-trace-b",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 181,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.985,
+            "phrase": "surge-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 182.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 1.0050000000000001,
+            "phrase": "surge-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 184,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 1.025,
+            "phrase": "surge-drive"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 185,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 1.0050000000000001,
+            "phrase": "surge-chain"
+          },
+          "chainGroup": "surge-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 186.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 1.025,
+            "phrase": "surge-chain"
+          },
+          "chainGroup": "surge-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 188,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 1.045,
+            "phrase": "surge-chain"
+          },
+          "shield": true,
+          "chainGroup": "surge-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 190,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 1,
+            "phrase": "surge-cadence"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 192,
+          "side": "left",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 0.97,
+            "phrase": "bloomcore-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 193,
+          "side": "right",
+          "route": 0,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 1,
+            "phrase": "bloomcore-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 194.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "pickup",
+            "energy": 1.01,
+            "phrase": "bloomcore-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 195.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 1.03,
+            "phrase": "bloomcore-open"
+          },
+          "shield": true
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 197,
+          "side": "left",
+          "route": 2,
+          "durationBeats": 2,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": -0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 2,
+              "x": 0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 1.05,
+            "phrase": "bloomcore-trace-a",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 200,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "resolve",
+            "energy": 1.02,
+            "phrase": "bloomcore-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 201.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 1.03,
+            "phrase": "bloomcore-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 203,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 1.06,
+            "phrase": "bloomcore-release"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 205,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 1.03,
+            "phrase": "bloomcore-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 206.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "fill",
+            "energy": 1.07,
+            "phrase": "bloomcore-release"
+          }
+        },
+        {
+          "type": "slide",
+          "mode": "trace",
+          "beat": 209,
+          "side": "right",
+          "route": 2,
+          "durationBeats": 3,
+          "anchors": [
+            {
+              "beat": 0,
+              "x": 0.58,
+              "y": -0.7
+            },
+            {
+              "beat": 1.5,
+              "x": 0,
+              "y": -0.98
+            },
+            {
+              "beat": 3,
+              "x": -0.58,
+              "y": -0.72
+            }
+          ],
+          "music": {
+            "stem": "lead",
+            "intent": "phrase",
+            "energy": 1.0899999999999999,
+            "phrase": "bloomcore-trace-b",
+            "contour": true
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 213,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "pulse",
+            "energy": 1.05,
+            "phrase": "bloomcore-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 214.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 1.07,
+            "phrase": "bloomcore-drive"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 216,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 1.0899999999999999,
+            "phrase": "bloomcore-drive"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 217,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 1.07,
+            "phrase": "bloomcore-chain"
+          },
+          "chainGroup": "bloomcore-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 218.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "aura",
+            "intent": "response",
+            "energy": 1.0899999999999999,
+            "phrase": "bloomcore-chain"
+          },
+          "chainGroup": "bloomcore-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 220,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "accent",
+            "energy": 1.1099999999999999,
+            "phrase": "bloomcore-chain"
+          },
+          "shield": true,
+          "chainGroup": "bloomcore-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 222,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 1,
+            "phrase": "bloomcore-cadence"
+          },
+          "shield": true
+        }
+      ]
+    }
+  ]
+}
