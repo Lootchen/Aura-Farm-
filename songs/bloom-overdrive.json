@@ -2624,6 +2624,19 @@
         },
         {
           "type": "tap",
+          "beat": 108,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.82,
+            "phrase": "circuit-drive"
+          }
+        },
+        {
+          "type": "tap",
           "beat": 109,
           "side": "left",
           "route": 1,
@@ -2646,6 +2659,19 @@
             "intent": "fill",
             "energy": 0.8749999999999999,
             "phrase": "circuit-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 111.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "syncopation",
+            "energy": 0.86,
+            "phrase": "circuit-drive"
           }
         },
         {
@@ -3011,6 +3037,19 @@
         },
         {
           "type": "tap",
+          "beat": 160.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.88,
+            "phrase": "surge-rush"
+          }
+        },
+        {
+          "type": "tap",
           "beat": 161,
           "side": "right",
           "route": 0,
@@ -3020,6 +3059,19 @@
             "intent": "response",
             "energy": 0.935,
             "phrase": "surge-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 162,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.9,
+            "phrase": "surge-rush"
           }
         },
         {
@@ -3046,6 +3098,19 @@
             "intent": "accent",
             "energy": 0.9650000000000001,
             "phrase": "surge-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 164,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.91,
+            "phrase": "surge-rush"
           }
         },
         {
@@ -3095,6 +3160,20 @@
         },
         {
           "type": "tap",
+          "beat": 168.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "drums",
+            "intent": "response",
+            "energy": 0.9,
+            "phrase": "surge-rush"
+          },
+          "chainGroup": "surge-rush-chain"
+        },
+        {
+          "type": "tap",
           "beat": 169.5,
           "side": "left",
           "route": 1,
@@ -3105,6 +3184,20 @@
             "energy": 0.9650000000000001,
             "phrase": "surge-release"
           }
+        },
+        {
+          "type": "tap",
+          "beat": 170,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.93,
+            "phrase": "surge-rush"
+          },
+          "chainGroup": "surge-rush-chain"
         },
         {
           "type": "tap",
@@ -3119,6 +3212,21 @@
             "phrase": "surge-release"
           },
           "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 172,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.92,
+            "phrase": "surge-rush"
+          },
+          "shield": true,
+          "chainGroup": "surge-rush-chain"
         },
         {
           "type": "tap",
@@ -3144,6 +3252,19 @@
             "intent": "fill",
             "energy": 1,
             "phrase": "surge-release"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 175,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "response",
+            "energy": 0.95,
+            "phrase": "surge-rush"
           }
         },
         {
@@ -3193,6 +3314,19 @@
         },
         {
           "type": "tap",
+          "beat": 181.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "climax",
+            "energy": 0.94,
+            "phrase": "surge-release"
+          }
+        },
+        {
+          "type": "tap",
           "beat": 182.5,
           "side": "right",
           "route": 2,
@@ -3215,6 +3349,20 @@
             "intent": "accent",
             "energy": 1,
             "phrase": "surge-drive"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 184.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "climax",
+            "energy": 0.96,
+            "phrase": "surge-release"
           },
           "shield": true
         },
@@ -3263,6 +3411,19 @@
         },
         {
           "type": "tap",
+          "beat": 189.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "lead",
+            "intent": "climax",
+            "energy": 0.98,
+            "phrase": "surge-release"
+          }
+        },
+        {
+          "type": "tap",
           "beat": 190,
           "side": "right",
           "route": 2,
@@ -3290,6 +3451,19 @@
         },
         {
           "type": "tap",
+          "beat": 192.5,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.92,
+            "phrase": "core-entry"
+          }
+        },
+        {
+          "type": "tap",
           "beat": 193,
           "side": "right",
           "route": 0,
@@ -3299,6 +3473,19 @@
             "intent": "response",
             "energy": 1,
             "phrase": "bloomcore-open"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 194,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.94,
+            "phrase": "core-entry"
           }
         },
         {
@@ -3325,6 +3512,20 @@
             "intent": "accent",
             "energy": 1,
             "phrase": "bloomcore-open"
+          },
+          "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 196,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.96,
+            "phrase": "core-entry"
           },
           "shield": true
         },
@@ -3375,6 +3576,20 @@
         },
         {
           "type": "tap",
+          "beat": 200.5,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.95,
+            "phrase": "core-assault"
+          },
+          "chainGroup": "core-assault-chain"
+        },
+        {
+          "type": "tap",
           "beat": 201.5,
           "side": "left",
           "route": 1,
@@ -3385,6 +3600,20 @@
             "energy": 1,
             "phrase": "bloomcore-release"
           }
+        },
+        {
+          "type": "tap",
+          "beat": 202,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.97,
+            "phrase": "core-assault"
+          },
+          "chainGroup": "core-assault-chain"
         },
         {
           "type": "tap",
@@ -3399,6 +3628,20 @@
             "phrase": "bloomcore-release"
           },
           "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 204,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.96,
+            "phrase": "core-assault"
+          },
+          "chainGroup": "core-assault-chain"
         },
         {
           "type": "tap",
@@ -3425,6 +3668,35 @@
             "energy": 1,
             "phrase": "bloomcore-release"
           }
+        },
+        {
+          "type": "tap",
+          "beat": 207,
+          "side": "left",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.98,
+            "phrase": "core-assault"
+          },
+          "chainGroup": "core-assault-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 208,
+          "side": "right",
+          "route": 1,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "response",
+            "energy": 0.99,
+            "phrase": "core-assault"
+          },
+          "shield": true,
+          "chainGroup": "core-assault-chain"
         },
         {
           "type": "slide",
@@ -3473,6 +3745,20 @@
         },
         {
           "type": "tap",
+          "beat": 213.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 0.98,
+            "phrase": "core-crown"
+          },
+          "chainGroup": "core-crown-chain"
+        },
+        {
+          "type": "tap",
           "beat": 214.5,
           "side": "right",
           "route": 2,
@@ -3483,6 +3769,20 @@
             "energy": 1,
             "phrase": "bloomcore-drive"
           }
+        },
+        {
+          "type": "tap",
+          "beat": 215,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 1,
+            "phrase": "core-crown"
+          },
+          "chainGroup": "core-crown-chain"
         },
         {
           "type": "tap",
@@ -3497,6 +3797,20 @@
             "phrase": "bloomcore-drive"
           },
           "shield": true
+        },
+        {
+          "type": "tap",
+          "beat": 216.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 0.99,
+            "phrase": "core-crown"
+          },
+          "chainGroup": "core-crown-chain"
         },
         {
           "type": "tap",
@@ -3528,6 +3842,21 @@
         },
         {
           "type": "tap",
+          "beat": 219.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 1,
+            "phrase": "core-crown"
+          },
+          "shield": true,
+          "chainGroup": "core-crown-chain"
+        },
+        {
+          "type": "tap",
           "beat": 220,
           "side": "right",
           "route": 2,
@@ -3540,6 +3869,32 @@
           },
           "shield": true,
           "chainGroup": "bloomcore-chain"
+        },
+        {
+          "type": "tap",
+          "beat": 220.5,
+          "side": "right",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 1,
+            "phrase": "core-cadence"
+          }
+        },
+        {
+          "type": "tap",
+          "beat": 221.5,
+          "side": "left",
+          "route": 2,
+          "symbol": "●",
+          "music": {
+            "stem": "boss",
+            "intent": "climax",
+            "energy": 1,
+            "phrase": "core-cadence"
+          }
         },
         {
           "type": "tap",
