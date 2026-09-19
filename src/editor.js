@@ -2011,6 +2011,72 @@ function drawPlayhead() {
   ctx.restore();
 }
 
+function drawSongEvents() {
+  if (
+    !Array.isArray(
+      song?.songEvents
+    )
+  ) {
+    return;
+  }
+
+  ctx.save();
+
+  for (
+    const event of
+    song.songEvents
+  ) {
+    const x =
+      event.beat *
+      pxPerBeat;
+    const y =
+      Y.music + 7;
+
+    ctx.fillStyle =
+      event.type ===
+        "core-warning"
+        ? "#ff8bad"
+        : event.type ===
+            "reactor-bloom"
+          ? "#ffe56d"
+          : "#5ee2d7";
+    ctx.globalAlpha = 0.82;
+    ctx.beginPath();
+    ctx.moveTo(
+      x,
+      y - 5
+    );
+    ctx.lineTo(
+      x + 5,
+      y
+    );
+    ctx.lineTo(
+      x,
+      y + 5
+    );
+    ctx.lineTo(
+      x - 5,
+      y
+    );
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.globalAlpha = 0.66;
+    ctx.font =
+      "800 8px ui-monospace, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      event.label ??
+      event.type,
+      x + 8,
+      y
+    );
+  }
+
+  ctx.restore();
+}
+
 function renderTimeline() {
   if (!song || !chart) {
     return;
@@ -2018,6 +2084,7 @@ function renderTimeline() {
 
   drawGrid();
   drawMusicLane();
+  drawSongEvents();
 
   chart.events.forEach(
     (event, index) => {
