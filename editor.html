@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#080b12">
-  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.48" type="image/svg+xml">
+  <link rel="icon" href="./assets/ui/aura-mark.svg?v=0.55" type="image/svg+xml">
   <title>Aura Farm — Chart Lab</title>
-  <link rel="stylesheet" href="./editor.css?v=0.48">
+  <link rel="stylesheet" href="./editor.css?v=0.55">
 </head>
 <body>
   <main class="editor-app">
     <header class="editor-topbar">
       <a class="editor-brand" href="./index.html">
-        <img src="./assets/ui/aura-mark.svg?v=0.48" alt="">
-        <span><strong>AURA FARM</strong><small>CHART LAB · v0.48</small></span>
+        <img src="./assets/ui/aura-mark.svg?v=0.55" alt="">
+        <span><strong>AURA FARM</strong><small>CHART LAB · v0.55</small></span>
       </a>
 
       <div class="transport" aria-label="Transporte">
@@ -100,6 +100,7 @@
             <div class="cyan">TAP L</div>
             <div class="violet">TAP R</div>
             <div>TRACE</div>
+            <div class="load">LOAD</div>
           </aside>
           <div id="timelineViewport" class="timeline-viewport" tabindex="0" aria-label="Timeline de chart">
             <canvas id="timelineCanvas" height="330"></canvas>
@@ -115,6 +116,7 @@
           <span><i class="ring"></i>SHIELD</span>
           <span class="legend-error">ROJO = desalineado / inválido</span>
           <span class="legend-flow">ÁMBAR = revisar flow/overmapping</span>
+          <span class="legend-load">LOAD = carga perceptual estimada por compás</span>
         </div>
       </div>
 
@@ -233,6 +235,6 @@
     <div id="toast" class="toast" hidden></div>
   </main>
 
-  <script type="module" src="./src/editor.js?v=0.48"></script>
+  <script type="module" src="./src/editor.js?v=0.55"></script>
 </body>
 </html>
