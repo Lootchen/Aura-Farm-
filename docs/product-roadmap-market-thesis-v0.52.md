@@ -196,6 +196,7 @@ Only after P0–P5 are validated:
 - [x] ECHO target is visually marked and resolves into a distinct Power return.
 - [x] ECHO schema validates target beat/side/grid and rejects ambiguous or Shield targets.
 - [x] Chart Lab LOAD includes authored ECHO pressure.
+- [x] Chart Lab renders authored Shield→Tap ECHO links directly on the timeline.
 - [x] Rebote LV2/LV3 mutate the first bounce into Resonant / Resonant+Perfora matter.
 - [x] Perfora LV2 preserves pierce through Shield; LV3 passes a perforating mutation into ECHO return.
 - [ ] Playtest whether players can verbally connect Shield break → future ECHO without tutorial text.
