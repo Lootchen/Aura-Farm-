@@ -5013,3 +5013,319 @@ button { font: inherit; }
     max-width: 58%;
   }
 }
+
+
+/* v0.50 — TFT-inspired information economy, Aura Farm identity */
+.upgrade-shell {
+  width: min(100%, 590px);
+  gap: 9px;
+}
+
+.upgrade-shell h2 {
+  font-size: 1.08rem;
+}
+
+.upgrade-cards {
+  width: 100%;
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  overflow: visible;
+}
+
+.upgrade-card {
+  width: 100%;
+  min-width: 0;
+  height: 322px;
+  padding: 10px;
+  display: grid;
+  grid-template-rows:
+    auto minmax(0, 1fr) !important;
+  gap: 8px;
+  border-radius: 18px;
+}
+
+.upgrade-choice-body {
+  min-height: 0;
+  display: grid;
+  grid-template-rows:
+    74px minmax(0, 1fr) 72px;
+  gap: 7px;
+}
+
+.upgrade-card .module-head {
+  min-height: 22px;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.upgrade-card .module-head > span,
+.upgrade-card .module-head > em {
+  padding: 4px 6px;
+  font-size: .42rem;
+}
+
+.upgrade-card .module-head > span {
+  max-width: 42%;
+}
+
+.upgrade-card .module-head > em {
+  max-width: 58%;
+}
+
+.upgrade-card-art {
+  min-height: 74px;
+}
+
+.upgrade-card-orbit {
+  width: 66px;
+  height: 66px;
+  box-shadow:
+    0 0 0 8px rgba(var(--accent),.022),
+    0 0 20px rgba(var(--accent),.09);
+}
+
+.upgrade-card-orbit::before {
+  inset: 9px;
+}
+
+.upgrade-card-orbit::after {
+  inset: 23px -6px;
+}
+
+.upgrade-card-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 17px;
+  font-size: 1.9rem;
+}
+
+.upgrade-card-stars {
+  bottom: -2px;
+  padding: 3px 5px;
+  font-size: .46rem;
+}
+
+.upgrade-card-copy {
+  align-content: start;
+  justify-items: center;
+  gap: 5px;
+}
+
+.upgrade-family {
+  font-size: .44rem;
+  letter-spacing: .12em;
+}
+
+.upgrade-card-copy > strong {
+  font-size: .94rem;
+  line-height: 1.05;
+}
+
+.upgrade-outcome {
+  max-width: 100%;
+  color: rgb(var(--accent));
+  font:
+    900 .58rem/1.15
+    ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .025em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.upgrade-effect {
+  display: none !important;
+}
+
+.upgrade-desc {
+  max-width: 24ch;
+  color: rgba(255,255,255,.55);
+  font-size: .57rem;
+  line-height: 1.28;
+  text-wrap: balance;
+}
+
+.upgrade-preview-strip,
+.upgrade-preview-strip .module-preview-canvas {
+  height: 72px;
+}
+
+.upgrade-preview-strip {
+  border-radius: 10px;
+  opacity: .82;
+}
+
+.upgrade-preview-strip > span {
+  top: 5px;
+  left: 6px;
+  padding: 3px 5px;
+  font-size: .36rem;
+  opacity: .72;
+}
+
+/* Portrait: show all three decisions at once instead of a one-card carousel. */
+@media (max-width: 520px) {
+  .upgrade-shell {
+    width: min(100%, 500px);
+    padding-inline: 10px;
+  }
+
+  .upgrade-cards {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 0;
+  }
+
+  .upgrade-card {
+    width: 100%;
+    height: 154px;
+    padding: 9px 10px;
+    grid-template-rows:
+      auto minmax(0, 1fr) !important;
+    border-radius: 15px;
+    text-align: left;
+  }
+
+  .upgrade-choice-body {
+    grid-template-columns:
+      62px minmax(0, 1fr) 88px;
+    grid-template-rows: 1fr;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .upgrade-card-art {
+    min-height: 62px;
+  }
+
+  .upgrade-card-orbit {
+    width: 58px;
+    height: 58px;
+  }
+
+  .upgrade-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+    font-size: 1.7rem;
+  }
+
+  .upgrade-card-stars {
+    bottom: -4px;
+    font-size: .42rem;
+  }
+
+  .upgrade-card-copy {
+    min-width: 0;
+    justify-items: start;
+    gap: 4px;
+    text-align: left;
+  }
+
+  .upgrade-family {
+    font-size: .41rem;
+  }
+
+  .upgrade-card-copy > strong {
+    font-size: .92rem;
+  }
+
+  .upgrade-outcome {
+    text-align: left;
+    font-size: .53rem;
+  }
+
+  .upgrade-desc {
+    max-width: 34ch;
+    font-size: .54rem;
+    line-height: 1.2;
+    text-align: left;
+  }
+
+  .upgrade-preview-strip,
+  .upgrade-preview-strip
+  .module-preview-canvas {
+    width: 88px;
+    height: 82px;
+  }
+
+  .upgrade-preview-strip > span {
+    display: none;
+  }
+
+  .upgrade-card .module-head {
+    min-height: 18px;
+  }
+
+  .upgrade-card .module-head > span,
+  .upgrade-card .module-head > em {
+    padding: 3px 5px;
+    font-size: .38rem;
+  }
+}
+
+@media (max-width: 370px) {
+  .upgrade-shell {
+    gap: 7px;
+  }
+
+  .upgrade-kicker {
+    font-size: .54rem;
+  }
+
+  .upgrade-shell h2 {
+    font-size: .96rem;
+  }
+
+  .module-bay-status {
+    min-height: 30px;
+  }
+
+  .upgrade-card {
+    height: 143px;
+    padding: 8px;
+  }
+
+  .upgrade-choice-body {
+    grid-template-columns:
+      54px minmax(0, 1fr) 72px;
+    gap: 7px;
+  }
+
+  .upgrade-card-art {
+    min-height: 54px;
+  }
+
+  .upgrade-card-orbit {
+    width: 51px;
+    height: 51px;
+  }
+
+  .upgrade-card-icon {
+    width: 43px;
+    height: 43px;
+    font-size: 1.5rem;
+  }
+
+  .upgrade-desc {
+    display: none;
+  }
+
+  .upgrade-preview-strip,
+  .upgrade-preview-strip
+  .module-preview-canvas {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+/* Menu polish: keep one dominant action and make song structure legible. */
+.menu-phase-preview {
+  max-width: 360px;
+}
+
+.run-card small {
+  letter-spacing: .06em;
+}
