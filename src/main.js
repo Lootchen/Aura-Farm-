@@ -1,17 +1,17 @@
 import {
   loadGameSong,
   loadSongRegistry
-} from "./song.js?v=0.50";
+} from "./song.js?v=0.51";
 import {
   configureSong,
   midiToHz,
   songFrameAtBeat
-} from "./music.js?v=0.50";
+} from "./music.js?v=0.51";
 import {
   loadAudioBuffer,
   resolveSongAssetUrl,
   validateDecodedAudioDuration
-} from "./audio-file.js?v=0.50";
+} from "./audio-file.js?v=0.51";
 
 const app = document.querySelector(".app");
 const canvas = document.querySelector("#game");
@@ -84,6 +84,8 @@ const summaryHits = document.querySelector("#summaryHits");
 const summaryChains = document.querySelector("#summaryChains");
 const summaryMisses = document.querySelector("#summaryMisses");
 const summaryBoss = document.querySelector("#summaryBoss");
+const summarySync = document.querySelector("#summarySync");
+const summaryTimingBias = document.querySelector("#summaryTimingBias");
 const summaryBuild = document.querySelector("#summaryBuild");
 const summaryUnlock = document.querySelector("#summaryUnlock");
 const calibrationMinus = document.querySelector("#calibrationMinus");
@@ -97,7 +99,7 @@ const calibrationValue = document.querySelector("#calibrationValue");
 const machineOptions =
   [...document.querySelectorAll(".machine-option")];
 
-const GAME_VERSION = "0.50";
+const GAME_VERSION = "0.51";
 const DESIGN = { width: 540, height: 960 };
 
 if (menuVersion) {
@@ -111,9 +113,9 @@ const WORLD_ASSETS = {
 };
 
 WORLD_ASSETS.far.src =
-  "./assets/world/glasshouse-far.svg?v=0.50";
+  "./assets/world/glasshouse-far.svg?v=0.51";
 WORLD_ASSETS.mid.src =
-  "./assets/world/growth-bays.svg?v=0.50";
+  "./assets/world/growth-bays.svg?v=0.51";
 
 function drawWorldAsset(
   image,
@@ -157,6 +159,8 @@ const NOTE_SPEED = 275;
 const NOTE_RADIUS = 20;
 const PATH_SAMPLES = 160;
 const POST_HIT_SPEED = 455;
+const AIM_MAX_RADIANS = 0.15;
+const SYNC_CENTER_MS = 45;
 
 const TAP_MISS_WINDOW = 0.160;
 const SHIELD_LATE_BREAK_THRESHOLD = 0.42;
@@ -220,6 +224,141 @@ const ACTS = [
   { name: "AURA CORE", cue: "ROMPE LA ARMADURA", intensity: 1 }
 ];
 
+function levelChapters(song = SONG) {
+  const phases =
+    Array.isArray(song?.levelPhases)
+      ? song.levelPhases
+      : [];
+
+  if (phases.length === 0) {
+    return [];
+  }
+
+  const wrap = (
+    chunk,
+    chapterIndex,
+    phaseStartIndex
+  ) => {
+    const first = chunk[0];
+    const last =
+      chunk[chunk.length - 1];
+    const intensities =
+      chunk
+        .map(
+          (phase) =>
+            Number(phase.intensity)
+        )
+        .filter(Number.isFinite);
+
+    return {
+      id:
+        chunk.length === 1
+          ? first.id
+          : `chapter-${chapterIndex + 1}`,
+      name:
+        chunk.length === 1
+          ? first.name
+          : `${first.name} → ${last.name}`,
+      cue:
+        last.cue ??
+        first.cue ??
+        "",
+      intensity:
+        intensities.length > 0
+          ? Math.max(...intensities)
+          : 0.5,
+      startBeat:
+        Number(
+          first.startBeat ?? 0
+        ),
+      endBeat:
+        Number(
+          last.endBeat ??
+          song?.timing?.beats ??
+          LOOP_BEATS
+        ),
+      chapterIndex,
+      phaseStartIndex,
+      phaseEndIndex:
+        phaseStartIndex +
+        chunk.length -
+        1,
+      phaseCount: chunk.length
+    };
+  };
+
+  if (phases.length <= 4) {
+    return phases.map(
+      (phase, index) =>
+        wrap(
+          [phase],
+          index,
+          index
+        )
+    );
+  }
+
+  const prefix =
+    phases.slice(0, -1);
+  const groupCount = 3;
+  const baseSize =
+    Math.floor(
+      prefix.length /
+      groupCount
+    );
+  const remainder =
+    prefix.length %
+    groupCount;
+  const chapters = [];
+  let cursor = 0;
+
+  for (
+    let group = 0;
+    group < groupCount;
+    group += 1
+  ) {
+    const size =
+      baseSize +
+      (group < remainder ? 1 : 0);
+    const chunk =
+      prefix.slice(
+        cursor,
+        cursor + size
+      );
+
+    if (chunk.length > 0) {
+      chapters.push(
+        wrap(
+          chunk,
+          chapters.length,
+          cursor
+        )
+      );
+    }
+
+    cursor += size;
+  }
+
+  chapters.push(
+    wrap(
+      [phases.at(-1)],
+      chapters.length,
+      phases.length - 1
+    )
+  );
+
+  return chapters;
+}
+
+function usesSongChapters() {
+  return (
+    Array.isArray(
+      SONG?.levelPhases
+    ) &&
+    SONG.levelPhases.length > 0
+  );
+}
+
 function currentLevelPhase() {
   const phases =
     SONG?.levelPhases;
@@ -228,17 +367,33 @@ function currentLevelPhase() {
     Array.isArray(phases) &&
     phases.length > 0
   ) {
+    if (
+      runMode ===
+        "practice"
+    ) {
+      return {
+        ...phases[0],
+        chapterIndex: 0,
+        phaseStartIndex: 0,
+        phaseEndIndex: 0,
+        phaseCount: 1
+      };
+    }
+
+    const chapters =
+      levelChapters();
+
     return (
-      phases[
+      chapters[
         Math.min(
-          phases.length - 1,
+          chapters.length - 1,
           Math.max(
             0,
             wave - 1
           )
         )
       ] ??
-      phases[0]
+      chapters[0]
     );
   }
 
@@ -247,45 +402,81 @@ function currentLevelPhase() {
       `act-${wave}`,
     name:
       ACTS[
-        clamp(
-          Math.round(wave),
-          1,
-          RUN_ACTS
+        Math.min(
+          RUN_ACTS,
+          Math.max(
+            1,
+            Math.round(wave)
+          )
         )
       ]?.name ??
       `ACTO ${wave}`,
     cue:
       ACTS[
-        clamp(
-          Math.round(wave),
-          1,
-          RUN_ACTS
+        Math.min(
+          RUN_ACTS,
+          Math.max(
+            1,
+            Math.round(wave)
+          )
         )
       ]?.cue ??
       "",
     intensity:
       ACTS[
-        clamp(
-          Math.round(wave),
-          1,
-          RUN_ACTS
+        Math.min(
+          RUN_ACTS,
+          Math.max(
+            1,
+            Math.round(wave)
+          )
         )
       ]?.intensity ??
       0.5,
     startBeat: 0,
     endBeat:
-      LOOP_BEATS
+      LOOP_BEATS,
+    chapterIndex:
+      Math.max(0, wave - 1),
+    phaseStartIndex:
+      Math.max(0, wave - 1),
+    phaseEndIndex:
+      Math.max(0, wave - 1),
+    phaseCount: 1
   };
 }
 
+function currentSongProgressAct() {
+  const phase =
+    currentLevelPhase();
+
+  if (usesSongChapters()) {
+    return Math.min(
+      RUN_ACTS,
+      Math.max(
+        1,
+        Number(
+          phase.phaseEndIndex ?? 0
+        ) + 1
+      )
+    );
+  }
+
+  return Math.min(
+    RUN_ACTS,
+    Math.max(
+      1,
+      Math.round(wave)
+    )
+  );
+}
+
 function currentActMeta() {
+  const progressAct =
+    currentSongProgressAct();
   const fallback =
     ACTS[
-      clamp(
-        Math.round(wave),
-        1,
-        RUN_ACTS
-      )
+      progressAct
     ] ??
     ACTS[1];
   const phase =
@@ -316,15 +507,20 @@ function runTargetActs() {
     return 1;
   }
 
+  const chapters =
+    levelChapters();
+
   return (
-    Array.isArray(
-      SONG?.levelPhases
-    ) &&
-    SONG.levelPhases.length >
-      0
-      ? SONG.levelPhases.length
+    chapters.length > 0
+      ? chapters.length
       : RUN_ACTS
   );
+}
+
+function runUnitLabel() {
+  return usesSongChapters()
+    ? "CAPÍTULO"
+    : "ACTO";
 }
 const PROFILE_KEY = "aura-farm-profile-v1";
 const METRICS_KEY = "aura-farm-metrics-v1";
@@ -628,6 +824,8 @@ function newRunStats() {
     startedAt: performance.now(),
     traceAttempts: 0,
     traceSuccess: 0,
+    timingSamples: [],
+    aimSamples: [],
     chosenUpgrades: [],
     firstChainMs: null
   };
@@ -1040,7 +1238,7 @@ class RhythmClock {
           list.length - 1,
           Math.max(
             0,
-            wave - 1
+            currentSongProgressAct() - 1
           )
         )
       ] ??
@@ -1431,7 +1629,7 @@ class RhythmClock {
 
     const actEnergy =
       clamp(
-        (wave - 1) /
+        (currentSongProgressAct() - 1) /
           Math.max(
             1,
             RUN_ACTS - 1
@@ -1548,7 +1746,7 @@ class RhythmClock {
     );
     this.setStemGain(
       "boss",
-      wave === FINAL_ACT
+      bossState.active
         ? (
             bossState.phase === 2
               ? 1.00
@@ -1852,7 +2050,7 @@ class RhythmClock {
       songFrameAtBeat(beat);
     const actEnergy =
       clamp(
-        (wave - 1) /
+        (currentSongProgressAct() - 1) /
           Math.max(
             1,
             RUN_ACTS - 1
@@ -2022,7 +2220,7 @@ class RhythmClock {
 
     // STEM 6 — BOSS
     if (
-      wave === FINAL_ACT &&
+      bossState.active &&
       frame.bossMidi !== null
     ) {
       this.scheduleBossStem(
@@ -2104,8 +2302,7 @@ class RhythmClock {
         stem:
           cue.stem ??
           (
-            wave ===
-              FINAL_ACT
+            bossState.active
               ? "boss"
               : "harmony"
           ),
@@ -2355,7 +2552,7 @@ class RhythmClock {
     filter.type = "lowpass";
     filter.frequency.value =
       520 +
-      wave * 55;
+      currentSongProgressAct() * 55;
 
     gain.gain.setValueAtTime(
       0.0001,
@@ -2424,7 +2621,7 @@ class RhythmClock {
       filter.type = "lowpass";
       filter.frequency.value =
         920 +
-        wave * 75;
+        currentSongProgressAct() * 75;
 
       gain.gain.setValueAtTime(
         0.0001,
@@ -2531,7 +2728,7 @@ class RhythmClock {
     filter.frequency.value =
       (
         1800 +
-        wave * 90
+        currentSongProgressAct() * 90
       ) *
       brightness;
     filter.Q.value = 1.1;
@@ -3762,8 +3959,16 @@ const slideControl = {
 };
 
 const flippers = {
-  left: { startTime: -Infinity, hitThisSwing: false },
-  right: { startTime: -Infinity, hitThisSwing: false }
+  left: {
+    startTime: -Infinity,
+    hitThisSwing: false,
+    aimBias: 0
+  },
+  right: {
+    startTime: -Infinity,
+    hitThisSwing: false,
+    aimBias: 0
+  }
 };
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -4168,7 +4373,7 @@ async function ensureSongCatalog() {
 
   const registryUrl =
     new URL(
-      "../songs/index.json?v=0.50",
+      "../songs/index.json?v=0.51",
       import.meta.url
     );
 
@@ -4350,9 +4555,15 @@ function applySongMetadataToUi(
       : [];
 
   if (menuPhaseSummary) {
+    const chapterCount =
+      phases.length > 0
+        ? levelChapters(song)
+            .length
+        : 0;
+
     menuPhaseSummary.textContent =
       phases.length > 0
-        ? `${phases.length} FASES · ${phases.at(-1)?.name ?? "CLIMAX"}`
+        ? `${phases.length} FASES · ${chapterCount} CAPÍTULOS`
         : "LOOP CLÁSICO";
   }
 
@@ -4404,11 +4615,11 @@ function applySongMetadataToUi(
       ).padStart(2, "0");
     const structureLabel =
       segmented
-        ? `${phases.length} FASES`
+        ? `${phases.length} FASES · ${levelChapters(song).length} CAPÍTULOS`
         : `${RUN_ACTS} ACTOS`;
 
     startRunMeta.textContent =
-      `${structureLabel} · ${minutes}:${remainder} · BUILD ${ACTIVE_MODULE_LIMIT} SLOTS`;
+      `${structureLabel} · ${minutes}:${remainder}`;
   }
 
   if (summaryTrack) {
@@ -4437,7 +4648,7 @@ async function ensureChartLoaded() {
 
   const songUrl =
     new URL(
-      `../songs/${entry.file}?v=0.50`,
+      `../songs/${entry.file}?v=0.51`,
       import.meta.url
     );
 
@@ -5529,7 +5740,12 @@ function showMessage(text, color, milliseconds = 420) {
   messageUntil = performance.now() + milliseconds;
 }
 
-function triggerFlipper(side, eventTimestamp = null, inputType = "unknown") {
+function triggerFlipper(
+  side,
+  eventTimestamp = null,
+  inputType = "unknown",
+  aimBias = 0
+) {
   if (!running) return;
 
   const inputTime = eventSongTime(eventTimestamp);
@@ -5541,6 +5757,12 @@ function triggerFlipper(side, eventTimestamp = null, inputType = "unknown") {
 
   flippers[side].startTime = inputTime;
   flippers[side].hitThisSwing = false;
+  flippers[side].aimBias =
+    clamp(
+      Number(aimBias) || 0,
+      -1,
+      1
+    );
 }
 
 function createImpactFlash(x, y, judgement) {
@@ -5660,14 +5882,42 @@ function resolveTapHit(note, side, songTime) {
   awardScore(JUDGEMENTS.perfect.points * multiplier);
   hitCount += 1;
 
-  lastDeltaMs = null;
+  const deltaMs =
+    Math.round(
+      (
+        songTime -
+        note.targetTime
+      ) * 1000
+    );
+  const aimBias =
+    clamp(
+      Number(
+        flippers[side].aimBias
+      ) || 0,
+      -1,
+      1
+    );
+
+  lastDeltaMs = deltaMs;
   lastJudgement = "PERFECT";
 
+  if (runStats) {
+    runStats.timingSamples.push(
+      deltaMs
+    );
+    runStats.aimSamples.push(
+      aimBias
+    );
+  }
+
   const segment = flipperSegment(side, songTime);
-  const baseAngle = Math.atan2(
-    segment.tip.y - segment.pivot.y,
-    segment.tip.x - segment.pivot.x
-  );
+  const baseAngle =
+    Math.atan2(
+      segment.tip.y - segment.pivot.y,
+      segment.tip.x - segment.pivot.x
+    ) +
+    aimBias *
+      AIM_MAX_RADIANS;
 
   const shotCount = 1 + runMods.twinShots;
   const angles = fanAngles(baseAngle, shotCount, 0.20);
@@ -5728,10 +5978,31 @@ function resolveTapHit(note, side, songTime) {
       : 0.72
   );
 
+  const aimArrow =
+    Math.abs(aimBias) >= 0.45
+      ? (
+          side === "left"
+            ? (
+                aimBias > 0
+                  ? "↗"
+                  : "↖"
+              )
+            : (
+                aimBias > 0
+                  ? "↖"
+                  : "↗"
+              )
+        )
+      : "";
+  const hitLabel =
+    `${shotCount > 1 ? `PERFECT · ×${shotCount}` : "PERFECT"}${aimArrow ? ` · ${aimArrow}` : ""}`;
+
   showMessage(
-    shotCount > 1 ? `PERFECT · ×${shotCount}` : "PERFECT",
+    hitLabel,
     JUDGEMENTS.perfect.color,
-    shotCount > 1 ? 480 : 360
+    shotCount > 1 || aimArrow
+      ? 480
+      : 360
   );
   hitSound(
     side,
@@ -11506,7 +11777,7 @@ function currentStemLevels(songTime) {
     {
       key: "X",
       level:
-        wave === FINAL_ACT
+        bossState.active
           ? (
               bossState.phase === 2
                 ? 1
@@ -11626,7 +11897,7 @@ function drawAuriFieldGuide(songTime) {
 
   if (beat < 4.1) {
     cue =
-      "GOLPEA CUANDO LA SEMILLA TOQUE LA PINZA";
+      "GOLPEA EN BEAT · CENTRO/BORDE SESGA EL TIRO";
   } else if (
     beat >= 4.6 &&
     beat < 12.4
@@ -13425,8 +13696,10 @@ function resetWaveState() {
 
   flippers.left.startTime = -Infinity;
   flippers.left.hitThisSwing = false;
+  flippers.left.aimBias = 0;
   flippers.right.startTime = -Infinity;
   flippers.right.hitThisSwing = false;
+  flippers.right.aimBias = 0;
 }
 
 function shuffledUpgrades(items) {
@@ -15660,7 +15933,7 @@ async function beginAct() {
   bossState = {
     active:
       runMode !== "practice" &&
-      wave === FINAL_ACT,
+      wave === runTargetActs(),
     health: BOSS_MAX_HEALTH,
     maxHealth: BOSS_MAX_HEALTH,
     broken: false,
@@ -15687,8 +15960,8 @@ async function beginAct() {
     runMode === "practice"
       ? "PRACTICE · TAP + TRACE"
       : bossAct
-        ? "ACTO 7 · AURA CORE"
-        : `ACTO ${wave} · ${act.name}`,
+        ? "CORE · AURA CORE"
+        : `${runUnitLabel()} ${wave} · ${act.name}`,
     bossAct
       ? "#ffdf85"
       : "#fff1a9",
@@ -15713,7 +15986,9 @@ async function beginAct() {
   );
 
   playTone(
-    330 + wave * 42,
+    330 +
+      currentSongProgressAct() *
+        42,
     0.09,
     0.04,
     "triangle"
@@ -15750,10 +16025,13 @@ function openUpgradePanel() {
   explosions = [];
   impactFlashes = [];
 
+  const unit =
+    runUnitLabel();
+
   upgradeTitle.textContent =
     runMode === "daily"
-      ? `DAILY · ACTO ${wave}/${runTargetActs()}`
-      : `ACTO ${wave}/${runTargetActs()} · ELIGE 1`;
+      ? `DAILY · ${unit} ${wave}/${runTargetActs()}`
+      : `${unit} ${wave}/${runTargetActs()} · ELIGE 1`;
 
   render(clock.songTime);
   renderUpgradeChoices();
@@ -15770,6 +16048,79 @@ function bossDamagePercent() {
     ) * 100
   );
 }
+
+function runTimingStats() {
+  const samples =
+    runStats?.timingSamples ??
+    [];
+
+  if (samples.length === 0) {
+    return {
+      count: 0,
+      meanMs: 0,
+      meanAbsMs: 0,
+      centerRate: 0,
+      earlyRate: 0,
+      lateRate: 0
+    };
+  }
+
+  const total =
+    samples.reduce(
+      (sum, value) =>
+        sum + value,
+      0
+    );
+  const absTotal =
+    samples.reduce(
+      (sum, value) =>
+        sum +
+        Math.abs(value),
+      0
+    );
+  const center =
+    samples.filter(
+      (value) =>
+        Math.abs(value) <=
+        SYNC_CENTER_MS
+    ).length;
+  const early =
+    samples.filter(
+      (value) =>
+        value <
+        -SYNC_CENTER_MS
+    ).length;
+  const late =
+    samples.filter(
+      (value) =>
+        value >
+        SYNC_CENTER_MS
+    ).length;
+
+  return {
+    count: samples.length,
+    meanMs:
+      Math.round(
+        total /
+        samples.length
+      ),
+    meanAbsMs:
+      Math.round(
+        absTotal /
+        samples.length
+      ),
+    centerRate:
+      center /
+      samples.length,
+    earlyRate:
+      early /
+      samples.length,
+    lateRate:
+      late /
+      samples.length
+  };
+}
+
 
 function flowRankForRun({
   practice = false,
@@ -15949,6 +16300,13 @@ function completeRun() {
       completedBossDamage;
   }
 
+  const timing =
+    runTimingStats();
+
+  if (runStats) {
+    runStats.timing = timing;
+  }
+
   const flowRank =
     flowRankForRun({
       practice,
@@ -15979,6 +16337,34 @@ function completeRun() {
     practice
       ? "—"
       : `${completedBossDamage}%`;
+
+  if (summarySync) {
+    summarySync.textContent =
+      timing.count > 0
+        ? `${Math.round(timing.centerRate * 100)}%`
+        : "—";
+  }
+
+  if (summaryTimingBias) {
+    if (timing.count === 0) {
+      summaryTimingBias.textContent =
+        "SIN MUESTRAS";
+    } else {
+      const bias =
+        `${timing.meanMs >= 0 ? "+" : ""}${timing.meanMs}ms`;
+      const direction =
+        Math.abs(
+          timing.meanMs
+        ) <= 18
+          ? "CENTRADO"
+          : timing.meanMs < 0
+            ? "TEMPRANO"
+            : "TARDE";
+
+      summaryTimingBias.textContent =
+        `${bias} AVG · ${timing.meanAbsMs}ms ERROR · ${direction}`;
+    }
+  }
 
   summaryTitle.textContent =
     practice
@@ -16117,14 +16503,63 @@ function pressVisual(button, state) {
 function handleSidePress(
   side,
   eventTimestamp,
-  inputType = "unknown"
+  inputType = "unknown",
+  aimBias = 0
 ) {
   if (!running) return;
 
   triggerFlipper(
     side,
     eventTimestamp,
-    inputType
+    inputType,
+    aimBias
+  );
+}
+
+function pointerAimBias(
+  button,
+  side,
+  event
+) {
+  const x =
+    Number(event?.clientX);
+
+  if (
+    !Number.isFinite(x) ||
+    !button
+  ) {
+    return 0;
+  }
+
+  const rect =
+    button.getBoundingClientRect();
+
+  if (rect.width <= 0) {
+    return 0;
+  }
+
+  const fraction =
+    clamp(
+      (
+        x -
+        rect.left
+      ) /
+        rect.width,
+      0,
+      1
+    );
+  const inward =
+    side === "left"
+      ? fraction
+      : 1 - fraction;
+
+  return clamp(
+    (
+      inward -
+      0.5
+    ) * 2,
+    -1,
+    1
   );
 }
 
@@ -16157,7 +16592,12 @@ function bindButton(button, side) {
         side,
         event.timeStamp,
         event.pointerType ||
-          "touch"
+          "touch",
+        pointerAimBias(
+          button,
+          side,
+          event
+        )
       );
     }
   );
