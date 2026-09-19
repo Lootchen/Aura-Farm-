@@ -1601,6 +1601,43 @@
         "gain": 0.003,
         "duckDb": -1,
         "durationBeats": 0.42
+      },
+      "actEnd": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          7,
+          12
+        ],
+        "gain": 0.0055,
+        "duckDb": -1.2,
+        "durationBeats": 0.55
+      },
+      "bossPhase": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          1,
+          7,
+          12
+        ],
+        "gain": 0.0075,
+        "duckDb": -2.4,
+        "durationBeats": 0.55,
+        "stem": "boss"
+      },
+      "bossBreak": {
+        "quantize": "step",
+        "intervals": [
+          0,
+          3,
+          7,
+          12
+        ],
+        "gain": 0.009,
+        "duckDb": -3,
+        "durationBeats": 0.85,
+        "stem": "boss"
       }
     },
     "actArrangements": [
