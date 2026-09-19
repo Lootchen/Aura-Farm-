@@ -353,7 +353,21 @@
         "brightness": 1.18,
         "drive": 1.12
       }
-    ]
+    ],
+    "impactProfile": {
+      "transientHz": 2350,
+      "transientQ": 1.15,
+      "transientGain": 0.039,
+      "resonanceGain": 0.009,
+      "sfxGain": 0.78,
+      "collisionInterval": 7,
+      "shieldInterval": 10,
+      "chainInterval": 12,
+      "bumperInterval": 3,
+      "tapInterval": 0,
+      "explosionInterval": 0,
+      "powerInterval": -12
+    }
   },
   "composition": {
     "drumPatterns": {
